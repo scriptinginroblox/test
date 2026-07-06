@@ -1,10 +1,8 @@
---[[
-    ═══════════════════════════════════════════════════════════════════════════════
-    VOLTAGE HUB UI v3.0 — Ultimate Fusion Engine
-    Based on: Ventura UI / Catalyst / Eclipse / Ather Hub / Ultimate / Eternal
-    Activation: RightShift
-    ═══════════════════════════════════════════════════════════════════════════════
-]]
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  VOLTAGE HUB UI v3.0 — Ultimate Fusion Engine + SPEED HACK
+--  Based on: Ventura UI / Catalyst / Eclipse / Ather Hub / Ultimate / Eternal
+--  Activation: RightShift
+-- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 --  SERVICES
@@ -42,7 +40,7 @@ local IsStudio = Services.Run:IsStudio()
 local Camera = Services.Workspace.CurrentCamera
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  UTILITIES
+--  UTILITIES (from Eclipse, Ather Hub, Ultimate, CompKiller)
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 local Utilities = {}
@@ -282,7 +280,7 @@ function Utilities:Connect(signal, callback)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  ICONS
+--  SVG ICONS
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 local Icons = {
@@ -1002,10 +1000,7 @@ end
 --  COMPONENTS
 -- ═══════════════════════════════════════════════════════════════════════════════
 
--- ────────────────────────────────────────────────────────────────────────────────
---  TOGGLE
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- TOGGLE
 function VoltageHub:CreateToggle(parent, config)
     config = config or {}
     local state = config.Default or false
@@ -1084,10 +1079,7 @@ function VoltageHub:CreateToggle(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  SLIDER
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- SLIDER
 function VoltageHub:CreateSlider(parent, config)
     config = config or {}
     local min = config.Min or 0
@@ -1199,10 +1191,7 @@ function VoltageHub:CreateSlider(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  DROPDOWN
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- DROPDOWN
 function VoltageHub:CreateDropdown(parent, config)
     config = config or {}
     local options = config.Options or {"Option 1", "Option 2", "Option 3"}
@@ -1336,10 +1325,7 @@ function VoltageHub:CreateDropdown(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  BUTTON
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- BUTTON
 function VoltageHub:CreateButton(parent, config)
     config = config or {}
     local callback = config.Callback or function() end
@@ -1385,10 +1371,7 @@ function VoltageHub:CreateButton(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  LABEL
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- LABEL
 function VoltageHub:CreateLabel(parent, config)
     config = config or {}
     
@@ -1413,10 +1396,7 @@ function VoltageHub:CreateLabel(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  COLOR PICKER
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- COLOR PICKER
 function VoltageHub:CreateColorPicker(parent, config)
     config = config or {}
     local color = config.Default or Color3.fromRGB(255, 255, 255)
@@ -1587,10 +1567,7 @@ function VoltageHub:CreateColorPicker(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  KEYBIND
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- KEYBIND
 function VoltageHub:CreateKeybind(parent, config)
     config = config or {}
     local key = config.Default or Enum.KeyCode.E
@@ -1660,10 +1637,7 @@ function VoltageHub:CreateKeybind(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  TEXT INPUT
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- TEXT INPUT
 function VoltageHub:CreateTextInput(parent, config)
     config = config or {}
     local callback = config.Callback or function() end
@@ -1722,10 +1696,7 @@ function VoltageHub:CreateTextInput(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  PARAGRAPH
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- PARAGRAPH
 function VoltageHub:CreateParagraph(parent, config)
     config = config or {}
     
@@ -1770,10 +1741,7 @@ function VoltageHub:CreateParagraph(parent, config)
     }
 end
 
--- ────────────────────────────────────────────────────────────────────────────────
---  SECTION
--- ────────────────────────────────────────────────────────────────────────────────
-
+-- SECTION
 function VoltageHub:CreateSection(parent, config)
     config = config or {}
     local collapsed = config.Collapsed or false
@@ -1886,7 +1854,7 @@ function VoltageHub:Window(config)
         Logo = config.Logo or "logo",
         Tabs = {},
         CurrentTab = nil,
-        IsOpen = true, -- Меню открыто по умолчанию
+        IsOpen = true,
         Elements = {},
         Sections = {},
     }
@@ -1904,12 +1872,11 @@ function VoltageHub:Window(config)
     main.Name = "MainFrame"
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 0.5, 0)
-    main.Size = UDim2.new(0, 520, 0, 400)
+    main.Size = UDim2.new(0, 0, 0, 0)
     main.BackgroundColor3 = self.Theme.Background
-    main.BackgroundTransparency = 0.05
+    main.BackgroundTransparency = 1
     main.ClipsDescendants = true
     main.ZIndex = 2
-    main.Visible = true -- Видимо по умолчанию
     main.Parent = gui
     
     Utilities:Corner(main, 12)
@@ -1921,7 +1888,7 @@ function VoltageHub:Window(config)
     local HEIGHT = 400
     
     local UIScale = Instance.new("UIScale")
-    UIScale.Scale = 1
+    UIScale.Scale = 0
     UIScale.Parent = main
     
     -- Left Panel
@@ -2019,13 +1986,9 @@ function VoltageHub:Window(config)
     local tabContent = {}
     
     local tabData = {
-        {name = "Home", icon = "home"},
-        {name = "Scripts", icon = "scripts"},
-        {name = "Visuals", icon = "visuals"},
-        {name = "Stats", icon = "stats"},
-        {name = "Aim", icon = "aim"},
-        {name = "Combat", icon = "combat"},
+        {name = "Speed", icon = "home"},
         {name = "Settings", icon = "settings"},
+        {name = "Info", icon = "info"},
     }
     
     for i, data in ipairs(tabData) do
@@ -2160,18 +2123,25 @@ function VoltageHub:Window(config)
         window.IsOpen = not window.IsOpen
         if window.IsOpen then
             main.Visible = true
-            Utilities:Tween(main, {BackgroundTransparency = 0.05}, 0.3)
             Utilities:Tween(UIScale, {Scale = 1}, 0.3, Enum.EasingStyle.Back)
+            Utilities:Tween(main, {
+                Size = UDim2.new(0, TOTAL_WIDTH, 0, HEIGHT),
+                BackgroundTransparency = 0.05
+            }, 0.3)
+            if self._floatingButton then
+                self._floatingButton.Visible = false
+            end
         else
             Utilities:Tween(UIScale, {Scale = 0}, 0.2, Enum.EasingStyle.Quad)
-            Utilities:Tween(main, {BackgroundTransparency = 1}, 0.2)
+            Utilities:Tween(main, {
+                Size = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1
+            }, 0.2)
             task.wait(0.2)
             main.Visible = false
-        end
-        
-        -- Обновляем видимость плавающей кнопки
-        if self._floatingButton then
-            self._floatingButton.Visible = not window.IsOpen
+            if self._floatingButton then
+                self._floatingButton.Visible = true
+            end
         end
     end
     
@@ -2190,6 +2160,9 @@ function VoltageHub:Window(config)
         end
     end)
     
+    -- Открываем меню сразу
+    window:Open()
+    
     table.insert(self.Windows, window)
     
     return window
@@ -2202,104 +2175,34 @@ end
 function VoltageHub:CreateSettingsPage(window)
     local tab = window:Tab("Settings")
     
+    local themeSection = tab:Section({Name = "Themes"})
+    local themes = self:GetThemes()
+    
+    for _, themeName in ipairs(themes) do
+        tab:Button({
+            Name = themeName,
+            Callback = function()
+                self:SetTheme(themeName)
+                self:Notify("Theme", themeName .. " applied", 2, "success")
+            end
+        })
+    end
+    
     local configSection = tab:Section({Name = "Configs"})
-    
-    local configs = self:GetConfigs()
-    local selected = nil
-    
-    local dropdown = tab:Dropdown({
-        Name = "Configs",
-        Options = configs,
-        Default = configs[1],
-        Callback = function(value) selected = value end
-    })
-    
-    tab:TextInput({
-        Name = "Config Name",
-        Placeholder = "Enter name...",
-        Callback = function(value) 
-            -- store name
-        end
-    })
     
     tab:Button({
         Name = "Save Config",
         Callback = function()
-            if selected then
-                self:SaveConfig(selected)
-                self:Notify("Config Saved", "Saved " .. selected, 2, "success")
-            end
+            self:SaveConfig("default")
+            self:Notify("Config", "Saved!", 2, "success")
         end
     })
     
     tab:Button({
         Name = "Load Config",
         Callback = function()
-            if selected then
-                self:LoadConfigFile(selected)
-                self:Notify("Config Loaded", "Loaded " .. selected, 2, "success")
-            end
-        end
-    })
-    
-    tab:Button({
-        Name = "Delete Config",
-        Callback = function()
-            if selected then
-                self:DeleteConfig(selected)
-                dropdown:Refresh(self:GetConfigs())
-                self:Notify("Config Deleted", "Deleted " .. selected, 2, "warning")
-            end
-        end
-    })
-    
-    tab:Button({
-        Name = "Refresh List",
-        Callback = function()
-            dropdown:Refresh(self:GetConfigs())
-        end
-    })
-    
-    local themeSection = tab:Section({Name = "Themes"})
-    local themes = self:GetThemes()
-    
-    tab:Dropdown({
-        Name = "Theme",
-        Options = themes,
-        Default = self.CurrentTheme,
-        Callback = function(value)
-            self:SetTheme(value)
-        end
-    })
-    
-    tab:ColorPicker({
-        Name = "Accent Color",
-        Default = self.Theme.Accent,
-        Callback = function(color)
-            self.Theme.Accent = color
-            self:RefreshTheme()
-        end
-    })
-    
-    tab:ColorPicker({
-        Name = "Accent Gradient",
-        Default = self.Theme.AccentGradient,
-        Callback = function(color)
-            self.Theme.AccentGradient = color
-            self:RefreshTheme()
-        end
-    })
-    
-    local keySection = tab:Section({Name = "Keybinds"})
-    
-    tab:Keybind({
-        Name = "Toggle Menu",
-        Default = Enum.KeyCode.RightShift,
-        Callback = function(key)
-            self.Keybind = key
-            for _, win in ipairs(self.Windows) do
-                win.Keybind = key
-            end
+            self:LoadConfigFile("default")
+            self:Notify("Config", "Loaded!", 2, "success")
         end
     })
     
@@ -2307,7 +2210,7 @@ function VoltageHub:CreateSettingsPage(window)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  ПЛАВАЮЩАЯ КНОПКА ДЛЯ ОТКРЫТИЯ/ЗАКРЫТИЯ МЕНЮ
+--  FLOATING BUTTON
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:CreateFloatingButton(window)
@@ -2321,32 +2224,16 @@ function VoltageHub:CreateFloatingButton(window)
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.ZIndex = 100
-    btn.Visible = false -- Скрыта пока меню открыто
+    btn.Visible = false
     btn.Parent = self._gui
     
     Utilities:Corner(btn, 30)
     Utilities:Stroke(btn, self.Theme.Accent, 2, 0.4)
     
-    -- Логотип внутри кнопки
     local logo = self:CreateIcon("logo", UDim2.fromOffset(32, 32), self.Theme.Accent)
     logo.Position = UDim2.new(0.5, -16, 0.5, -16)
     logo.Parent = btn
     
-    -- Эффект свечения
-    local glow = Instance.new("ImageLabel")
-    glow.Size = UDim2.new(1.8, 0, 1.8, 0)
-    glow.Position = UDim2.new(0.5, 0, 0.5, 0)
-    glow.AnchorPoint = Vector2.new(0.5, 0.5)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://18245826428"
-    glow.ImageColor3 = self.Theme.Accent
-    glow.ImageTransparency = 0.7
-    glow.ScaleType = Enum.ScaleType.Slice
-    glow.SliceCenter = Rect.new(Vector2.new(21, 21), Vector2.new(79, 79))
-    glow.ZIndex = -1
-    glow.Parent = btn
-    
-    -- Текст "MENU" под иконкой
     local menuLabel = Instance.new("TextLabel")
     menuLabel.Size = UDim2.new(1, 0, 0, 14)
     menuLabel.Position = UDim2.new(0, 0, 1, -2)
@@ -2355,54 +2242,124 @@ function VoltageHub:CreateFloatingButton(window)
     menuLabel.TextColor3 = self.Theme.TextDim
     menuLabel.FontFace = self.FontBold
     menuLabel.TextSize = 10
-    menuLabel.TextScaled = false
     menuLabel.Parent = btn
     
-    -- Пульсация
-    task.spawn(function()
-        local direction = 1
-        while btn.Parent and btn.Visible do
-            local scale = 1 + direction * 0.05
-            Utilities:Tween(btn, {Size = UDim2.new(0, 60 * scale, 0, 60 * scale)}, 0.5)
-            direction = direction * -1
-            task.wait(0.5)
-        end
-    end)
-    
-    -- Наведение (для ПК)
-    btn.MouseEnter:Connect(function()
-        Utilities:Tween(btn, {BackgroundTransparency = 0.05}, 0.15)
-        local img = logo:FindFirstChildWhichIsA("ImageLabel")
-        if img then Utilities:Tween(img, {ImageColor3 = Color3.fromRGB(255, 255, 255)}, 0.15) end
-        Utilities:Tween(menuLabel, {TextColor3 = self.Theme.Text}, 0.15)
-    end)
-    
-    btn.MouseLeave:Connect(function()
-        Utilities:Tween(btn, {BackgroundTransparency = 0.2}, 0.15)
-        local img = logo:FindFirstChildWhichIsA("ImageLabel")
-        if img then Utilities:Tween(img, {ImageColor3 = self.Theme.Accent}, 0.15) end
-        Utilities:Tween(menuLabel, {TextColor3 = self.Theme.TextDim}, 0.15)
-    end)
-    
-    -- Открытие меню
     btn.MouseButton1Click:Connect(function()
         window:Toggle()
     end)
     
-    -- Сохраняем ссылку на кнопку
     self._floatingButton = btn
-    
     return btn
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
--- ═══════════════════════════════════════════════════════════════════════════════
+--  ═══════════════════════════════════════════════════════════════════════════════
+--  SPEED HACK LOGIC
+--  ═══════════════════════════════════════════════════════════════════════════════
+--  ═══════════════════════════════════════════════════════════════════════════════
 
--- Создаем основное окно
+local SpeedHack = {
+    Enabled = false,
+    Speed = 50,
+    OldSpeed = nil,
+    Humanoid = nil,
+}
+
+local function GetCharacter()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        return char
+    end
+    return nil
+end
+
+function SpeedHack:Enable()
+    if self.Enabled then return end
+    
+    local char = GetCharacter()
+    if not char then
+        VoltageHub:Notify({
+            Title = "Ошибка",
+            Text = "Персонаж не найден!",
+            Type = "error"
+        })
+        return
+    end
+    
+    self.Humanoid = char:FindFirstChild("Humanoid")
+    if not self.Humanoid then
+        VoltageHub:Notify({
+            Title = "Ошибка",
+            Text = "Humanoid не найден!",
+            Type = "error"
+        })
+        return
+    end
+    
+    self.OldSpeed = self.Humanoid.WalkSpeed
+    self.Enabled = true
+    self.Humanoid.WalkSpeed = self.Speed
+    
+    VoltageHub:Notify({
+        Title = "⚡ Спидхак",
+        Text = "Включен! Скорость: " .. self.Speed,
+        Type = "success"
+    })
+end
+
+function SpeedHack:Disable()
+    if not self.Enabled then return end
+    
+    if self.Humanoid and self.OldSpeed then
+        self.Humanoid.WalkSpeed = self.OldSpeed
+    end
+    
+    self.Enabled = false
+    self.OldSpeed = nil
+    
+    VoltageHub:Notify({
+        Title = "⚡ Спидхак",
+        Text = "Выключен!",
+        Type = "info"
+    })
+end
+
+function SpeedHack:Toggle()
+    if self.Enabled then
+        self:Disable()
+    else
+        self:Enable()
+    end
+end
+
+function SpeedHack:SetSpeed(newSpeed)
+    self.Speed = newSpeed
+    if self.Enabled and self.Humanoid then
+        self.Humanoid.WalkSpeed = self.Speed
+    end
+end
+
+-- Авто-восстановление после респавна
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if SpeedHack.Enabled then
+        SpeedHack:Disable()
+        task.wait(0.1)
+        SpeedHack.Humanoid = char:FindFirstChild("Humanoid")
+        SpeedHack:Enable()
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  ═══════════════════════════════════════════════════════════════════════════════
+--  CREATE MENU WITH SPEED HACK
+--  ═══════════════════════════════════════════════════════════════════════════════
+--  ═══════════════════════════════════════════════════════════════════════════════
+
+-- Создаем главное окно
 local mainWindow = VoltageHub:Window({
-    Title = "Voltage Hub",
-    Subtitle = "Ultimate Fusion Engine v3.0",
+    Title = "Speed Hub",
+    Subtitle = "Ultimate Speed Engine v3.0",
     Logo = "logo",
 })
 
@@ -2414,113 +2371,108 @@ VoltageHub:CreateFloatingButton(mainWindow)
 
 -- Создаем водяной знак
 VoltageHub:CreateWatermark({
-    Text = "Voltage Hub v3.0"
+    Text = "Speed Hub v3.0"
 })
 
--- Добавляем примеры элементов на вкладку Home
-local homeTab = mainWindow:Tab("Home")
+-- Вкладка SPEED
+local speedTab = mainWindow:Tab("Speed")
 
-local homeSection = homeTab:Section({Name = "Welcome"})
+-- Секция настроек
+local settingsSection = speedTab:Section({Name = "Настройки скорости"})
 
-homeTab:Paragraph({
-    Title = "Добро пожаловать в Voltage Hub!",
-    Text = "Это многофункциональный интерфейс для управления читами в Roblox. Используйте вкладки слева для навигации по функциям."
-})
-
-local demoSection = homeTab:Section({Name = "Демо-компоненты"})
-
-homeTab:Toggle({
-    Name = "Пример переключателя",
-    Default = true,
-    Callback = function(value)
-        VoltageHub:Notify({
-            Title = "Toggle",
-            Text = "Состояние: " .. tostring(value),
-            Type = "info"
-        })
+-- Toggle
+local speedToggle = speedTab:Toggle({
+    Name = "Спидхак",
+    Default = false,
+    Callback = function(state)
+        if state then
+            SpeedHack:Enable()
+        else
+            SpeedHack:Disable()
+        end
     end
 })
 
-homeTab:Slider({
-    Name = "Пример ползунка",
-    Min = 0,
-    Max = 100,
+-- Slider
+local speedSlider = speedTab:Slider({
+    Name = "Скорость",
+    Min = 16,
+    Max = 500,
     Default = 50,
-    Suffix = "%",
+    Suffix = " WalkSpeed",
     Callback = function(value)
-        -- ваш код
+        SpeedHack:SetSpeed(value)
     end
 })
 
-homeTab:Dropdown({
-    Name = "Пример выпадающего списка",
-    Options = {"Опция 1", "Опция 2", "Опция 3"},
-    Default = "Опция 1",
-    Callback = function(value)
-        VoltageHub:Notify({
-            Title = "Dropdown",
-            Text = "Выбрано: " .. value,
-            Type = "info"
-        })
-    end
-})
-
-homeTab:Button({
-    Name = "Пример кнопки",
+-- Кнопка переключения
+speedTab:Button({
+    Name = "🔄 Переключить",
     Callback = function()
-        VoltageHub:Notify({
-            Title = "Кнопка нажата!",
-            Text = "Вы нажали на кнопку",
-            Type = "success"
-        })
+        SpeedHack:Toggle()
+        speedToggle:Set(SpeedHack.Enabled)
     end
 })
 
-homeTab:ColorPicker({
-    Name = "Пример выбора цвета",
-    Default = Color3.fromRGB(100, 80, 255),
-    Callback = function(color)
-        -- ваш код
-    end
+-- Секция пресетов
+local presetsSection = speedTab:Section({Name = "Быстрые пресеты"})
+
+local presets = {
+    {name = "🐢 16 (обычная)", value = 16},
+    {name = "🏃 50 (быстрая)", value = 50},
+    {name = "🚀 100 (супер)", value = 100},
+    {name = "⚡ 500 (макс)", value = 500},
+}
+
+for _, preset in ipairs(presets) do
+    speedTab:Button({
+        Name = preset.name,
+        Callback = function()
+            speedSlider:Set(preset.value)
+            SpeedHack:SetSpeed(preset.value)
+            VoltageHub:Notify({
+                Title = "⚡ Пресет",
+                Text = "Скорость: " .. preset.value,
+                Type = "success"
+            })
+        end
+    })
+end
+
+-- Секция информации
+local infoSection = speedTab:Section({Name = "Информация"})
+speedTab:Paragraph({
+    Title = "📖 Управление:",
+    Text = "RightShift - открыть/закрыть меню\nToggle - включить спидхак\nSlider - настроить скорость\nПресеты - быстрая смена"
 })
 
-local scriptsTab = mainWindow:Tab("Scripts")
-
-scriptsTab:Paragraph({
-    Title = "Скрипты",
-    Text = "Здесь будут ваши скрипты для автоматизации."
+-- Вкладка INFO
+local infoTab = mainWindow:Tab("Info")
+infoTab:Paragraph({
+    Title = "ℹ️ О программе",
+    Text = "Speed Hub v3.0\n\nФункции:\n• Спидхак\n• Регулировка скорости (16-500)\n• Быстрые пресеты\n• Красивый UI\n• Авто-восстановление после респавна"
 })
 
-scriptsTab:Button({
-    Name = "Пример скрипта",
-    Callback = function()
-        VoltageHub:Notify({
-            Title = "Скрипт запущен",
-            Text = "Ваш скрипт выполняется...",
-            Type = "info"
-        })
-    end
-})
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  УВЕДОМЛЕНИЕ О ЗАПУСКЕ
+-- ═══════════════════════════════════════════════════════════════════════════════
 
--- Отправляем уведомление о запуске
 task.wait(0.5)
 VoltageHub:Notify({
-    Title = "Voltage Hub v3.0",
-    Text = "Меню успешно загружено!",
+    Title = "🚀 Speed Hub v3.0",
+    Text = "Меню загружено! Нажми RightShift",
     Type = "success",
     Duration = 3
 })
 
+print("✅ Speed Hub полностью загружен!")
+print("📌 Нажми RightShift для открытия/закрытия меню")
+
 -- ═══════════════════════════════════════════════════════════════════════════════
---  EXPORT
+--  ЭКСПОРТ
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 getgenv().VoltageHub = VoltageHub
 _G.VoltageHub = VoltageHub
 
--- Возвращаем библиотеку для loadstring
 return VoltageHub
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  КОНЕЦ СКРИПТА
--- ═══════════════════════════════════════════════════════════════════════════════
