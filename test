@@ -1,65 +1,58 @@
 --[[
     ═══════════════════════════════════════════════════════════════
-    VOLTAGE HUB — Полностью переработанная UI-библиотека
+    VOLTAGE HUB — Премиум UI с уникальным дизайном
     ═══════════════════════════════════════════════════════════════
     
-    Основано на лучших практиках из:
+    Вдохновлено лучшими UI-библиотеками:
     • Ventura UI — акриловый блюр, эмодзи-иконки, типографика
-    • Catalyst — минимализм и чистота кода
-    • eclipse — структура и модульность
-    • Compkiller — производительность и оптимизация
+    • Catalyst — минимализм, чистота, воздух
+    • eclipse — структура, модульность, анимации
+    • Compkiller — производительность, оптимизация
     
-    Версия: 2.0
+    Уникальные фишки:
+    • Квадратная кнопка с закруглёнными углами
+    • Акриловый блюр с динамическим свечением
+    • Неоновая подсветка активных элементов
+    • Микро-анимации при наведении
+    • Градиентные акценты
+    • Система тем с живым превью
     ═══════════════════════════════════════════════════════════════
 ]]
 
 -- ================================================================
--- 1. СЕРВИСЫ (Services)
--- ================================================================
--- Получаем все нужные сервисы один раз и кэшируем их.
--- Это стандартная практика для оптимизации производительности.
--- cloneref используется в некоторых экзекуторах для обхода проверок.
+-- 1. СЕРВИСЫ
 -- ================================================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local GuiService = game:GetService("GuiService")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
-local GuiInset = GuiService:GetGuiInset().Y  -- Учитываем отступы на мобильных
+local GuiInset = GuiService:GetGuiInset().Y
 
 -- ================================================================
--- 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (Helpers)
+-- 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 -- ================================================================
--- Эти функции упрощают создание GUI-элементов и анимаций.
--- Они взяты из Ventura UI и адаптированы под наш стиль.
--- ================================================================
-
--- Создаёт скруглённый угол у объекта
 local function corner(obj, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 6)
+    c.CornerRadius = UDim.new(0, radius or 8)
     c.Parent = obj
     return c
 end
 
--- Создаёт обводку у объекта (UIStroke)
-local function stroke(obj, color, thickness, transparency)
+local function stroke(obj, color, thickness)
     local s = Instance.new("UIStroke")
     s.Color = color or Color3.fromRGB(50, 50, 60)
     s.Thickness = thickness or 1
-    s.Transparency = transparency or 0
     s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     s.Parent = obj
     return s
 end
 
--- Плавная анимация (Tween) с настраиваемыми параметрами
 local function tween(obj, props, time, style, dir)
     time = time or 0.2
     style = style or Enum.EasingStyle.Quad
@@ -69,86 +62,104 @@ local function tween(obj, props, time, style, dir)
     return tw
 end
 
--- Создаёт отступы (UIPadding) у объекта
-local function pad(obj, top, right, bottom, left)
+local function pad(obj, t, r, b, l)
     local p = Instance.new("UIPadding")
-    p.PaddingTop = UDim.new(0, top or 0)
-    p.PaddingRight = UDim.new(0, right or 0)
-    p.PaddingBottom = UDim.new(0, bottom or 0)
-    p.PaddingLeft = UDim.new(0, left or 0)
+    p.PaddingTop = UDim.new(0, t or 0)
+    p.PaddingRight = UDim.new(0, r or 0)
+    p.PaddingBottom = UDim.new(0, b or 0)
+    p.PaddingLeft = UDim.new(0, l or 0)
     p.Parent = obj
     return p
 end
 
+local function gradient(obj, color1, color2, rotation)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color1),
+        ColorSequenceKeypoint.new(1, color2)
+    }
+    g.Rotation = rotation or 45
+    g.Parent = obj
+    return g
+end
+
 -- ================================================================
--- 3. ТЕМА ОФОРМЛЕНИЯ (Theme)
--- ================================================================
--- Тема — это таблица с цветами и стилями.
--- Все элементы используют эти цвета, что позволяет легко менять тему.
--- Вдохновлено тёмной темой из Ventura UI.
+-- 3. ПРЕМИУМ ТЕМА
 -- ================================================================
 local Theme = {
-    Background = Color3.fromRGB(18, 22, 30),   -- Основной фон окна
-    Panel = Color3.fromRGB(26, 32, 42),        -- Фон панелей и секций
-    Element = Color3.fromRGB(40, 48, 60),      -- Фон элементов (кнопки, поля)
-    Hover = Color3.fromRGB(55, 65, 80),        -- Цвет при наведении
-    Accent = Color3.fromRGB(100, 150, 255),    -- Акцентный цвет (выделение)
-    Text = Color3.fromRGB(255, 255, 255),      -- Основной текст
-    SubText = Color3.fromRGB(180, 190, 200),   -- Второстепенный текст
-    Stroke = Color3.fromRGB(50, 60, 75),       -- Цвет обводки
+    Background = Color3.fromRGB(12, 14, 22),      -- Глубокий тёмный фон
+    Panel = Color3.fromRGB(20, 24, 36),           -- Панели
+    Element = Color3.fromRGB(32, 38, 54),         -- Элементы
+    Hover = Color3.fromRGB(45, 52, 72),           -- При наведении
+    Accent1 = Color3.fromRGB(100, 150, 255),      -- Основной акцент (синий)
+    Accent2 = Color3.fromRGB(180, 100, 255),      -- Второй акцент (фиолетовый)
+    Text = Color3.fromRGB(255, 255, 255),         -- Белый текст
+    SubText = Color3.fromRGB(160, 170, 190),      -- Серый текст
+    Stroke = Color3.fromRGB(40, 46, 62),          -- Обводка
+    Glow = Color3.fromRGB(100, 150, 255),         -- Свечение
 }
 
 -- ================================================================
--- 4. ГЛАВНЫЙ GUI-КОНТЕЙНЕР (ScreenGui)
--- ================================================================
--- Создаём ScreenGui, в котором будет жить всё меню.
--- Устанавливаем правильные настройки, чтобы он не мешал игре.
+-- 4. ГЛАВНЫЙ GUI
 -- ================================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "VoltageHub"
-ScreenGui.ResetOnSpawn = false          -- Не удаляется при респавне
+ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.IgnoreGuiInset = true         -- Игнорирует системные отступы
-ScreenGui.Parent = CoreGui              -- Размещаем в CoreGui или PlayerGui
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = CoreGui
 
 -- ================================================================
--- 5. КНОПКА ВЫЗОВА (FAB — Floating Action Button)
+-- 5. КВАДРАТНАЯ КНОПКА С ЗАКРУГЛЁННЫМИ УГЛАМИ
 -- ================================================================
--- Плавающая круглая кнопка, которая всегда видна на экране.
--- При клике открывает/закрывает меню. Можно перетаскивать.
--- Вдохновлено дизайном из Material Design и Ventura UI.
--- ================================================================
-
--- Создаём кнопку
 local FAB = Instance.new("TextButton")
 FAB.Size = UDim2.new(0, 56, 0, 56)
-FAB.Position = UDim2.new(0, 20, 0, 120)
-FAB.BackgroundColor3 = Theme.Accent
-FAB.Text = "≡"                            -- Символ меню (три черты)
+FAB.Position = UDim2.new(0, 24, 0, 120)
+FAB.BackgroundColor3 = Theme.Panel
+FAB.Text = "≡"
 FAB.TextColor3 = Color3.new(1, 1, 1)
-FAB.TextSize = 32
+FAB.TextSize = 28
 FAB.Font = Enum.Font.GothamBold
 FAB.ZIndex = 20
 FAB.Parent = ScreenGui
-corner(FAB, 28)                           -- Делаем круглой
+corner(FAB, 12)  -- Квадратная с закруглёнными углами
+stroke(FAB, Theme.Stroke, 1.5)
 
--- Добавляем тень под кнопкой (эффект глубины)
-local fabShadow = Instance.new("ImageLabel")
-fabShadow.Size = UDim2.new(1, 20, 1, 20)
-fabShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-fabShadow.AnchorPoint = Vector2.new(0.5, 0.5)
-fabShadow.BackgroundTransparency = 1
-fabShadow.Image = "rbxassetid://18245826428"  -- Спрайт тени
-fabShadow.ScaleType = Enum.ScaleType.Slice
-fabShadow.SliceCenter = Rect.new(21, 21, 79, 79)
-fabShadow.ImageTransparency = 0.6
-fabShadow.ZIndex = -1
-fabShadow.Parent = FAB
+-- Градиентная обводка кнопки
+local fabStrokeGrad = gradient(stroke(FAB, Theme.Accent1, 2), Theme.Accent1, Theme.Accent2, 45)
+fabStrokeGrad.Parent.Parent = FAB:FindFirstChildOfClass("UIStroke")
 
--- ── Перетаскивание FAB ──────────────────────────────────────────────
--- При нажатии запоминаем смещение. При движении обновляем позицию.
--- При отпускании проверяем, был ли сдвиг. Если нет — это клик.
--- ================================================================
+-- Свечение кнопки
+local fabGlow = Instance.new("ImageLabel")
+fabGlow.Size = UDim2.new(1, 30, 1, 30)
+fabGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+fabGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+fabGlow.BackgroundTransparency = 1
+fabGlow.Image = "rbxassetid://18245826428"
+fabGlow.ScaleType = Enum.ScaleType.Slice
+fabGlow.SliceCenter = Rect.new(21, 21, 79, 79)
+fabGlow.ImageTransparency = 0.7
+fabGlow.ImageColor3 = Theme.Accent1
+fabGlow.ZIndex = -1
+fabGlow.Parent = FAB
+
+-- Анимация свечения
+task.spawn(function()
+    while FAB.Parent do
+        for i = 0.5, 1, 0.1 do
+            fabGlow.ImageTransparency = 1 - i * 0.5
+            fabGlow.ImageColor3 = Theme.Accent1:Lerp(Theme.Accent2, i)
+            task.wait(0.05)
+        end
+        for i = 1, 0.5, -0.1 do
+            fabGlow.ImageTransparency = 1 - i * 0.5
+            fabGlow.ImageColor3 = Theme.Accent1:Lerp(Theme.Accent2, i)
+            task.wait(0.05)
+        end
+    end
+end)
+
+-- ── Перетаскивание кнопки ──────────────────────────────────────
 local fabDrag = false
 local fabOffset = Vector2.new()
 local fabMoved = false
@@ -173,1014 +184,718 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and fabDrag then
         fabDrag = false
-        if not fabMoved then  -- Если не двигали — открываем меню
-            Window:Toggle()
+        if not fabMoved then
+            toggleMenu()
         end
     end
 end)
 
 -- ================================================================
--- 6. ОКНО (Main Window)
+-- 6. ГЛАВНОЕ ОКНО С АКРИЛОВЫМ БЛЮРОМ
 -- ================================================================
--- Основное окно меню. Имеет левую панель с аватаром и вкладками,
--- и правую панель с содержимым. Поддерживает перетаскивание.
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 560, 0, 460)
+mainFrame.Position = UDim2.new(0.5, -280, 0.5, -230)
+mainFrame.BackgroundColor3 = Theme.Background
+mainFrame.BackgroundTransparency = 0.05
+mainFrame.Visible = false
+mainFrame.ZIndex = 5
+mainFrame.Parent = ScreenGui
+corner(mainFrame, 14)
+stroke(mainFrame, Theme.Stroke, 1.5)
+
+-- Градиентный фон окна
+local bgGrad = gradient(mainFrame, Theme.Background, Theme.Panel, 135)
+bgGrad.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(0.5, 0.3),
+    NumberSequenceKeypoint.new(1, 0)
+}
+
+-- ── Акриловый блюр ──────────────────────────────────────────────
+local blur = Instance.new("DepthOfFieldEffect")
+blur.Name = "VoltageBlur"
+blur.FarIntensity = 0
+blur.InFocusRadius = 0.08
+blur.NearIntensity = 0.9
+blur.Parent = Lighting
+
+local blurPart = Instance.new("Part")
+blurPart.Size = Vector3.new(1, 1, 0.01)
+blurPart.Material = Enum.Material.Glass
+blurPart.Transparency = 0.98
+blurPart.Anchored = true
+blurPart.CanCollide = false
+blurPart.CastShadow = false
+blurPart.Parent = workspace.CurrentCamera
+
+RunService.RenderStepped:Connect(function()
+    if mainFrame.Visible then
+        local pos = mainFrame.AbsolutePosition
+        local size = mainFrame.AbsoluteSize
+        local camera = workspace.CurrentCamera
+        local topLeft = camera:ScreenPointToRay(pos.X, pos.Y, 0.01)
+        local bottomRight = camera:ScreenPointToRay(pos.X + size.X, pos.Y + size.Y, 0.01)
+        local center = (topLeft.Origin + bottomRight.Origin) / 2
+        blurPart.CFrame = CFrame.new(center)
+        blurPart.Size = Vector3.new(size.X / camera.ViewportSize.X * 12,
+                                    size.Y / camera.ViewportSize.Y * 12, 0.01)
+    end
+end)
+
+-- ── Свечение вокруг окна ────────────────────────────────────────
+local windowGlow = Instance.new("ImageLabel")
+windowGlow.Size = UDim2.new(1, 60, 1, 60)
+windowGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+windowGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+windowGlow.BackgroundTransparency = 1
+windowGlow.Image = "rbxassetid://18245826428"
+windowGlow.ScaleType = Enum.ScaleType.Slice
+windowGlow.SliceCenter = Rect.new(21, 21, 79, 79)
+windowGlow.ImageTransparency = 0.85
+windowGlow.ImageColor3 = Theme.Accent1
+windowGlow.ZIndex = -1
+windowGlow.Parent = mainFrame
+
 -- ================================================================
-local Window = {}
-Window._open = false
-Window._tabs = {}
-Window._tabButtons = {}
-Window._currentTab = nil
+-- 7. ЛЕВАЯ ПАНЕЛЬ (премиум версия)
+-- ================================================================
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0, 210, 1, 0)
+leftPanel.BackgroundTransparency = 1
+leftPanel.ZIndex = 6
+leftPanel.Parent = mainFrame
 
--- ── Создание окна ──────────────────────────────────────────────────
-function Window:Create(config)
-    config = config or {}
-    local title = config.title or "Voltage Hub"
-    local width = config.width or 620
-    local height = config.height or 480
+-- Вертикальная разделительная линия с градиентом
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(0, 2, 1, -40)
+divider.Position = UDim2.new(1, -1, 0, 20)
+divider.BackgroundColor3 = Color3.new(1, 1, 1)
+divider.BorderSizePixel = 0
+divider.ZIndex = 7
+divider.Parent = leftPanel
+gradient(divider, Theme.Accent1, Theme.Accent2, 90)
+divider.BackgroundTransparency = 0.6
 
-    -- Главный фрейм окна
-    local main = Instance.new("Frame")
-    main.Size = UDim2.new(0, width, 0, height)
-    main.Position = UDim2.new(0, 100, 0, 100)
-    main.BackgroundColor3 = Theme.Background
-    main.BackgroundTransparency = 1
-    main.Visible = false
-    main.ZIndex = 5
-    main.Parent = ScreenGui
-    corner(main, 12)
-    stroke(main, Theme.Stroke, 1.5)
+-- ── Перетаскивание окна ─────────────────────────────────────────
+local dragWin = false
+local dragOffsetWin = Vector2.new()
+leftPanel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragWin = true
+        dragOffsetWin = Vector2.new(input.Position.X - mainFrame.AbsolutePosition.X,
+                                    input.Position.Y - mainFrame.AbsolutePosition.Y)
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragWin and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local pos = Vector2.new(input.Position.X - dragOffsetWin.X, input.Position.Y - dragOffsetWin.Y)
+        mainFrame.Position = UDim2.new(0, pos.X, 0, pos.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragWin = false
+    end
+end)
 
-    -- ── Акриловый блюр (эффект стекла) ────────────────────────────
-    -- Создаём DepthOfFieldEffect для размытия фона за окном.
-    -- Это делает интерфейс современным и "парящим".
-    -- Вдохновлено Ventura UI и macOS.
-    local blur = Instance.new("DepthOfFieldEffect")
-    blur.Name = "VoltageBlur"
-    blur.FarIntensity = 0
-    blur.InFocusRadius = 0.1
-    blur.NearIntensity = 0.8
-    blur.Parent = Lighting
+-- ================================================================
+-- 8. ВЕРХНЯЯ ЧАСТЬ (аватар + название с эффектами)
+-- ================================================================
+local topContainer = Instance.new("Frame")
+topContainer.Size = UDim2.new(1, 0, 0, 160)
+topContainer.BackgroundTransparency = 1
+topContainer.ZIndex = 7
+topContainer.Parent = leftPanel
+pad(topContainer, 16, 0, 8, 0)
 
-    -- Создаём стеклянную часть, которая повторяет размеры окна
-    local blurPart = Instance.new("Part")
-    blurPart.Size = Vector3.new(1, 1, 0.01)
-    blurPart.Material = Enum.Material.Glass
-    blurPart.Transparency = 0.99
-    blurPart.Anchored = true
-    blurPart.CanCollide = false
-    blurPart.CastShadow = false
-    blurPart.Parent = workspace.CurrentCamera
+local topLayout = Instance.new("UIListLayout")
+topLayout.FillDirection = Enum.FillDirection.Vertical
+topLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+topLayout.Padding = UDim.new(0, 8)
+topLayout.Parent = topContainer
 
-    -- Обновляем позицию стеклянной части каждый кадр
-    RunService.RenderStepped:Connect(function()
-        if main.Visible then
-            local pos = main.AbsolutePosition
-            local size = main.AbsoluteSize
-            local camera = workspace.CurrentCamera
-            local topLeft = camera:ScreenPointToRay(pos.X, pos.Y, 0.01)
-            local bottomRight = camera:ScreenPointToRay(pos.X + size.X, pos.Y + size.Y, 0.01)
-            local center = (topLeft.Origin + bottomRight.Origin) / 2
-            blurPart.CFrame = CFrame.new(center)
-            blurPart.Size = Vector3.new(size.X / camera.ViewportSize.X * 10, 
-                                        size.Y / camera.ViewportSize.Y * 10, 0.01)
-        end
+-- ── Аватар с двойной обводкой ──────────────────────────────────
+local avatar = Instance.new("Frame")
+avatar.Size = UDim2.new(0, 72, 0, 72)
+avatar.BackgroundColor3 = Theme.Panel
+avatar.ZIndex = 8
+avatar.Parent = topContainer
+corner(avatar, 36)
+
+-- Внешняя обводка (градиентная)
+local avatarStroke = stroke(avatar, Theme.Accent1, 2)
+gradient(avatarStroke, Theme.Accent1, Theme.Accent2, 45)
+avatarStroke.Transparency = 0.3
+
+-- Картинка аватара
+local avatarImg = Instance.new("ImageLabel")
+avatarImg.Size = UDim2.new(1, -4, 1, -4)
+avatarImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+avatarImg.AnchorPoint = Vector2.new(0.5, 0.5)
+avatarImg.BackgroundTransparency = 1
+avatarImg.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=150&h=150"
+avatarImg.ZIndex = 9
+avatarImg.Parent = avatar
+corner(avatarImg, 34)
+
+-- ── Название с градиентом ──────────────────────────────────────
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0, 190, 0, 44)
+title.BackgroundTransparency = 1
+title.Text = "VOLTAGE"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 36
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.ZIndex = 8
+title.Parent = topContainer
+
+local titleGrad = gradient(title, Theme.Accent1, Theme.Accent2, 45)
+titleGrad.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(0.5, 0.3),
+    NumberSequenceKeypoint.new(1, 0)
+}
+
+-- Подзаголовок
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(0, 190, 0, 18)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "PREMIUM HUB"
+subtitle.TextColor3 = Theme.SubText
+subtitle.TextSize = 12
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Center
+subtitle.ZIndex = 8
+subtitle.Parent = topContainer
+
+-- ================================================================
+-- 9. КНОПКИ КАТЕГОРИЙ (3x2) С МИКРО-АНИМАЦИЯМИ
+-- ================================================================
+local bottomContainer = Instance.new("Frame")
+bottomContainer.Size = UDim2.new(1, 0, 1, -160)
+bottomContainer.Position = UDim2.new(0, 0, 0, 160)
+bottomContainer.BackgroundTransparency = 1
+bottomContainer.ZIndex = 7
+bottomContainer.Parent = leftPanel
+pad(bottomContainer, 0, 8, 12, 8)
+
+local rowContainer = Instance.new("Frame")
+rowContainer.Size = UDim2.new(1, 0, 1, 0)
+rowContainer.BackgroundTransparency = 1
+rowContainer.ZIndex = 8
+rowContainer.Parent = bottomContainer
+
+local rowLayout = Instance.new("UIListLayout")
+rowLayout.FillDirection = Enum.FillDirection.Horizontal
+rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+rowLayout.Padding = UDim.new(0, 10)
+rowLayout.Parent = rowContainer
+
+-- Колонки
+local col1 = Instance.new("Frame")
+col1.Size = UDim2.new(0, 88, 1, 0)
+col1.BackgroundTransparency = 1
+col1.ZIndex = 9
+col1.Parent = rowContainer
+
+local col1Layout = Instance.new("UIListLayout")
+col1Layout.FillDirection = Enum.FillDirection.Vertical
+col1Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+col1Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+col1Layout.Padding = UDim.new(0, 8)
+col1Layout.Parent = col1
+
+local col2 = Instance.new("Frame")
+col2.Size = UDim2.new(0, 88, 1, 0)
+col2.BackgroundTransparency = 1
+col2.ZIndex = 9
+col2.Parent = rowContainer
+
+local col2Layout = Instance.new("UIListLayout")
+col2Layout.FillDirection = Enum.FillDirection.Vertical
+col2Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+col2Layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+col2Layout.Padding = UDim.new(0, 8)
+col2Layout.Parent = col2
+
+-- ── Функция создания премиум-кнопки ────────────────────────────
+local function createCategoryButton(icon, text, bgColor)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 82)
+    btn.BackgroundColor3 = bgColor
+    btn.Text = ""
+    btn.ZIndex = 10
+    btn.AutoButtonColor = false
+    corner(btn, 10)
+    stroke(btn, Theme.Stroke, 1)
+
+    -- Градиентный фон при наведении
+    local hoverGrad = gradient(btn, Theme.Hover, Theme.Hover, 0)
+    hoverGrad.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 1)
+    }
+
+    -- Иконка
+    local iconLabel = Instance.new("TextLabel")
+    iconLabel.Size = UDim2.new(1, 0, 0, 40)
+    iconLabel.Position = UDim2.new(0, 0, 0, 6)
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Text = icon
+    iconLabel.TextColor3 = Color3.new(1, 1, 1)
+    iconLabel.TextSize = 30
+    iconLabel.Font = Enum.Font.Gotham
+    iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+    iconLabel.ZIndex = 11
+    iconLabel.Parent = btn
+
+    -- Текст
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 0, 20)
+    textLabel.Position = UDim2.new(0, 0, 0, 50)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextSize = 13
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.ZIndex = 11
+    textLabel.Parent = btn
+
+    -- Акцентная линия снизу
+    local accentLine = Instance.new("Frame")
+    accentLine.Size = UDim2.new(0, 0, 0, 2)
+    accentLine.Position = UDim2.new(0.5, 0, 1, -4)
+    accentLine.AnchorPoint = Vector2.new(0.5, 0)
+    accentLine.BackgroundColor3 = Theme.Accent1
+    accentLine.BorderSizePixel = 0
+    accentLine.ZIndex = 12
+    accentLine.Parent = btn
+    gradient(accentLine, Theme.Accent1, Theme.Accent2, 0)
+
+    -- Анимации при наведении
+    btn.MouseEnter:Connect(function()
+        tween(btn, { BackgroundColor3 = Theme.Hover }, 0.15)
+        tween(btn, { Size = UDim2.new(1, 4, 0, 84) }, 0.15, Enum.EasingStyle.Back)
+        tween(accentLine, { Size = UDim2.new(0.6, 0, 0, 2) }, 0.2)
+        tween(textLabel, { TextColor3 = Theme.Accent1 }, 0.15)
     end)
 
-    -- ── Левая панель ────────────────────────────────────────────────
-    -- Содержит аватар, название и кнопки вкладок.
-    local leftPanel = Instance.new("Frame")
-    leftPanel.Size = UDim2.new(0, 200, 1, 0)
-    leftPanel.BackgroundTransparency = 1
-    leftPanel.ZIndex = 6
-    leftPanel.Parent = main
-
-    -- Верхняя часть левой панели (аватар + название)
-    local topContainer = Instance.new("Frame")
-    topContainer.Size = UDim2.new(1, 0, 0, 150)
-    topContainer.BackgroundTransparency = 1
-    topContainer.ZIndex = 7
-    topContainer.Parent = leftPanel
-    pad(topContainer, 10, 0, 0, 0)
-
-    -- Аватар игрока
-    local avatar = Instance.new("Frame")
-    avatar.Size = UDim2.new(0, 70, 0, 70)
-    avatar.BackgroundColor3 = Theme.Accent
-    avatar.ZIndex = 8
-    avatar.Parent = topContainer
-    corner(avatar, 35)
-
-    -- Картинка аватара
-    local avatarImg = Instance.new("ImageLabel")
-    avatarImg.Size = UDim2.new(1, -4, 1, -4)
-    avatarImg.Position = UDim2.new(0.5, 0, 0.5, 0)
-    avatarImg.AnchorPoint = Vector2.new(0.5, 0.5)
-    avatarImg.BackgroundTransparency = 1
-    avatarImg.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=150&h=150"
-    avatarImg.ZIndex = 9
-    avatarImg.Parent = avatar
-    corner(avatarImg, 35)
-
-    -- Название
-    local titleLbl = Instance.new("TextLabel")
-    titleLbl.Size = UDim2.new(0, 180, 0, 40)
-    titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = title
-    titleLbl.TextColor3 = Color3.new(1, 1, 1)
-    titleLbl.TextSize = 32
-    titleLbl.Font = Enum.Font.GothamBold
-    titleLbl.TextXAlignment = Enum.TextXAlignment.Center
-    titleLbl.ZIndex = 8
-    titleLbl.Parent = topContainer
-
-    -- Контейнер для кнопок вкладок
-    local btnContainer = Instance.new("Frame")
-    btnContainer.Size = UDim2.new(1, 0, 1, -150)
-    btnContainer.Position = UDim2.new(0, 0, 0, 150)
-    btnContainer.BackgroundTransparency = 1
-    btnContainer.ZIndex = 7
-    btnContainer.Parent = leftPanel
-    pad(btnContainer, 8, 8, 8, 8)
-    
-    local btnLayout = Instance.new("UIListLayout")
-    btnLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    btnLayout.Padding = UDim.new(0, 4)
-    btnLayout.Parent = btnContainer
-
-    -- ── Правая панель ───────────────────────────────────────────────
-    -- Содержит содержимое выбранной вкладки.
-    local rightPanel = Instance.new("Frame")
-    rightPanel.Size = UDim2.new(1, -200, 1, 0)
-    rightPanel.Position = UDim2.new(0, 200, 0, 0)
-    rightPanel.BackgroundTransparency = 1
-    rightPanel.ZIndex = 6
-    rightPanel.Parent = main
-    pad(rightPanel, 12, 12, 12, 12)
-
-    -- ── Перетаскивание окна ────────────────────────────────────────
-    -- Можно перетаскивать за левую панель (аватар и заголовок).
-    local dragWin = false
-    local dragOffsetWin = Vector2.new()
-    leftPanel.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragWin = true
-            dragOffsetWin = Vector2.new(input.Position.X - main.AbsolutePosition.X,
-                                        input.Position.Y - main.AbsolutePosition.Y)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragWin and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local pos = Vector2.new(input.Position.X - dragOffsetWin.X, input.Position.Y - dragOffsetWin.Y)
-            main.Position = UDim2.new(0, pos.X, 0, pos.Y)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragWin = false
-        end
+    btn.MouseLeave:Connect(function()
+        tween(btn, { BackgroundColor3 = bgColor }, 0.15)
+        tween(btn, { Size = UDim2.new(1, 0, 0, 82) }, 0.15)
+        tween(accentLine, { Size = UDim2.new(0, 0, 0, 2) }, 0.2)
+        tween(textLabel, { TextColor3 = Color3.new(1, 1, 1) }, 0.15)
     end)
 
-    -- ── Методы окна ──────────────────────────────────────────────────
-    function Window:Toggle()
-        self._open = not self._open
-        if self._open then
-            main.Visible = true
-            tween(main, { BackgroundTransparency = 0 }, 0.2)
-            if self._currentTab then
-                self:SelectTab(self._currentTab)
-            elseif #self._tabs > 0 then
-                self:SelectTab(self._tabs[1].name)
-            end
-        else
-            tween(main, { BackgroundTransparency = 1 }, 0.15)
-            task.wait(0.15)
-            main.Visible = false
+    btn.MouseButton1Click:Connect(function()
+        -- Эффект нажатия
+        tween(btn, { Size = UDim2.new(0.95, 0, 0, 78) }, 0.08)
+        task.wait(0.08)
+        tween(btn, { Size = UDim2.new(1, 0, 0, 82) }, 0.12, Enum.EasingStyle.Back)
+    end)
+
+    return btn
+end
+
+-- Цвет кнопок (немного светлее для премиум-вида)
+local btnColor = Color3.fromRGB(28, 32, 46)
+
+-- Создаём 6 кнопок
+local btnAim = createCategoryButton("🎯", "Aim", btnColor)
+btnAim.Parent = col1
+btnAim.MouseButton1Click:Connect(function() showEmptyTab("Aim") end)
+
+local btnVisual = createCategoryButton("👁️", "Visual", btnColor)
+btnVisual.Parent = col1
+btnVisual.MouseButton1Click:Connect(function() showChamsSettings() end)
+
+local btnMisc = createCategoryButton("🧩", "Misc", btnColor)
+btnMisc.Parent = col1
+btnMisc.MouseButton1Click:Connect(function() showEmptyTab("Misc") end)
+
+local btnCombat = createCategoryButton("⚔️", "Combat", btnColor)
+btnCombat.Parent = col2
+btnCombat.MouseButton1Click:Connect(function() showEmptyTab("Combat") end)
+
+local btnStats = createCategoryButton("📊", "Stats", btnColor)
+btnStats.Parent = col2
+btnStats.MouseButton1Click:Connect(function() showEmptyTab("Stats") end)
+
+local btnSettings = createCategoryButton("⚙️", "Settings", btnColor)
+btnSettings.Parent = col2
+btnSettings.MouseButton1Click:Connect(function() showEmptyTab("Settings") end)
+
+-- ================================================================
+-- 10. ПРАВАЯ ПАНЕЛЬ (премиум-дизайн)
+-- ================================================================
+local rightPanel = Instance.new("Frame")
+rightPanel.Size = UDim2.new(1, -210, 1, 0)
+rightPanel.Position = UDim2.new(0, 210, 0, 0)
+rightPanel.BackgroundTransparency = 1
+rightPanel.ZIndex = 6
+rightPanel.Parent = mainFrame
+pad(rightPanel, 16, 16, 16, 16)
+
+local contentContainer = Instance.new("Frame")
+contentContainer.Size = UDim2.new(1, 0, 1, 0)
+contentContainer.BackgroundTransparency = 1
+contentContainer.ZIndex = 7
+contentContainer.Parent = rightPanel
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.FillDirection = Enum.FillDirection.Vertical
+contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+contentLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+contentLayout.Padding = UDim.new(0, 10)
+contentLayout.Parent = contentContainer
+
+-- ================================================================
+-- 11. ПЕРЕМЕННЫЕ ДЛЯ НАСТРОЕК
+-- ================================================================
+local chamsEnabled = true
+local chamsType = "Regular"
+local chamsVisibleColor = Color3.fromRGB(0, 255, 0)
+local chamsInvisibleColor = Color3.fromRGB(255, 255, 0)
+
+-- ================================================================
+-- 12. ФУНКЦИИ ОТОБРАЖЕНИЯ
+-- ================================================================
+local function clearContent()
+    for _, child in pairs(contentContainer:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
+            child:Destroy()
         end
     end
-
-    function Window:SelectTab(name)
-        self._currentTab = name
-        for _, tab in ipairs(self._tabs) do
-            tab.container.Visible = (tab.name == name)
-        end
-        for _, btn in ipairs(self._tabButtons) do
-            if btn.tabName == name then
-                btn.BackgroundTransparency = 0
-                btn.TextColor3 = Color3.new(1, 1, 1)
-            else
-                btn.BackgroundTransparency = 1
-                btn.TextColor3 = Theme.SubText
-            end
-        end
-    end
-
-    function Window:CreateTab(config)
-        local tabName = config.name or "Tab"
-        local icon = config.icon or "📁"
-        local tab = {
-            name = tabName,
-            container = Instance.new("Frame"),
-        }
-        tab.container.Size = UDim2.new(1, 0, 1, 0)
-        tab.container.BackgroundTransparency = 1
-        tab.container.Visible = false
-        tab.container.Parent = rightPanel
-
-        -- Кнопка вкладки в левой панели
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 55)
-        btn.BackgroundTransparency = 1
-        btn.Text = ""
-        btn.ZIndex = 10
-        btn.Parent = btnContainer
-        corner(btn, 8)
-
-        -- Иконка вкладки (эмодзи)
-        local iconLbl = Instance.new("TextLabel")
-        iconLbl.Size = UDim2.new(0, 30, 0, 30)
-        iconLbl.Position = UDim2.new(0, 10, 0, 3)
-        iconLbl.BackgroundTransparency = 1
-        iconLbl.Text = icon
-        iconLbl.TextSize = 24
-        iconLbl.TextColor3 = Color3.new(1, 1, 1)
-        iconLbl.ZIndex = 11
-        iconLbl.Parent = btn
-
-        -- Название вкладки
-        local nameLbl = Instance.new("TextLabel")
-        nameLbl.Size = UDim2.new(1, -50, 0, 20)
-        nameLbl.Position = UDim2.new(0, 50, 0, 8)
-        nameLbl.BackgroundTransparency = 1
-        nameLbl.Text = tabName
-        nameLbl.TextColor3 = Theme.SubText
-        nameLbl.TextSize = 15
-        nameLbl.Font = Enum.Font.GothamBold
-        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-        nameLbl.ZIndex = 11
-        nameLbl.Parent = btn
-
-        -- Описание вкладки
-        local descLbl = Instance.new("TextLabel")
-        descLbl.Size = UDim2.new(1, -50, 0, 16)
-        descLbl.Position = UDim2.new(0, 50, 0, 30)
-        descLbl.BackgroundTransparency = 1
-        descLbl.Text = config.description or ""
-        descLbl.TextColor3 = Color3.fromRGB(130, 140, 155)
-        descLbl.TextSize = 11
-        descLbl.Font = Enum.Font.Gotham
-        descLbl.TextXAlignment = Enum.TextXAlignment.Left
-        descLbl.ZIndex = 11
-        descLbl.Parent = btn
-
-        btn.tabName = tabName
-        btn.MouseButton1Click:Connect(function()
-            Window:SelectTab(tabName)
-        end)
-
-        table.insert(self._tabs, tab)
-        table.insert(self._tabButtons, btn)
-
-        if #self._tabs == 1 then
-            Window:SelectTab(tabName)
-        end
-
-        -- Возвращаем объект для создания секций
-        local tabObj = {}
-        function tabObj:Section(config)
-            return self:_createSection(config, tab.container)
-        end
-        return tabObj
-    end
-
-    -- ── Создание секции ─────────────────────────────────────────────
-    function Window:_createSection(config, parent)
-        local secName = config.name or "Section"
-        local secFrame = Instance.new("Frame")
-        secFrame.Size = UDim2.new(1, 0, 0, 0)
-        secFrame.BackgroundTransparency = 1
-        secFrame.AutomaticSize = Enum.AutomaticSize.Y
-        secFrame.ZIndex = 9
-        secFrame.Parent = parent
-
-        -- Заголовок секции
-        local header = Instance.new("Frame")
-        header.Size = UDim2.new(1, 0, 0, 30)
-        header.BackgroundTransparency = 1
-        header.Parent = secFrame
-
-        -- Название секции (заглавными буквами)
-        local title = Instance.new("TextLabel")
-        title.Size = UDim2.new(1, -20, 1, 0)
-        title.BackgroundTransparency = 1
-        title.Text = secName:upper()
-        title.TextColor3 = Theme.SubText
-        title.TextSize = 12
-        title.Font = Enum.Font.GothamBold
-        title.TextXAlignment = Enum.TextXAlignment.Left
-        title.ZIndex = 10
-        title.Parent = header
-
-        -- Разделительная линия
-        local line = Instance.new("Frame")
-        line.Size = UDim2.new(1, 0, 0, 1)
-        line.Position = UDim2.new(0, 0, 1, 0)
-        line.BackgroundColor3 = Theme.Stroke
-        line.BorderSizePixel = 0
-        line.ZIndex = 9
-        line.Parent = header
-
-        -- Контейнер для элементов
-        local content = Instance.new("Frame")
-        content.Size = UDim2.new(1, 0, 0, 0)
-        content.BackgroundTransparency = 1
-        content.AutomaticSize = Enum.AutomaticSize.Y
-        content.ZIndex = 10
-        content.Parent = secFrame
-        
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, 8)
-        layout.Parent = content
-        pad(content, 0, 0, 0, 0)
-
-        -- Возвращаем объект с методами для добавления элементов
-        local sectionObj = {}
-        
-        -- ── Toggle (переключатель) ──────────────────────────────────
-        -- Визуально: текст слева, ползунок справа.
-        -- При клике меняет состояние с анимацией.
-        function sectionObj:Toggle(config)
-            local flag = config.flag or "toggle_" .. tostring(math.random(1000, 9999))
-            local default = config.default or false
-            local callback = config.callback or function() end
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 32)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Текст
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -60, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Toggle"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Ползунок (фон)
-            local pill = Instance.new("Frame")
-            pill.Size = UDim2.new(0, 40, 0, 22)
-            pill.Position = UDim2.new(1, -40, 0.5, -11)
-            pill.AnchorPoint = Vector2.new(0, 0.5)
-            pill.BackgroundColor3 = default and Theme.Accent or Color3.fromRGB(60, 70, 85)
-            pill.BorderSizePixel = 0
-            pill.ZIndex = 12
-            pill.Parent = frame
-            corner(pill, 11)
-
-            -- Круглая ручка
-            local knob = Instance.new("Frame")
-            knob.Size = UDim2.new(0, 18, 0, 18)
-            knob.Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-            knob.AnchorPoint = Vector2.new(0, 0.5)
-            knob.BackgroundColor3 = Color3.new(1, 1, 1)
-            knob.BorderSizePixel = 0
-            knob.ZIndex = 13
-            knob.Parent = pill
-            corner(knob, 9)
-
-            local state = default
-            local function setState(v)
-                state = v
-                tween(pill, { BackgroundColor3 = state and Theme.Accent or Color3.fromRGB(60, 70, 85) }, 0.15)
-                tween(knob, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) }, 0.15)
-                VoltageUI.Flags[flag] = state
-                callback(state)
-            end
-
-            frame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    setState(not state)
-                end
-            end)
-
-            setState(default)
-            return { Set = setState, Get = function() return state end }
-        end
-
-        -- ── Slider (ползунок) ───────────────────────────────────────
-        -- Визуально: текст сверху, значение справа, полоса снизу.
-        -- Можно перетаскивать кружок или кликать на полосу.
-        function sectionObj:Slider(config)
-            local flag = config.flag or "slider_" .. tostring(math.random(1000, 9999))
-            local min = config.min or 0
-            local max = config.max or 100
-            local default = config.default or 50
-            local suffix = config.suffix or ""
-            local decimals = config.decimals or 0
-            local callback = config.callback or function() end
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 50)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Текст
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -80, 0, 20)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Slider"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Значение
-            local valLbl = Instance.new("TextLabel")
-            valLbl.Size = UDim2.new(0, 70, 0, 20)
-            valLbl.Position = UDim2.new(1, -70, 0, 0)
-            valLbl.AnchorPoint = Vector2.new(1, 0)
-            valLbl.BackgroundTransparency = 1
-            valLbl.Text = tostring(default) .. suffix
-            valLbl.TextColor3 = Theme.Accent
-            valLbl.TextSize = 15
-            valLbl.Font = Enum.Font.GothamBold
-            valLbl.TextXAlignment = Enum.TextXAlignment.Right
-            valLbl.ZIndex = 12
-            valLbl.Parent = frame
-
-            -- Полоса
-            local track = Instance.new("Frame")
-            track.Size = UDim2.new(1, 0, 0, 6)
-            track.Position = UDim2.new(0, 0, 1, -6)
-            track.BackgroundColor3 = Color3.fromRGB(40, 48, 58)
-            track.BorderSizePixel = 0
-            track.ZIndex = 12
-            track.Parent = frame
-            corner(track, 3)
-
-            -- Заполнение полосы
-            local fill = Instance.new("Frame")
-            fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-            fill.BackgroundColor3 = Theme.Accent
-            fill.BorderSizePixel = 0
-            fill.ZIndex = 13
-            fill.Parent = track
-            corner(fill, 3)
-
-            -- Кружок для перетаскивания
-            local knob = Instance.new("TextButton")
-            knob.Size = UDim2.new(0, 16, 0, 16)
-            knob.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
-            knob.AnchorPoint = Vector2.new(0, 0.5)
-            knob.BackgroundColor3 = Color3.new(1, 1, 1)
-            knob.BorderSizePixel = 0
-            knob.ZIndex = 14
-            knob.Text = ""
-            knob.Parent = track
-            corner(knob, 8)
-
-            local dragging = false
-            local function setValue(val)
-                val = math.clamp(val, min, max)
-                local alpha = (val - min) / (max - min)
-                fill.Size = UDim2.new(alpha, 0, 1, 0)
-                knob.Position = UDim2.new(alpha, -8, 0.5, -8)
-                valLbl.Text = tostring(math.round(val * (10^decimals)) / (10^decimals)) .. suffix
-                callback(val)
-            end
-
-            -- Обработка перетаскивания
-            track.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = true
-                    local pos = input.Position.X - track.AbsolutePosition.X
-                    local alpha = math.clamp(pos / track.AbsoluteSize.X, 0, 1)
-                    setValue(min + alpha * (max - min))
-                end
-            end)
-            UserInputService.InputChanged:Connect(function(input)
-                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local pos = input.Position.X - track.AbsolutePosition.X
-                    local alpha = math.clamp(pos / track.AbsoluteSize.X, 0, 1)
-                    setValue(min + alpha * (max - min))
-                end
-            end)
-            UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = false
-                end
-            end)
-
-            setValue(default)
-            return { Set = setValue, Get = function() return val end }
-        end
-
-        -- ── Dropdown (выпадающий список) ─────────────────────────────
-        -- При клике раскрывается список опций.
-        -- Поддерживает поиск (можно добавить при необходимости).
-        function sectionObj:Dropdown(config)
-            local flag = config.flag or "dropdown_" .. tostring(math.random(1000, 9999))
-            local items = config.items or {}
-            local default = config.default or items[1]
-            local callback = config.callback or function() end
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 38)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Текст
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(0, 100, 0, 20)
-            label.Position = UDim2.new(0, 0, 0, 0)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Dropdown"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Само поле выбора
-            local dropdown = Instance.new("TextButton")
-            dropdown.Size = UDim2.new(1, -110, 0, 30)
-            dropdown.Position = UDim2.new(0, 110, 0, 4)
-            dropdown.BackgroundColor3 = Theme.Element
-            dropdown.Text = ""
-            dropdown.ZIndex = 12
-            dropdown.Parent = frame
-            corner(dropdown, 6)
-
-            -- Текст выбранного значения
-            local ddText = Instance.new("TextLabel")
-            ddText.Size = UDim2.new(1, -30, 1, 0)
-            ddText.Position = UDim2.new(0, 10, 0, 0)
-            ddText.BackgroundTransparency = 1
-            ddText.Text = default or "..."
-            ddText.TextColor3 = Theme.Text
-            ddText.TextSize = 15
-            ddText.Font = Enum.Font.Gotham
-            ddText.TextXAlignment = Enum.TextXAlignment.Left
-            ddText.ZIndex = 13
-            ddText.Parent = dropdown
-
-            -- Стрелка вниз
-            local arrow = Instance.new("TextLabel")
-            arrow.Size = UDim2.new(0, 20, 1, 0)
-            arrow.Position = UDim2.new(1, -20, 0, 0)
-            arrow.BackgroundTransparency = 1
-            arrow.Text = "⌄"
-            arrow.TextColor3 = Theme.SubText
-            arrow.TextSize = 18
-            arrow.Font = Enum.Font.Gotham
-            arrow.ZIndex = 13
-            arrow.Parent = dropdown
-
-            -- Список опций
-            local list = Instance.new("Frame")
-            list.Size = UDim2.new(1, 0, 0, 0)
-            list.Position = UDim2.new(0, 0, 0, 34)
-            list.BackgroundColor3 = Theme.Element
-            list.Visible = false
-            list.ZIndex = 15
-            list.Parent = dropdown
-            corner(list, 6)
-            local listLayout = Instance.new("UIListLayout")
-            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            listLayout.Padding = UDim.new(0, 2)
-            listLayout.Parent = list
-
-            local selected = default
-            local function setSelected(val)
-                selected = val
-                ddText.Text = val
-                callback(val)
-            end
-
-            -- Создаём опции
-            for _, item in ipairs(items) do
-                local opt = Instance.new("TextButton")
-                opt.Size = UDim2.new(1, 0, 0, 30)
-                opt.BackgroundTransparency = 1
-                opt.Text = item
-                opt.TextColor3 = Theme.Text
-                opt.TextSize = 15
-                opt.Font = Enum.Font.Gotham
-                opt.TextXAlignment = Enum.TextXAlignment.Left
-                opt.ZIndex = 16
-                opt.Parent = list
-                pad(opt, 8, 0, 8, 8)
-                opt.MouseButton1Click:Connect(function()
-                    setSelected(item)
-                    list.Visible = false
-                end)
-            end
-
-            -- Открытие/закрытие списка
-            dropdown.MouseButton1Click:Connect(function()
-                list.Visible = not list.Visible
-                if list.Visible then
-                    list.Size = UDim2.new(1, 0, 0, #items * 32)
-                end
-            end)
-
-            setSelected(selected)
-            return { Set = setSelected, Get = function() return selected end }
-        end
-
-        -- ── Button (кнопка) ──────────────────────────────────────────
-        -- Простая кнопка с анимацией при нажатии.
-        function sectionObj:Button(config)
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 36)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 1, 0)
-            btn.BackgroundColor3 = Theme.Accent
-            btn.Text = config.name or "Button"
-            btn.TextColor3 = Color3.new(1, 1, 1)
-            btn.TextSize = 16
-            btn.Font = Enum.Font.GothamBold
-            btn.ZIndex = 12
-            btn.Parent = frame
-            corner(btn, 6)
-
-            btn.MouseEnter:Connect(function()
-                tween(btn, { BackgroundColor3 = Color3.fromRGB(
-                    Theme.Accent.R*255 + 20,
-                    Theme.Accent.G*255 + 20,
-                    Theme.Accent.B*255 + 20
-                ) }, 0.15)
-            end)
-            btn.MouseLeave:Connect(function()
-                tween(btn, { BackgroundColor3 = Theme.Accent }, 0.15)
-            end)
-
-            btn.MouseButton1Click:Connect(function()
-                pcall(config.callback or function() end)
-            end)
-            return { Press = function() pcall(config.callback or function() end) end }
-        end
-
-        -- ── Colorpicker (выбор цвета) ───────────────────────────────
-        -- При клике меняет цвет на случайный (для демонстрации).
-        -- Можно доработать до полноценного пикера.
-        function sectionObj:Colorpicker(config)
-            local flag = config.flag or "color_" .. tostring(math.random(1000, 9999))
-            local default = config.default or Color3.fromRGB(255, 255, 255)
-            local callback = config.callback or function() end
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 36)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Текст
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -50, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Color"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Превью цвета
-            local preview = Instance.new("TextButton")
-            preview.Size = UDim2.new(0, 30, 0, 30)
-            preview.Position = UDim2.new(1, -30, 0.5, -15)
-            preview.AnchorPoint = Vector2.new(0, 0.5)
-            preview.BackgroundColor3 = default
-            preview.Text = ""
-            preview.ZIndex = 12
-            preview.Parent = frame
-            corner(preview, 6)
-
-            local currentColor = default
-            preview.MouseButton1Click:Connect(function()
-                -- Для демонстрации: случайный цвет
-                local r = math.random(0, 255)
-                local g = math.random(0, 255)
-                local b = math.random(0, 255)
-                currentColor = Color3.fromRGB(r, g, b)
-                preview.BackgroundColor3 = currentColor
-                callback(currentColor)
-            end)
-
-            return { Set = function(c) currentColor = c; preview.BackgroundColor3 = c; callback(c) end,
-                     Get = function() return currentColor end }
-        end
-
-        -- ── Keybind (привязка клавиш) ──────────────────────────────
-        -- При клике ожидает нажатия клавиши.
-        -- Поддерживает режимы: Toggle, Hold.
-        function sectionObj:Keybind(config)
-            local flag = config.flag or "keybind_" .. tostring(math.random(1000, 9999))
-            local default = config.default or Enum.KeyCode.E
-            local callback = config.callback or function() end
-            local mode = config.mode or "Toggle"
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 36)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Текст
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -120, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Keybind"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Поле с названием клавиши
-            local keyBtn = Instance.new("TextButton")
-            keyBtn.Size = UDim2.new(0, 100, 0, 30)
-            keyBtn.Position = UDim2.new(1, -100, 0.5, -15)
-            keyBtn.AnchorPoint = Vector2.new(0, 0.5)
-            keyBtn.BackgroundColor3 = Theme.Element
-            keyBtn.Text = tostring(default.Name)
-            keyBtn.TextColor3 = Theme.Text
-            keyBtn.TextSize = 15
-            keyBtn.Font = Enum.Font.GothamBold
-            keyBtn.ZIndex = 12
-            keyBtn.Parent = frame
-            corner(keyBtn, 6)
-
-            local listening = false
-            local currentKey = default
-            local function setKey(key)
-                currentKey = key
-                keyBtn.Text = key.Name
-                callback(key)
-            end
-
-            -- Ожидание нажатия клавиши
-            keyBtn.MouseButton1Click:Connect(function()
-                if listening then return end
-                listening = true
-                keyBtn.Text = "..."
-                local conn
-                conn = UserInputService.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.Keyboard then
-                        setKey(input.KeyCode)
-                        listening = false
-                        conn:Disconnect()
-                    end
-                end)
-            end)
-
-            -- Обработка нажатий
-            local state = false
-            UserInputService.InputBegan:Connect(function(input)
-                if input.KeyCode == currentKey then
-                    if mode == "Toggle" then
-                        state = not state
-                        callback(state)
-                    elseif mode == "Hold" then
-                        state = true
-                        callback(true)
-                    end
-                end
-            end)
-            UserInputService.InputEnded:Connect(function(input)
-                if input.KeyCode == currentKey and mode == "Hold" then
-                    state = false
-                    callback(false)
-                end
-            end)
-
-            return { Set = setKey, Get = function() return currentKey end }
-        end
-
-        -- ── Textbox (поле ввода) ─────────────────────────────────────
-        -- Поле для ввода текста с заголовком.
-        function sectionObj:Textbox(config)
-            local flag = config.flag or "textbox_" .. tostring(math.random(1000, 9999))
-            local default = config.default or ""
-            local placeholder = config.placeholder or "Enter text..."
-            local callback = config.callback or function() end
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 44)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            -- Заголовок
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 0, 20)
-            label.BackgroundTransparency = 1
-            label.Text = config.name or "Textbox"
-            label.TextColor3 = Theme.Text
-            label.TextSize = 15
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.ZIndex = 12
-            label.Parent = frame
-
-            -- Поле ввода
-            local box = Instance.new("TextBox")
-            box.Size = UDim2.new(1, 0, 0, 30)
-            box.Position = UDim2.new(0, 0, 0, 22)
-            box.BackgroundColor3 = Theme.Element
-            box.Text = default
-            box.PlaceholderText = placeholder
-            box.TextColor3 = Theme.Text
-            box.PlaceholderColor3 = Theme.SubText
-            box.TextSize = 15
-            box.Font = Enum.Font.Gotham
-            box.TextXAlignment = Enum.TextXAlignment.Left
-            box.ZIndex = 12
-            box.Parent = frame
-            corner(box, 6)
-            pad(box, 8, 8, 8, 8)
-
-            box.FocusLost:Connect(function()
-                callback(box.Text)
-            end)
-
-            return { Set = function(t) box.Text = t; callback(t) end,
-                     Get = function() return box.Text end }
-        end
-
-        -- ── Label (надпись) ──────────────────────────────────────────
-        -- Простой текст, используется как заголовок или разделитель.
-        function sectionObj:Label(config)
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, 24)
-            frame.BackgroundTransparency = 1
-            frame.ZIndex = 11
-            frame.Parent = content
-
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, 0, 1, 0)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = config.text or "Label"
-            lbl.TextColor3 = Theme.SubText
-            lbl.TextSize = 13
-            lbl.Font = Enum.Font.Gotham
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.ZIndex = 12
-            lbl.Parent = frame
-
-            return { Set = function(t) lbl.Text = t end }
-        end
-
-        return sectionObj
-    end
-
-    -- Сохраняем ссылки
-    self._main = main
-    self._rightPanel = rightPanel
-    
-    return Window
+end
+
+local function showEmptyTab(tabName)
+    clearContent()
+    local emptyLabel = Instance.new("TextLabel")
+    emptyLabel.Size = UDim2.new(1, 0, 0, 40)
+    emptyLabel.Position = UDim2.new(0, 0, 0, 80)
+    emptyLabel.BackgroundTransparency = 1
+    emptyLabel.Text = tabName .. "\n✨ Coming soon..."
+    emptyLabel.TextColor3 = Theme.SubText
+    emptyLabel.TextSize = 20
+    emptyLabel.Font = Enum.Font.Gotham
+    emptyLabel.TextXAlignment = Enum.TextXAlignment.Center
+    emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
+    emptyLabel.ZIndex = 9
+    emptyLabel.Parent = contentContainer
 end
 
 -- ================================================================
--- 7. СОЗДАНИЕ И НАСТРОЙКА МЕНЮ
+-- 13. ПРЕМИУМ-НАСТРОЙКИ CHAMS
 -- ================================================================
+local function showChamsSettings()
+    clearContent()
 
--- Создаём экземпляр окна
-local window = Window:Create({
-    title = "Voltage Hub",
-    width = 620,
-    height = 480
-})
+    -- Шапка с градиентом
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 44)
+    header.BackgroundTransparency = 1
+    header.ZIndex = 8
+    header.Parent = contentContainer
+    pad(header, 0, 0, 6, 0)
+
+    local headerLayout = Instance.new("UIListLayout")
+    headerLayout.FillDirection = Enum.FillDirection.Horizontal
+    headerLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    headerLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    headerLayout.Padding = UDim.new(0, 6)
+    headerLayout.Parent = header
+
+    -- Иконка с анимацией
+    local eyeIcon = Instance.new("TextLabel")
+    eyeIcon.Size = UDim2.new(0, 24, 0, 24)
+    eyeIcon.BackgroundTransparency = 1
+    eyeIcon.Text = "👁️"
+    eyeIcon.TextSize = 22
+    eyeIcon.ZIndex = 9
+    eyeIcon.Parent = header
+
+    local chamsText = Instance.new("TextLabel")
+    chamsText.Size = UDim2.new(0, 60, 0, 24)
+    chamsText.BackgroundTransparency = 1
+    chamsText.Text = "CHAMS"
+    chamsText.TextColor3 = Theme.Accent1
+    chamsText.TextSize = 18
+    chamsText.Font = Enum.Font.GothamBold
+    chamsText.ZIndex = 9
+    chamsText.Parent = header
+    gradient(chamsText, Theme.Accent1, Theme.Accent2, 45)
+
+    local subText = Instance.new("TextLabel")
+    subText.Size = UDim2.new(0, 160, 0, 24)
+    subText.BackgroundTransparency = 1
+    subText.Text = "Fine-tuning"
+    subText.TextColor3 = Theme.SubText
+    subText.TextSize = 13
+    subText.Font = Enum.Font.Gotham
+    subText.ZIndex = 9
+    subText.Parent = header
+
+    -- ── Toggle "Enabled" ──────────────────────────────────────────
+    local enabledRow = Instance.new("Frame")
+    enabledRow.Size = UDim2.new(1, 0, 0, 32)
+    enabledRow.BackgroundTransparency = 1
+    enabledRow.ZIndex = 9
+    enabledRow.Parent = contentContainer
+
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 22, 0, 22)
+    checkbox.Position = UDim2.new(0, 0, 0, 5)
+    checkbox.BackgroundColor3 = chamsEnabled and Theme.Accent1 or Theme.Element
+    checkbox.Text = ""
+    checkbox.ZIndex = 10
+    checkbox.Parent = enabledRow
+    corner(checkbox, 6)
+
+    local checkMark = Instance.new("TextLabel")
+    checkMark.Size = UDim2.new(1, 0, 1, 0)
+    checkMark.BackgroundTransparency = 1
+    checkMark.Text = chamsEnabled and "✓" or ""
+    checkMark.TextColor3 = Color3.new(1, 1, 1)
+    checkMark.TextSize = 16
+    checkMark.Font = Enum.Font.Gotham
+    checkMark.TextXAlignment = Enum.TextXAlignment.Center
+    checkMark.TextYAlignment = Enum.TextYAlignment.Center
+    checkMark.ZIndex = 11
+    checkMark.Parent = checkbox
+
+    local enabledLabel = Instance.new("TextLabel")
+    enabledLabel.Size = UDim2.new(0, 80, 0, 32)
+    enabledLabel.Position = UDim2.new(0, 30, 0, 0)
+    enabledLabel.BackgroundTransparency = 1
+    enabledLabel.Text = "Enabled"
+    enabledLabel.TextColor3 = Theme.Text
+    enabledLabel.TextSize = 16
+    enabledLabel.Font = Enum.Font.Gotham
+    enabledLabel.ZIndex = 10
+    enabledLabel.Parent = enabledRow
+
+    checkbox.MouseButton1Click:Connect(function()
+        chamsEnabled = not chamsEnabled
+        tween(checkbox, { BackgroundColor3 = chamsEnabled and Theme.Accent1 or Theme.Element }, 0.15)
+        checkMark.Text = chamsEnabled and "✓" or ""
+    end)
+
+    -- ── Dropdown "Type" ──────────────────────────────────────────
+    local typeRow = Instance.new("Frame")
+    typeRow.Size = UDim2.new(1, 0, 0, 60)
+    typeRow.BackgroundTransparency = 1
+    typeRow.ZIndex = 9
+    typeRow.Parent = contentContainer
+
+    local typeLabel = Instance.new("TextLabel")
+    typeLabel.Size = UDim2.new(0, 50, 0, 22)
+    typeLabel.Position = UDim2.new(0, 0, 0, 0)
+    typeLabel.BackgroundTransparency = 1
+    typeLabel.Text = "Type"
+    typeLabel.TextColor3 = Theme.SubText
+    typeLabel.TextSize = 14
+    typeLabel.Font = Enum.Font.Gotham
+    typeLabel.ZIndex = 10
+    typeLabel.Parent = typeRow
+
+    local dropdown = Instance.new("TextButton")
+    dropdown.Size = UDim2.new(1, -50, 0, 36)
+    dropdown.Position = UDim2.new(0, 50, 0, 22)
+    dropdown.BackgroundColor3 = Theme.Element
+    dropdown.Text = ""
+    dropdown.ZIndex = 10
+    dropdown.Parent = typeRow
+    corner(dropdown, 8)
+
+    local ddText = Instance.new("TextLabel")
+    ddText.Size = UDim2.new(1, -30, 1, 0)
+    ddText.Position = UDim2.new(0, 12, 0, 0)
+    ddText.BackgroundTransparency = 1
+    ddText.Text = chamsType
+    ddText.TextColor3 = Theme.Text
+    ddText.TextSize = 15
+    ddText.Font = Enum.Font.Gotham
+    ddText.TextXAlignment = Enum.TextXAlignment.Left
+    ddText.ZIndex = 11
+    ddText.Parent = dropdown
+
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.new(0, 24, 1, 0)
+    arrow.Position = UDim2.new(1, -24, 0, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "⌄"
+    arrow.TextColor3 = Theme.SubText
+    arrow.TextSize = 18
+    arrow.Font = Enum.Font.Gotham
+    arrow.ZIndex = 11
+    arrow.Parent = dropdown
+
+    -- Список
+    local chamsTypes = {"Regular", "Flat", "Wireframe", "Glass", "Metallic", "Shiny"}
+    local dropdownList = Instance.new("Frame")
+    dropdownList.Size = UDim2.new(1, -50, 0, #chamsTypes * 34)
+    dropdownList.Position = UDim2.new(0, 50, 0, 58)
+    dropdownList.BackgroundColor3 = Theme.Panel
+    dropdownList.Visible = false
+    dropdownList.ZIndex = 15
+    dropdownList.Parent = typeRow
+    corner(dropdownList, 8)
+    stroke(dropdownList, Theme.Stroke, 1)
+
+    local dlLayout = Instance.new("UIListLayout")
+    dlLayout.FillDirection = Enum.FillDirection.Vertical
+    dlLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    dlLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    dlLayout.Parent = dropdownList
+
+    for _, typeName in ipairs(chamsTypes) do
+        local option = Instance.new("TextButton")
+        option.Size = UDim2.new(1, 0, 0, 34)
+        option.BackgroundTransparency = 1
+        option.Text = typeName
+        option.TextColor3 = Theme.Text
+        option.TextSize = 15
+        option.Font = Enum.Font.Gotham
+        option.TextXAlignment = Enum.TextXAlignment.Left
+        option.ZIndex = 16
+        option.Parent = dropdownList
+        pad(option, 0, 0, 0, 12)
+
+        option.MouseEnter:Connect(function()
+            tween(option, { BackgroundColor3 = Theme.Hover }, 0.1)
+        end)
+        option.MouseLeave:Connect(function()
+            tween(option, { BackgroundColor3 = Color3.new(0, 0, 0, 0) }, 0.1)
+        end)
+
+        option.MouseButton1Click:Connect(function()
+            chamsType = typeName
+            ddText.Text = typeName
+            dropdownList.Visible = false
+            tween(arrow, { Rotation = 0 }, 0.15)
+        end)
+    end
+
+    dropdown.MouseButton1Click:Connect(function()
+        dropdownList.Visible = not dropdownList.Visible
+        tween(arrow, { Rotation = dropdownList.Visible and 180 or 0 }, 0.15)
+        if dropdownList.Visible then
+            dropdownList.Size = UDim2.new(1, -50, 0, #chamsTypes * 34)
+        end
+    end)
+
+    -- ── Colorpicker "Visible" ────────────────────────────────────
+    local visibleColorRow = Instance.new("Frame")
+    visibleColorRow.Size = UDim2.new(1, 0, 0, 32)
+    visibleColorRow.BackgroundTransparency = 1
+    visibleColorRow.ZIndex = 9
+    visibleColorRow.Parent = contentContainer
+
+    local visibleColorLabel = Instance.new("TextLabel")
+    visibleColorLabel.Size = UDim2.new(0, 80, 0, 32)
+    visibleColorLabel.Position = UDim2.new(0, 0, 0, 0)
+    visibleColorLabel.BackgroundTransparency = 1
+    visibleColorLabel.Text = "Visible"
+    visibleColorLabel.TextColor3 = Theme.Text
+    visibleColorLabel.TextSize = 15
+    visibleColorLabel.Font = Enum.Font.Gotham
+    visibleColorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    visibleColorLabel.ZIndex = 10
+    visibleColorLabel.Parent = visibleColorRow
+
+    local visibleColorIndicator = Instance.new("TextButton")
+    visibleColorIndicator.Size = UDim2.new(0, 24, 0, 24)
+    visibleColorIndicator.Position = UDim2.new(1, -24, 0, 4)
+    visibleColorIndicator.BackgroundColor3 = chamsVisibleColor
+    visibleColorIndicator.Text = ""
+    visibleColorIndicator.ZIndex = 10
+    visibleColorIndicator.Parent = visibleColorRow
+    corner(visibleColorIndicator, 6)
+
+    visibleColorIndicator.MouseButton1Click:Connect(function()
+        local r = math.random(0, 255)
+        local g = math.random(0, 255)
+        local b = math.random(0, 255)
+        chamsVisibleColor = Color3.fromRGB(r, g, b)
+        tween(visibleColorIndicator, { BackgroundColor3 = chamsVisibleColor }, 0.2)
+    end)
+
+    -- ── Colorpicker "Invisible" ──────────────────────────────────
+    local invisibleColorRow = Instance.new("Frame")
+    invisibleColorRow.Size = UDim2.new(1, 0, 0, 32)
+    invisibleColorRow.BackgroundTransparency = 1
+    invisibleColorRow.ZIndex = 9
+    invisibleColorRow.Parent = contentContainer
+
+    local invisibleColorLabel = Instance.new("TextLabel")
+    invisibleColorLabel.Size = UDim2.new(0, 80, 0, 32)
+    invisibleColorLabel.Position = UDim2.new(0, 0, 0, 0)
+    invisibleColorLabel.BackgroundTransparency = 1
+    invisibleColorLabel.Text = "Invisible"
+    invisibleColorLabel.TextColor3 = Theme.Text
+    invisibleColorLabel.TextSize = 15
+    invisibleColorLabel.Font = Enum.Font.Gotham
+    invisibleColorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    invisibleColorLabel.ZIndex = 10
+    invisibleColorLabel.Parent = invisibleColorRow
+
+    local invisibleColorIndicator = Instance.new("TextButton")
+    invisibleColorIndicator.Size = UDim2.new(0, 24, 0, 24)
+    invisibleColorIndicator.Position = UDim2.new(1, -24, 0, 4)
+    invisibleColorIndicator.BackgroundColor3 = chamsInvisibleColor
+    invisibleColorIndicator.Text = ""
+    invisibleColorIndicator.ZIndex = 10
+    invisibleColorIndicator.Parent = invisibleColorRow
+    corner(invisibleColorIndicator, 6)
+
+    invisibleColorIndicator.MouseButton1Click:Connect(function()
+        local r = math.random(0, 255)
+        local g = math.random(0, 255)
+        local b = math.random(0, 255)
+        chamsInvisibleColor = Color3.fromRGB(r, g, b)
+        tween(invisibleColorIndicator, { BackgroundColor3 = chamsInvisibleColor }, 0.2)
+    end)
+
+    print("✨ Premium Chams settings loaded!")
+end
 
 -- ================================================================
--- 8. ПРИМЕР ВКЛАДОК И ЭЛЕМЕНТОВ
+-- 14. ОТКРЫТИЕ/ЗАКРЫТИЕ МЕНЮ
 -- ================================================================
-
--- ── Вкладка "Visual" (настройки Chams) ──────────────────────────
-local visualTab = window:CreateTab({
-    name = "Visual",
-    icon = "👁️",
-    description = "Chams & ESP settings"
-})
-
--- Секция Chams
-local chamsSection = visualTab:Section({ name = "Chams" })
-
--- Toggle: включить/выключить Chams
-local chamsToggle = chamsSection:Toggle({
-    name = "Enabled",
-    flag = "ChamsEnabled",
-    default = true,
-    callback = function(v) 
-        print("[Chams] Enabled:", v) 
+function toggleMenu()
+    mainFrame.Visible = not mainFrame.Visible
+    if mainFrame.Visible then
+        -- Позиционирование рядом с кнопкой
+        local absPos = FAB.AbsolutePosition
+        local absSize = FAB.AbsoluteSize
+        local screenSize = Vector2.new(workspace.CurrentCamera.ViewportSize.X,
+                                       workspace.CurrentCamera.ViewportSize.Y)
+        local menuX = absPos.X + absSize.X + 12
+        local menuY = absPos.Y
+        if menuX + mainFrame.Size.X.Offset > screenSize.X then
+            menuX = absPos.X - mainFrame.Size.X.Offset - 12
+        end
+        if menuY + mainFrame.Size.Y.Offset > screenSize.Y then
+            menuY = screenSize.Y - mainFrame.Size.Y.Offset
+        end
+        if menuY < 0 then menuY = 0 end
+        if menuX < 0 then menuX = 0 end
+        mainFrame.Position = UDim2.new(0, menuX, 0, menuY)
+        showChamsSettings()
+        tween(mainFrame, { BackgroundTransparency = 0.05 }, 0.3)
     end
-})
-
--- Dropdown: тип Chams
-local typeDropdown = chamsSection:Dropdown({
-    name = "Type",
-    items = {"Regular", "Flat", "Wireframe", "Glass", "Metallic"},
-    default = "Regular",
-    callback = function(v) 
-        print("[Chams] Type:", v) 
-    end
-})
-
--- Colorpicker: цвет видимых игроков
-local visibleColor = chamsSection:Colorpicker({
-    name = "Visible Color",
-    flag = "ChamsVisibleColor",
-    default = Color3.fromRGB(0, 255, 0),
-    callback = function(c) 
-        print("[Chams] Visible Color:", c) 
-    end
-})
-
--- Colorpicker: цвет невидимых игроков
-local invisibleColor = chamsSection:Colorpicker({
-    name = "Invisible Color",
-    flag = "ChamsInvisibleColor",
-    default = Color3.fromRGB(255, 255, 0),
-    callback = function(c) 
-        print("[Chams] Invisible Color:", c) 
-    end
-})
-
--- ── Вкладка "Aim" (настройки аимбота) ───────────────────────────
-local aimTab = window:CreateTab({
-    name = "Aim",
-    icon = "🎯",
-    description = "Aimbot settings"
-})
-
-local aimSection = aimTab:Section({ name = "Aimbot" })
-
-local aimToggle = aimSection:Toggle({
-    name = "Enabled",
-    flag = "AimEnabled",
-    default = false,
-    callback = function(v) print("[Aim] Enabled:", v) end
-})
-
-local aimSlider = aimSection:Slider({
-    name = "Speed",
-    min = 1,
-    max = 20,
-    default = 10,
-    suffix = "x",
-    callback = function(v) print("[Aim] Speed:", v) end
-})
-
-local aimKey = aimSection:Keybind({
-    name = "Keybind",
-    flag = "AimKey",
-    default = Enum.KeyCode.E,
-    mode = "Hold",
-    callback = function(v) print("[Aim] Key state:", v) end
-})
-
--- ── Вкладка "Settings" (настройки меню) ──────────────────────────
-local settingsTab = window:CreateTab({
-    name = "Settings",
-    icon = "⚙️",
-    description = "Menu settings"
-})
-
-local menuSection = settingsTab:Section({ name = "Menu" })
-
-local menuKey = menuSection:Keybind({
-    name = "Toggle Menu",
-    flag = "MenuKey",
-    default = Enum.KeyCode.RightControl,
-    mode = "Toggle",
-    callback = function(v) 
-        if v then window:Toggle() end
-    end
-})
+end
 
 -- ================================================================
--- 9. ФИНАЛЬНЫЙ ВЫВОД
+-- 15. ЗАПУСК
 -- ================================================================
 print("═══════════════════════════════════════════════════════════════")
-print("⚡ Voltage Hub успешно загружен!")
-print("📌 Нажми на кнопку ≡ или клавишу RightControl")
-print("📂 Все настройки сохраняются автоматически")
+print("⚡ VOLTAGE HUB — PREMIUM EDITION")
+print("📌 Нажми на квадратную кнопку ≡")
+print("🎨 Дизайн превосходит все UI-библиотеки")
 print("═══════════════════════════════════════════════════════════════")
