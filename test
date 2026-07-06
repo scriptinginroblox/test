@@ -1,36 +1,968 @@
--- ПРОСТОЙ ТЕСТ - создаёт меню сразу
-local plr = game.Players.LocalPlayer
-local gui = plr:WaitForChild("PlayerGui")
+-- ============================================
+-- MM2 FAKE TRADE SYSTEM
+-- EXACT COPY OF lollll.txt FOR MURDER MYSTERY 2
+-- ============================================
 
-local frame = Instance.new("Frame")
-frame.Name = "FakeTradeMenu"
-frame.Size = UDim2.new(0, 200, 0, 300)
-frame.Position = UDim2.new(0.5, -100, 0.5, -150)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
-frame.Parent = gui
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+local LocalPlayer = Players.LocalPlayer
 
-local label = Instance.new("TextLabel")
-label.Size = UDim2.new(1, 0, 0, 30)
-label.Text = "✅ MENU WORKS!"
-label.TextColor3 = Color3.fromRGB(255,255,255)
-label.BackgroundTransparency = 1
-label.Font = Enum.Font.GothamBold
-label.TextSize = 16
-label.Parent = frame
+-- ============================================
+-- ALL TRADE REMOTES
+-- ============================================
+local Trade = ReplicatedStorage:FindFirstChild("Trade")
+if not Trade then
+    warn("Trade not found!")
+    return
+end
 
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(1, -20, 0, 30)
-btn.Position = UDim2.new(0, 10, 0, 40)
-btn.BackgroundColor3 = Color3.fromRGB(60, 160, 100)
-btn.Text = "CLOSE"
-btn.TextColor3 = Color3.fromRGB(255,255,255)
-btn.Parent = frame
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+local Remotes = {
+    GetTradeStatus = Trade:FindFirstChild("GetTradeStatus"),
+    SendRequest = Trade:FindFirstChild("SendRequest"),
+    AcceptRequest = Trade:FindFirstChild("AcceptRequest"),
+    AcceptTrade = Trade:FindFirstChild("AcceptTrade"),
+    CancelAccept = Trade:FindFirstChild("CancelAccept"),
+    CancelRequest = Trade:FindFirstChild("CancelRequest"),
+    CompleteTrade = Trade:FindFirstChild("CompleteTrade"),
+    DeclineRequest = Trade:FindFirstChild("DeclineRequest"),
+    DeclineTrade = Trade:FindFirstChild("DeclineTrade"),
+    EndTrade = Trade:FindFirstChild("EndTrade"),
+    OfferItem = Trade:FindFirstChild("OfferItem"),
+    RemoveOffer = Trade:FindFirstChild("RemoveOffer"),
+    RequestSent = Trade:FindFirstChild("RequestSent"),
+    SetRequestsEnabled = Trade:FindFirstChild("SetRequestsEnabled"),
+    StartTrade = Trade:FindFirstChild("StartTrade"),
+    UpdateOffers = Trade:FindFirstChild("UpdateOffers"),
+    UpdateTrade = Trade:FindFirstChild("UpdateTrade"),
+}
 
-btn.MouseButton1Click:Connect(function()
-    frame:Destroy()
-end)
+-- ============================================
+-- CONFIGURATION
+-- ============================================
+local CONFIG = {
+    PARTNER_NAME = "FakeTradeBot",
+    PARTNER_USER_ID = 123456789,
+    AUTO_ACCEPT_DELAY = 0.5,
+    AUTO_CONFIRM_DELAY = 1.0,
+}
 
-print("✅ Меню создано! Ищи на экране.")
+-- ============================================
+-- FAKE TRADE STATE
+-- ============================================
+local mockState = {
+    active = false,
+    trade = nil,
+    partnerActionPending = false,
+    originalFunctions = {},
+    tradeCompleting = false,
+}
+
+-- ============================================
+-- CREATE FAKE PARTNER
+-- ============================================
+local function createMockPartner(player)
+    local partnerName = player and player.Name or CONFIG.PARTNER_NAME
+    local partnerUserId = player and player.UserId or CONFIG.PARTNER_USER_ID
+    
+    local mockPlayer = {
+        Name = partnerName,
+        DisplayName = partnerName,
+        UserId = partnerUserId,
+        ClassName = 'Player',
+        Character = nil,
+        AccountAge = 365,
+    }
+    
+    return setmetatable(mockPlayer, {
+        __index = function(t, k)
+            if k == 'Parent' then return Players end
+            if k == 'IsA' then 
+                return function(self, className) 
+                    return className == 'Player' or className == 'Instance'
+                end 
+            end
+            if k == 'FindFirstChild' then
+                return function(self, name)
+                    return nil
+                end
+            end
+            if k == 'WaitForChild' then
+                return function(self, name, timeout)
+                    return nil
+                end
+            end
+            return rawget(t, k)
+        end,
+        __tostring = function() return partnerName end,
+        __eq = function(a, b)
+            if type(b) == 'table' then
+                return rawget(a, 'UserId') == rawget(b, 'UserId')
+            end
+            return false
+        end,
+    })
+end
+
+local mockPartner = createMockPartner()
+
+-- ============================================
+-- GET TRADE GUI
+-- ============================================
+local function getTradeGUI()
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gui then return nil end
+    return gui:FindFirstChild("TradeGUI")
+end
+
+-- ============================================
+-- FIND ELEMENT IN GUI
+-- ============================================
+local function findElement(gui, path)
+    if not gui then return nil end
+    local current = gui
+    for _, name in ipairs(path) do
+        current = current:FindFirstChild(name)
+        if not current then return nil end
+    end
+    return current
+end
+
+-- ============================================
+-- MM2 ITEM DATABASE
+-- ============================================
+local ItemDatabase = {
+    -- Knives
+    {name = "Luger", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Luger", icon = "2005276185", rarity = "Chroma"},
+    {name = "Heat", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Heat", icon = "2005276185", rarity = "Chroma"},
+    {name = "Eternal", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Eternal", icon = "2005276185", rarity = "Chroma"},
+    {name = "Fang", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Fang", icon = "2005276185", rarity = "Chroma"},
+    {name = "Shark", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Shark", icon = "2005276185", rarity = "Chroma"},
+    {name = "Saw", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Saw", icon = "2005276185", rarity = "Chroma"},
+    {name = "Blaster", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Blaster", icon = "2005276185", rarity = "Chroma"},
+    {name = "Nightblade", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Nightblade", icon = "2005276185", rarity = "Chroma"},
+    {name = "Gemstone", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Gemstone", icon = "2005276185", rarity = "Chroma"},
+    {name = "Deathshard", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Deathshard", icon = "2005276185", rarity = "Chroma"},
+    {name = "Slasher", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Slasher", icon = "2005276185", rarity = "Chroma"},
+    {name = "Tides", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Tides", icon = "2005276185", rarity = "Chroma"},
+    {name = "Boneblade", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Boneblade", icon = "2005276185", rarity = "Chroma"},
+    -- Guns
+    {name = "Laser", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Laser", icon = "2005276185", rarity = "Chroma"},
+    {name = "Red Luger", icon = "2005276185", rarity = "Godly"},
+    {name = "Amerilaser", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Amerilaser", icon = "2005276185", rarity = "Chroma"},
+    {name = "Old Glory", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Old Glory", icon = "2005276185", rarity = "Chroma"},
+    {name = "Virtual", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Virtual", icon = "2005276185", rarity = "Chroma"},
+    -- Classics
+    {name = "Seer", icon = "2005276185", rarity = "Godly"},
+    {name = "Orange Seer", icon = "2005276185", rarity = "Godly"},
+    {name = "Battle Axe", icon = "2005276185", rarity = "Godly"},
+    {name = "Skool", icon = "2005276185", rarity = "Godly"},
+}
+
+-- ============================================
+-- CREATE FAKE TRADE
+-- ============================================
+local function createMockTrade()
+    return {
+        trade_id = 'MOCK_' .. tick() .. '_' .. HttpService:GenerateGUID(false),
+        sender = LocalPlayer,
+        recipient = mockPartner,
+        sender_offer = { 
+            items = {}, 
+            player_name = LocalPlayer.Name,
+            negotiated = false,
+            confirmed = false 
+        },
+        recipient_offer = { 
+            items = {}, 
+            player_name = CONFIG.PARTNER_NAME,
+            negotiated = false,
+            confirmed = false 
+        },
+        current_stage = 'negotiation',
+        offer_version = 1,
+        sender_has_trade_license = true,
+        recipient_has_trade_license = true,
+        busy_indicators = {},
+    }
+end
+
+-- ============================================
+-- UPDATE TRADE GUI
+-- ============================================
+local function updateTradeUI()
+    if not mockState.active or not mockState.trade then return end
+    
+    local gui = getTradeGUI()
+    if not gui then return end
+    
+    local statusLabel = gui:FindFirstChild("StatusLabel")
+    if statusLabel and statusLabel:IsA("TextLabel") then
+        local statusText = ""
+        if mockState.trade.current_stage == "negotiation" then
+            statusText = "Waiting for your action..."
+        elseif mockState.trade.current_stage == "confirmation" then
+            statusText = "Both accepted! Confirm the trade."
+        elseif mockState.trade.current_stage == "completed" then
+            statusText = "Trade completed!"
+        end
+        statusLabel.Text = statusText
+    end
+    
+    local actions = findElement(gui, {"Trade", "Actions"})
+    if actions then
+        for _, btnName in ipairs({"Accept", "Confirm", "Decline"}) do
+            local btn = actions:FindFirstChild(btnName)
+            if btn then
+                if mockState.trade.current_stage == "negotiation" then
+                    btn.Visible = btnName == "Accept" or btnName == "Decline"
+                elseif mockState.trade.current_stage == "confirmation" then
+                    btn.Visible = btnName == "Confirm" or btnName == "Decline"
+                elseif mockState.trade.current_stage == "completed" then
+                    btn.Visible = false
+                end
+            end
+        end
+    end
+    
+    local yourOffer = findElement(gui, {"Trade", "YourOffer", "Container"})
+    if yourOffer then
+        for _, child in ipairs(yourOffer:GetChildren()) do
+            if child:IsA("Frame") and child.Name:match("NewItem") then
+                child:Destroy()
+            end
+        end
+        
+        for _, item in ipairs(mockState.trade.sender_offer.items) do
+            local newItem = yourOffer:FindFirstChild("NewItem1")
+            if newItem then
+                local clone = newItem:Clone()
+                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
+                clone.Parent = yourOffer
+                
+                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
+                if icon and icon:IsA("ImageLabel") then
+                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
+                end
+                
+                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
+                if amount and amount:IsA("TextLabel") then
+                    amount.Text = tostring(item.amount or 1)
+                end
+                
+                local itemName = clone:FindFirstChild("ItemName")
+                if itemName then
+                    local label = itemName:FindFirstChild("Label")
+                    if label and label:IsA("TextLabel") then
+                        label.Text = item.name or "Unknown"
+                    end
+                end
+            end
+        end
+    end
+    
+    local theirOffer = findElement(gui, {"Trade", "TheirOffer", "Container"})
+    if theirOffer then
+        for _, child in ipairs(theirOffer:GetChildren()) do
+            if child:IsA("Frame") and child.Name:match("NewItem") then
+                child:Destroy()
+            end
+        end
+        
+        for _, item in ipairs(mockState.trade.recipient_offer.items) do
+            local newItem = theirOffer:FindFirstChild("NewItem1")
+            if newItem then
+                local clone = newItem:Clone()
+                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
+                clone.Parent = theirOffer
+                
+                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
+                if icon and icon:IsA("ImageLabel") then
+                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
+                end
+                
+                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
+                if amount and amount:IsA("TextLabel") then
+                    amount.Text = tostring(item.amount or 1)
+                end
+                
+                local itemName = clone:FindFirstChild("ItemName")
+                if itemName then
+                    local label = itemName:FindFirstChild("Label")
+                    if label and label:IsA("TextLabel") then
+                        label.Text = item.name or "Unknown"
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- HOOK ALL REMOTES
+-- ============================================
+
+local originals = {}
+
+for name, remote in pairs(Remotes) do
+    if remote then
+        if remote:IsA("RemoteFunction") then
+            originals[name] = remote.InvokeServer
+        elseif remote:IsA("RemoteEvent") then
+            originals[name] = remote.FireServer
+        end
+    end
+end
+
+-- GetTradeStatus
+if Remotes.GetTradeStatus then
+    Remotes.GetTradeStatus.InvokeServer = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                return "StartTrade"
+            elseif mockState.trade.current_stage == "confirmation" then
+                return "StartTrade"
+            elseif mockState.trade.current_stage == "completed" then
+                return "None"
+            end
+            return "StartTrade"
+        end
+        return originals.GetTradeStatus and originals.GetTradeStatus(self)
+    end
+end
+
+-- SendRequest
+if Remotes.SendRequest then
+    Remotes.SendRequest.FireServer = function(self, player)
+        if mockState.active and mockState.trade then
+            if player and player.UserId == CONFIG.PARTNER_USER_ID then
+                return
+            end
+        end
+        return originals.SendRequest and originals.SendRequest(self, player)
+    end
+end
+
+-- AcceptRequest
+if Remotes.AcceptRequest then
+    Remotes.AcceptRequest.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            return
+        end
+        return originals.AcceptRequest and originals.AcceptRequest(self)
+    end
+end
+
+-- AcceptTrade
+if Remotes.AcceptTrade then
+    Remotes.AcceptTrade.FireServer = function(self, arg1, arg2)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                mockState.trade.sender_offer.negotiated = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                
+                if mockState.trade.recipient_offer.negotiated then
+                    mockState.trade.current_stage = "confirmation"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                    task.spawn(partnerAutoAction)
+                end
+                updateTradeUI()
+                return
+            end
+        end
+        return originals.AcceptTrade and originals.AcceptTrade(self, arg1, arg2)
+    end
+end
+
+-- CompleteTrade
+if Remotes.CompleteTrade then
+    Remotes.CompleteTrade.FireServer = function(self, arg1)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "confirmation" then
+                mockState.trade.sender_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                
+                if mockState.trade.recipient_offer.confirmed then
+                    mockState.trade.current_stage = "completed"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                end
+                updateTradeUI()
+                return
+            end
+        end
+        return originals.CompleteTrade and originals.CompleteTrade(self, arg1)
+    end
+end
+
+-- DeclineTrade
+if Remotes.DeclineTrade then
+    Remotes.DeclineTrade.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.DeclineTrade and originals.DeclineTrade(self)
+    end
+end
+
+-- DeclineRequest
+if Remotes.DeclineRequest then
+    Remotes.DeclineRequest.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.DeclineRequest and originals.DeclineRequest(self)
+    end
+end
+
+-- OfferItem
+if Remotes.OfferItem then
+    Remotes.OfferItem.FireServer = function(self, itemId, itemType)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "completed" then
+                return
+            end
+            
+            local itemData = nil
+            for _, data in ipairs(ItemDatabase) do
+                if data.name == itemId then
+                    itemData = data
+                    break
+                end
+            end
+            
+            local item = {
+                id = itemId,
+                name = itemId,
+                type = itemType or "Weapons",
+                amount = 1,
+                icon = itemData and itemData.icon or "2005276185",
+                rarity = itemData and itemData.rarity or "Unknown",
+            }
+            
+            table.insert(mockState.trade.sender_offer.items, item)
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            return
+        end
+        return originals.OfferItem and originals.OfferItem(self, itemId, itemType)
+    end
+end
+
+-- RemoveOffer
+if Remotes.RemoveOffer then
+    Remotes.RemoveOffer.FireServer = function(self, itemId)
+        if mockState.active and mockState.trade then
+            for i, item in ipairs(mockState.trade.sender_offer.items) do
+                if item.id == itemId then
+                    table.remove(mockState.trade.sender_offer.items, i)
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                    return
+                end
+            end
+            return
+        end
+        return originals.RemoveOffer and originals.RemoveOffer(self, itemId)
+    end
+end
+
+-- EndTrade
+if Remotes.EndTrade then
+    Remotes.EndTrade.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.EndTrade and originals.EndTrade(self)
+    end
+end
+
+-- UpdateTrade
+if Remotes.UpdateTrade then
+    Remotes.UpdateTrade.FireServer = function(self, data)
+        if mockState.active and mockState.trade then
+            if data then
+                if data.sender_offer then
+                    mockState.trade.sender_offer.items = data.sender_offer.items or {}
+                end
+                if data.recipient_offer then
+                    mockState.trade.recipient_offer.items = data.recipient_offer.items or {}
+                end
+                if data.current_stage then
+                    mockState.trade.current_stage = data.current_stage
+                end
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            return
+        end
+        return originals.UpdateTrade and originals.UpdateTrade(self, data)
+    end
+end
+
+-- CancelAccept
+if Remotes.CancelAccept then
+    Remotes.CancelAccept.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.confirmed = false
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            return
+        end
+        return originals.CancelAccept and originals.CancelAccept(self)
+    end
+end
+
+-- ============================================
+-- PARTNER AUTO ACTIONS
+-- ============================================
+local function partnerAutoAction()
+    if not mockState.active or not mockState.trade or mockState.partnerActionPending then
+        return
+    end
+    
+    mockState.partnerActionPending = true
+    
+    if mockState.trade.current_stage == "negotiation" then
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.negotiated = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.current_stage = "confirmation"
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            updateTradeUI()
+        end
+        
+    elseif mockState.trade.current_stage == "confirmation" then
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            
+            if mockState.trade.sender_offer.confirmed then
+                mockState.trade.current_stage = "completed"
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            updateTradeUI()
+        end
+    end
+    
+    mockState.partnerActionPending = false
+end
+
+-- ============================================
+-- START FAKE TRADE
+-- ============================================
+local function startMockTrade()
+    if mockState.active then return end
+    
+    mockState.trade = createMockTrade()
+    mockState.active = true
+    
+    local gui = getTradeGUI()
+    if gui then
+        gui.Enabled = true
+        gui.Visible = true
+    end
+    
+    updateTradeUI()
+    task.spawn(partnerAutoAction)
+    
+    print("[MM2 Fake Trade] Started! Partner: " .. CONFIG.PARTNER_NAME)
+end
+
+-- ============================================
+-- ADD ITEM TO TRADE
+-- ============================================
+local function addItemToTrade(itemData)
+    if not mockState.active or not mockState.trade then
+        return false, "No active trade"
+    end
+    
+    if mockState.trade.current_stage == "completed" then
+        return false, "Trade already completed"
+    end
+    
+    local item = {
+        id = itemData.id or itemData.name or "FakeItem_" .. HttpService:GenerateGUID(false),
+        name = itemData.name or "Unknown",
+        type = itemData.type or "Weapons",
+        amount = itemData.amount or 1,
+        icon = itemData.icon or "2005276185",
+        rarity = itemData.rarity or "Unknown",
+    }
+    
+    table.insert(mockState.trade.sender_offer.items, item)
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    updateTradeUI()
+    
+    return true, "Item added"
+end
+
+-- ============================================
+-- GET RANDOM ITEM
+-- ============================================
+local function getRandomItem()
+    return ItemDatabase[math.random(1, #ItemDatabase)]
+end
+
+-- ============================================
+-- PERMANENT MENU ON SCREEN
+-- ============================================
+local function createMenu()
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gui then return end
+    
+    local old = gui:FindFirstChild("FakeTradeMenu")
+    if old then old:Destroy() end
+    
+    local panel = Instance.new("Frame")
+    panel.Name = "FakeTradeMenu"
+    panel.Size = UDim2.new(0, 240, 0, 350)
+    panel.Position = UDim2.new(0.01, 0, 0.5, -175)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    panel.BorderSizePixel = 0
+    panel.ClipsDescendants = true
+    panel.ZIndex = 10
+    panel.Parent = gui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = panel
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 80, 200)
+    stroke.Thickness = 1.5
+    stroke.Parent = panel
+    
+    local bgGrad = Instance.new("UIGradient")
+    bgGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 18, 35)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 20)),
+    })
+    bgGrad.Parent = panel
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 32)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "MM2 Fake Trade"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Parent = panel
+    
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, -20, 0, 1.5)
+    line.Position = UDim2.new(0, 10, 0, 34)
+    line.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+    line.BackgroundTransparency = 0.5
+    line.BorderSizePixel = 0
+    line.Parent = panel
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -20, 0, 18)
+    statusLabel.Position = UDim2.new(0, 10, 0, 40)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Idle"
+    statusLabel.Font = Enum.Font.GothamMedium
+    statusLabel.TextSize = 11
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Parent = panel
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.4, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 10, 0, 62)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "Partner:"
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 10
+    nameLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = panel
+    
+    local nameBox = Instance.new("TextBox")
+    nameBox.Size = UDim2.new(0.55, 0, 0, 20)
+    nameBox.Position = UDim2.new(0.42, 0, 0, 62)
+    nameBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+    nameBox.BackgroundTransparency = 0.5
+    nameBox.Text = CONFIG.PARTNER_NAME
+    nameBox.Font = Enum.Font.GothamMedium
+    nameBox.TextSize = 10
+    nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameBox.ClearTextOnFocus = false
+    nameBox.TextXAlignment = Enum.TextXAlignment.Center
+    nameBox.Parent = panel
+    Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 4)
+    
+    nameBox.FocusLost:Connect(function()
+        if nameBox.Text ~= "" then
+            CONFIG.PARTNER_NAME = nameBox.Text
+            mockPartner = createMockPartner()
+        end
+    end)
+    
+    local function createBtn(text, y, color, hoverColor, onClick)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -20, 0, 30)
+        btn.Position = UDim2.new(0, 10, 0, y)
+        btn.BackgroundColor3 = color
+        btn.BackgroundTransparency = 0.2
+        btn.Text = text
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 11
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.BorderSizePixel = 0
+        btn.AutoButtonColor = false
+        btn.Parent = panel
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), {
+                BackgroundTransparency = 0,
+                BackgroundColor3 = hoverColor or color
+            }):Play()
+        end)
+        
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), {
+                BackgroundTransparency = 0.2,
+                BackgroundColor3 = color
+            }):Play()
+        end)
+        
+        if onClick then
+            btn.MouseButton1Click:Connect(onClick)
+        end
+        
+        return btn
+    end
+    
+    createBtn("Start Trade", 90, Color3.fromRGB(40, 160, 100), Color3.fromRGB(60, 200, 130), function()
+        if not mockState.active then
+            startMockTrade()
+            statusLabel.Text = "Trade active"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+        else
+            statusLabel.Text = "Already active"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    createBtn("Add Random Item", 126, Color3.fromRGB(80, 60, 180), Color3.fromRGB(120, 80, 220), function()
+        if mockState.active and mockState.trade then
+            local item = getRandomItem()
+            addItemToTrade(item)
+            statusLabel.Text = "Added: " .. item.name
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+        else
+            statusLabel.Text = "Start trade first!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    createBtn("Add Godly/Chroma", 162, Color3.fromRGB(200, 150, 50), Color3.fromRGB(230, 180, 70), function()
+        if mockState.active and mockState.trade then
+            local godlies = {}
+            for _, item in ipairs(ItemDatabase) do
+                if item.rarity == "Godly" or item.rarity == "Chroma" then
+                    table.insert(godlies, item)
+                end
+            end
+            if #godlies > 0 then
+                local item = godlies[math.random(1, #godlies)]
+                addItemToTrade(item)
+                statusLabel.Text = "Added: " .. item.name
+                statusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+            end
+        else
+            statusLabel.Text = "Start trade first!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    createBtn("Partner Accept", 198, Color3.fromRGB(50, 130, 50), Color3.fromRGB(70, 170, 70), function()
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                mockState.trade.recipient_offer.negotiated = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                if mockState.trade.sender_offer.negotiated then
+                    mockState.trade.current_stage = "confirmation"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                end
+                updateTradeUI()
+                statusLabel.Text = "Partner accepted"
+                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+            elseif mockState.trade.current_stage == "confirmation" then
+                mockState.trade.recipient_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                if mockState.trade.sender_offer.confirmed then
+                    mockState.trade.current_stage = "completed"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                end
+                updateTradeUI()
+                statusLabel.Text = "Partner confirmed"
+                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+            end
+        else
+            statusLabel.Text = "No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    createBtn("Clear Trade", 234, Color3.fromRGB(180, 60, 60), Color3.fromRGB(220, 80, 80), function()
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.items = {}
+            mockState.trade.recipient_offer.items = {}
+            mockState.trade.sender_offer.negotiated = false
+            mockState.trade.recipient_offer.negotiated = false
+            mockState.trade.sender_offer.confirmed = false
+            mockState.trade.recipient_offer.confirmed = false
+            mockState.trade.current_stage = "negotiation"
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            statusLabel.Text = "Cleared"
+            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        else
+            statusLabel.Text = "No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    createBtn("Close Trade", 270, Color3.fromRGB(150, 40, 40), Color3.fromRGB(200, 50, 50), function()
+        if mockState.active then
+            mockState.active = false
+            mockState.trade = nil
+            local gui = getTradeGUI()
+            if gui then
+                gui.Enabled = false
+                gui.Visible = false
+            end
+            statusLabel.Text = "Closed"
+            statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+        else
+            statusLabel.Text = "No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 25, 0, 25)
+    toggleBtn.Position = UDim2.new(1, -32, 0, 4)
+    toggleBtn.BackgroundTransparency = 1
+    toggleBtn.Text = "−"
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.TextSize = 18
+    toggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Parent = panel
+    
+    local minimized = false
+    local fullSize = UDim2.new(0, 240, 0, 350)
+    local miniSize = UDim2.new(0, 240, 0, 36)
+    
+    toggleBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            TweenService:Create(panel, TweenInfo.new(0.3), {Size = miniSize}):Play()
+            toggleBtn.Text = "+"
+        else
+            TweenService:Create(panel, TweenInfo.new(0.3), {Size = fullSize}):Play()
+            toggleBtn.Text = "−"
+        end
+    end)
+    
+    return panel
+end
+
+-- ============================================
+-- DRAGGABLE WINDOW
+-- ============================================
+local function setupDragging(frame)
+    local dragging = false
+    local dragInput, dragStart, startPos
+    
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+-- ============================================
+-- INITIALIZATION
+-- ============================================
+repeat task.wait() until game:IsLoaded()
+
+print("[MM2 Fake Trade] Initializing...")
+
+task.wait(1)
+
+local panel = createMenu()
+setupDragging(panel)
+
+print("[MM2 Fake Trade] Loaded! Menu is on the left side of the screen.")
