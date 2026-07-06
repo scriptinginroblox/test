@@ -1,247 +1,184 @@
--- Создаем ScreenGui
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- GUI
 local gui = Instance.new("ScreenGui")
-gui.Parent = player:WaitForChild("PlayerGui")
+gui.Name = "PulseUI"
 gui.ResetOnSpawn = false
+gui.Parent = playerGui
 
--- Константы
-local menuWidth = 520
-local menuHeight = 430
-local btnSize = 50
-local leftPanelWidth = 200
-local rightPanelWidth = 320
-local cornerRadius = 10
-local padding = 12
+-- ===== КНОПКА =====
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.new(0, 50, 0, 50)
+openBtn.Position = UDim2.new(0, 100, 0, 100)
+openBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+openBtn.Text = "☰"
+openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+openBtn.TextSize = 24
+openBtn.Font = Enum.Font.GothamBold
+openBtn.ZIndex = 20
+openBtn.Parent = gui
 
--- Кнопка вызова
-local callButton = Instance.new("TextButton")
-callButton.Size = UDim2.new(0, btnSize, 0, btnSize)
-callButton.Position = UDim2.new(0, 100, 0, 100)
-callButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-callButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-callButton.Text = "☰"
-callButton.TextSize = 24
-callButton.TextWrapped = true
-callButton.Font = Enum.Font.GothamBold
-callButton.ZIndex = 20
-callButton.Parent = gui
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 10)
+btnCorner.Parent = openBtn
 
--- Скругление для кнопки
-local callCorner = Instance.new("UICorner")
-callCorner.CornerRadius = UDim.new(0, 8)
-callCorner.Parent = callButton
-
--- Меню
+-- ===== МЕНЮ =====
 local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, menuWidth, 0, menuHeight)
+menu.Size = UDim2.new(0, 520, 0, 430)
 menu.BackgroundColor3 = Color3.fromRGB(30, 38, 50)
 menu.Visible = false
 menu.ZIndex = 5
 menu.Parent = gui
 
--- Скругление меню
 local menuCorner = Instance.new("UICorner")
-menuCorner.CornerRadius = UDim.new(0, cornerRadius)
+menuCorner.CornerRadius = UDim.new(0, 10)
 menuCorner.Parent = menu
 
--- Левая панель
-local leftPanel = Instance.new("Frame")
-leftPanel.Size = UDim2.new(0, leftPanelWidth, 1, 0)
-leftPanel.BackgroundTransparency = 1
-leftPanel.Parent = menu
+-- позиционирование меню (справа/слева от кнопки)
+local function updateMenuPos()
+	local vp = workspace.CurrentCamera.ViewportSize
+	local btnPos = openBtn.AbsolutePosition
 
--- Правая панель
-local rightPanel = Instance.new("Frame")
-rightPanel.Size = UDim2.new(0, rightPanelWidth, 1, 0)
-rightPanel.Position = UDim2.new(0, leftPanelWidth, 0, 0)
-rightPanel.BackgroundTransparency = 1
-rightPanel.Parent = menu
+	local rightX = btnPos.X + 60
+	local leftX = btnPos.X - 520 - 10
+	local y = btnPos.Y
 
--- Верхняя часть левой панели (150px)
-local leftTop = Instance.new("Frame")
-leftTop.Size = UDim2.new(1, 0, 0, 150)
-leftTop.BackgroundTransparency = 1
-leftTop.Parent = leftPanel
+	if rightX + 520 < vp.X then
+		menu.Position = UDim2.new(0, rightX, 0, y)
+	else
+		menu.Position = UDim2.new(0, math.max(10, leftX), 0, y)
+	end
+end
 
--- Фиолетовый круг
+-- ===== ЛЕВАЯ ЧАСТЬ =====
+local left = Instance.new("Frame")
+left.Size = UDim2.new(0, 200, 1, 0)
+left.BackgroundTransparency = 1
+left.Parent = menu
+
+-- верх зона
+local top = Instance.new("Frame")
+top.Size = UDim2.new(1, 0, 0, 150)
+top.BackgroundTransparency = 1
+top.Parent = left
+
+-- круг
 local circle = Instance.new("Frame")
 circle.Size = UDim2.new(0, 65, 0, 65)
-circle.Position = UDim2.new(0, (leftPanelWidth - 65) / 2, 0, 20)
+circle.Position = UDim2.new(0, 67.5, 0, 20)
 circle.BackgroundColor3 = Color3.fromRGB(154, 71, 226)
-circle.ZIndex = 1
-circle.Parent = leftTop
+circle.Parent = top
 
-local circleCorner = Instance.new("UICorner")
-circleCorner.CornerRadius = UDim.new(1, 0)
-circleCorner.Parent = circle
+local cCorner = Instance.new("UICorner")
+cCorner.CornerRadius = UDim.new(1, 0)
+cCorner.Parent = circle
 
--- Текст PULSE
-local pulseText = Instance.new("TextLabel")
-pulseText.Size = UDim2.new(0, 180, 0, 40)
-pulseText.Position = UDim2.new(0, 10, 0, 95)
-pulseText.BackgroundTransparency = 1
-pulseText.Text = "PULSE"
-pulseText.TextColor3 = Color3.fromRGB(255, 255, 255)
-pulseText.TextSize = 38
-pulseText.TextWrapped = true
-pulseText.Font = Enum.Font.GothamBold
-pulseText.Parent = leftTop
+-- текст PULSE
+local pulse = Instance.new("TextLabel")
+pulse.Size = UDim2.new(0, 180, 0, 40)
+pulse.Position = UDim2.new(0, 10, 0, 95)
+pulse.BackgroundTransparency = 1
+pulse.Text = "PULSE"
+pulse.TextColor3 = Color3.fromRGB(255,255,255)
+pulse.TextSize = 38
+pulse.Font = Enum.Font.GothamBold
+pulse.Parent = top
 
--- Нижняя часть левой панели
-local leftBottom = Instance.new("Frame")
-leftBottom.Size = UDim2.new(1, 0, 1, -150)
-leftBottom.Position = UDim2.new(0, 0, 0, 150)
-leftBottom.BackgroundTransparency = 1
-leftBottom.Parent = leftPanel
+-- ===== НИЖНЯЯ ЧАСТЬ =====
+local bottom = Instance.new("Frame")
+bottom.Position = UDim2.new(0, 0, 0, 150)
+bottom.Size = UDim2.new(1, 0, 1, -150)
+bottom.BackgroundTransparency = 1
+bottom.Parent = left
 
--- Контейнер для колонок с отступами
-local columnsContainer = Instance.new("Frame")
-columnsContainer.Size = UDim2.new(1, -12, 1, -6)
-columnsContainer.Position = UDim2.new(0, 6, 0, 0)
-columnsContainer.BackgroundTransparency = 1
-columnsContainer.Parent = leftBottom
+local function createColumn(xPos)
+	local col = Instance.new("Frame")
+	col.Size = UDim2.new(0, 85, 1, -10)
+	col.Position = UDim2.new(0, xPos, 0, 0)
+	col.BackgroundTransparency = 1
+	col.Parent = bottom
 
--- Левая колонка
-local leftColumn = Instance.new("Frame")
-leftColumn.Size = UDim2.new(0, 85, 1, 0)
-leftColumn.Position = UDim2.new(0, 0, 0, 0)
-leftColumn.BackgroundTransparency = 1
-leftColumn.Parent = columnsContainer
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.Padding = UDim.new(0, 6)
+	layout.Parent = col
 
--- Правая колонка
-local rightColumn = Instance.new("Frame")
-rightColumn.Size = UDim2.new(0, 85, 1, 0)
-rightColumn.Position = UDim2.new(0, 95, 0, 0)
-rightColumn.BackgroundTransparency = 1
-rightColumn.Parent = columnsContainer
-
--- Функция создания кнопки категории
-local function createCategoryButton(parent, emoji, text, order)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 80)
-    button.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
-    button.Text = ""
-    button.AutoButtonColor = false
-    button.Parent = parent
-    
-    -- Скругление
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = button
-    
-    -- Эмодзи
-    local emojiLabel = Instance.new("TextLabel")
-    emojiLabel.Size = UDim2.new(1, 0, 0, 42)
-    emojiLabel.Position = UDim2.new(0, 0, 0, 4)
-    emojiLabel.BackgroundTransparency = 1
-    emojiLabel.Text = emoji
-    emojiLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    emojiLabel.TextSize = 28
-    emojiLabel.Font = Enum.Font.GothamBold
-    emojiLabel.TextWrapped = true
-    emojiLabel.Parent = button
-    
-    -- Название
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0, 20)
-    nameLabel.Position = UDim2.new(0, 0, 0, 48)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = text
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 13
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextWrapped = true
-    nameLabel.Parent = button
-    
-    -- Ховер эффект
-    button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
-    end)
-    button.MouseLeave:Connect(function()
-        button.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
-    end)
-    
-    return button
+	return col
 end
 
--- Создаем UIListLayout для каждой колонки (снизу вверх)
-local function setupColumn(parent)
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Vertical
-    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 6)
-    layout.Parent = parent
+local leftCol = createColumn(6)
+local rightCol = createColumn(101)
+
+local function createBtn(parent, emoji, name)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1, 0, 0, 80)
+	b.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
+	b.Text = ""
+	b.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = b
+
+	local icon = Instance.new("TextLabel")
+	icon.Size = UDim2.new(1, 0, 0, 42)
+	icon.Position = UDim2.new(0, 0, 0, 4)
+	icon.BackgroundTransparency = 1
+	icon.Text = emoji
+	icon.TextSize = 28
+	icon.Font = Enum.Font.GothamBold
+	icon.TextColor3 = Color3.fromRGB(255,255,255)
+	icon.Parent = b
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.Position = UDim2.new(0, 0, 0, 48)
+	label.BackgroundTransparency = 1
+	label.Text = name
+	label.TextSize = 13
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 = Color3.fromRGB(255,255,255)
+	label.Parent = b
+
+	b.MouseEnter:Connect(function()
+		b.BackgroundColor3 = Color3.fromRGB(60, 66, 80)
+	end)
+
+	b.MouseLeave:Connect(function()
+		b.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
+	end)
+
+	return b
 end
 
-setupColumn(leftColumn)
-setupColumn(rightColumn)
+-- левая колонка
+createBtn(leftCol, "🧩", "Misc")
+createBtn(leftCol, "👁️", "Visual")
+createBtn(leftCol, "🎯", "Aim")
 
--- Левая колонка (снизу вверх)
-createCategoryButton(leftColumn, "🎯", "Aim", 1)    -- самая нижняя
-createCategoryButton(leftColumn, "👁️", "Visual", 2)
-createCategoryButton(leftColumn, "🧩", "Misc", 3)   -- самая верхняя
+-- правая колонка
+createBtn(rightCol, "⚙️", "Settings")
+createBtn(rightCol, "📊", "Stats")
+createBtn(rightCol, "⚔️", "Combat")
 
--- Правая колонка (снизу вверх)
-createCategoryButton(rightColumn, "⚔️", "Combat", 1)  -- самая нижняя
-createCategoryButton(rightColumn, "📊", "Stats", 2)
-createCategoryButton(rightColumn, "⚙️", "Settings", 3) -- самая верхняя
+-- ===== ОТКРЫТИЕ/ЗАКРЫТИЕ =====
+local opened = false
 
--- Обработчик открытия/закрытия меню
-local menuOpen = false
+openBtn.MouseButton1Click:Connect(function()
+	opened = not opened
+	menu.Visible = opened
 
-callButton.MouseButton1Click:Connect(function()
-    menuOpen = not menuOpen
-    menu.Visible = menuOpen
-    
-    if menuOpen then
-        -- Позиционирование меню справа от кнопки
-        local buttonPos = callButton.AbsolutePosition
-        local buttonSize = callButton.AbsoluteSize
-        
-        local x = buttonPos.X + buttonSize.X + 5
-        local y = buttonPos.Y - menuHeight / 2 + buttonSize.Y / 2
-        
-        -- Проверка, помещается ли справа
-        local screenSize = gui.AbsoluteSize
-        if x + menuWidth > screenSize.X then
-            -- Не помещается справа - ставим слева
-            x = buttonPos.X - menuWidth - 5
-        end
-        
-        -- Проверка по вертикали
-        if y < 0 then
-            y = 0
-        elseif y + menuHeight > screenSize.Y then
-            y = screenSize.Y - menuHeight
-        end
-        
-        menu.Position = UDim2.new(0, x, 0, y)
-    end
+	if opened then
+		updateMenuPos()
+	end
 end)
 
--- Обновление позиции при изменении размера экрана
-gui.Changed:Connect(function()
-    if menuOpen then
-        local buttonPos = callButton.AbsolutePosition
-        local buttonSize = callButton.AbsoluteSize
-        
-        local x = buttonPos.X + buttonSize.X + 5
-        local y = buttonPos.Y - menuHeight / 2 + buttonSize.Y / 2
-        
-        local screenSize = gui.AbsoluteSize
-        if x + menuWidth > screenSize.X then
-            x = buttonPos.X - menuWidth - 5
-        end
-        
-        if y < 0 then
-            y = 0
-        elseif y + menuHeight > screenSize.Y then
-            y = screenSize.Y - menuHeight
-        end
-        
-        menu.Position = UDim2.new(0, x, 0, y)
-    end
+openBtn:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+	if menu.Visible then
+		updateMenuPos()
+	end
 end)
