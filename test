@@ -1,606 +1,994 @@
--- ═══════════════════════════════════════════════════════════════════════════════
---  VOLTAGE HUB UI v3.0 + SPEED HACK (РАБОЧАЯ ВЕРСИЯ)
---  БЕЗ cloneref, с принудительным отображением
--- ═══════════════════════════════════════════════════════════════════════════════
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  SERVICES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- ============================================
+-- MM2 FAKE TRADE SYSTEM
+-- С ПОСТОЯННЫМ МЕНЮ НА ЭКРАНЕ
+-- ============================================
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  UTILITIES
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local function Corner(frame, radius)
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 6)
-    c.Parent = frame
-    return c
+-- ============================================
+-- ВСЕ REMOTE'Ы ТРЕЙДА
+-- ============================================
+local Trade = ReplicatedStorage:FindFirstChild("Trade")
+if not Trade then
+    warn("Trade not found!")
+    return
 end
 
-local function Stroke(frame, color, thickness, transparency)
-    local s = Instance.new("UIStroke")
-    s.Color = color or Color3.fromRGB(50, 50, 50)
-    s.Thickness = thickness or 1
-    s.Transparency = transparency or 0
-    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    s.Parent = frame
-    return s
+local Remotes = {
+    GetTradeStatus = Trade:FindFirstChild("GetTradeStatus"),
+    SendRequest = Trade:FindFirstChild("SendRequest"),
+    AcceptRequest = Trade:FindFirstChild("AcceptRequest"),
+    AcceptTrade = Trade:FindFirstChild("AcceptTrade"),
+    CancelAccept = Trade:FindFirstChild("CancelAccept"),
+    CancelRequest = Trade:FindFirstChild("CancelRequest"),
+    CompleteTrade = Trade:FindFirstChild("CompleteTrade"),
+    DeclineRequest = Trade:FindFirstChild("DeclineRequest"),
+    DeclineTrade = Trade:FindFirstChild("DeclineTrade"),
+    EndTrade = Trade:FindFirstChild("EndTrade"),
+    OfferItem = Trade:FindFirstChild("OfferItem"),
+    RemoveOffer = Trade:FindFirstChild("RemoveOffer"),
+    RequestSent = Trade:FindFirstChild("RequestSent"),
+    SetRequestsEnabled = Trade:FindFirstChild("SetRequestsEnabled"),
+    StartTrade = Trade:FindFirstChild("StartTrade"),
+    UpdateOffers = Trade:FindFirstChild("UpdateOffers"),
+    UpdateTrade = Trade:FindFirstChild("UpdateTrade"),
+}
+
+-- ============================================
+-- КОНФИГУРАЦИЯ
+-- ============================================
+local CONFIG = {
+    PARTNER_NAME = "FakeTradeBot",
+    PARTNER_USER_ID = 123456789,
+    AUTO_ACCEPT_DELAY = 0.5,
+    AUTO_CONFIRM_DELAY = 1.0,
+}
+
+-- ============================================
+-- СОСТОЯНИЕ ФЕЙКОВОГО ТРЕЙДА
+-- ============================================
+local mockState = {
+    active = false,
+    trade = nil,
+    partnerActionPending = false,
+    originalFunctions = {},
+    tradeCompleting = false,
+}
+
+-- ============================================
+-- СОЗДАНИЕ ФЕЙКОВОГО ПАРТНЁРА
+-- ============================================
+local function createMockPartner(player)
+    local partnerName = player and player.Name or CONFIG.PARTNER_NAME
+    local partnerUserId = player and player.UserId or CONFIG.PARTNER_USER_ID
+    
+    local mockPlayer = {
+        Name = partnerName,
+        DisplayName = partnerName,
+        UserId = partnerUserId,
+        ClassName = 'Player',
+        Character = nil,
+        AccountAge = 365,
+    }
+    
+    return setmetatable(mockPlayer, {
+        __index = function(t, k)
+            if k == 'Parent' then return Players end
+            if k == 'IsA' then 
+                return function(self, className) 
+                    return className == 'Player' or className == 'Instance'
+                end 
+            end
+            if k == 'FindFirstChild' then
+                return function(self, name)
+                    return nil
+                end
+            end
+            if k == 'WaitForChild' then
+                return function(self, name, timeout)
+                    return nil
+                end
+            end
+            return rawget(t, k)
+        end,
+        __tostring = function() return partnerName end,
+        __eq = function(a, b)
+            if type(b) == 'table' then
+                return rawget(a, 'UserId') == rawget(b, 'UserId')
+            end
+            return false
+        end,
+    })
 end
 
-local function Tween(obj, props, time, style, dir)
-    local t = TweenService:Create(obj,
-        TweenInfo.new(time or 0.2, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out),
-        props
-    )
-    t:Play()
-    return t
+local mockPartner = createMockPartner()
+
+-- ============================================
+-- ПОЛУЧЕНИЕ GUI ТРЕЙДА
+-- ============================================
+local function getTradeGUI()
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gui then return nil end
+    return gui:FindFirstChild("TradeGUI")
 end
 
-local function MakeDraggable(frame)
+-- ============================================
+-- ПОИСК ЭЛЕМЕНТОВ В GUI
+-- ============================================
+local function findElement(gui, path)
+    if not gui then return nil end
+    local current = gui
+    for _, name in ipairs(path) do
+        current = current:FindFirstChild(name)
+        if not current then return nil end
+    end
+    return current
+end
+
+-- ============================================
+-- БАЗА ДАННЫХ ПРЕДМЕТОВ MM2
+-- ============================================
+local ItemDatabase = {
+    -- Ножи
+    {name = "Luger", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Luger", icon = "2005276185", rarity = "Chroma"},
+    {name = "Heat", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Heat", icon = "2005276185", rarity = "Chroma"},
+    {name = "Eternal", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Eternal", icon = "2005276185", rarity = "Chroma"},
+    {name = "Fang", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Fang", icon = "2005276185", rarity = "Chroma"},
+    {name = "Shark", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Shark", icon = "2005276185", rarity = "Chroma"},
+    {name = "Saw", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Saw", icon = "2005276185", rarity = "Chroma"},
+    {name = "Blaster", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Blaster", icon = "2005276185", rarity = "Chroma"},
+    {name = "Nightblade", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Nightblade", icon = "2005276185", rarity = "Chroma"},
+    {name = "Gemstone", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Gemstone", icon = "2005276185", rarity = "Chroma"},
+    {name = "Deathshard", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Deathshard", icon = "2005276185", rarity = "Chroma"},
+    {name = "Slasher", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Slasher", icon = "2005276185", rarity = "Chroma"},
+    {name = "Tides", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Tides", icon = "2005276185", rarity = "Chroma"},
+    {name = "Boneblade", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Boneblade", icon = "2005276185", rarity = "Chroma"},
+    -- Пистолеты
+    {name = "Laser", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Laser", icon = "2005276185", rarity = "Chroma"},
+    {name = "Red Luger", icon = "2005276185", rarity = "Godly"},
+    {name = "Amerilaser", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Amerilaser", icon = "2005276185", rarity = "Chroma"},
+    {name = "Old Glory", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Old Glory", icon = "2005276185", rarity = "Chroma"},
+    {name = "Virtual", icon = "2005276185", rarity = "Godly"},
+    {name = "Chroma Virtual", icon = "2005276185", rarity = "Chroma"},
+    -- Классика
+    {name = "Seer", icon = "2005276185", rarity = "Godly"},
+    {name = "Orange Seer", icon = "2005276185", rarity = "Godly"},
+    {name = "Battle Axe", icon = "2005276185", rarity = "Godly"},
+    {name = "Skool", icon = "2005276185", rarity = "Godly"},
+}
+
+-- ============================================
+-- СОЗДАНИЕ ФЕЙКОВОГО ТРЕЙДА
+-- ============================================
+local function createMockTrade()
+    return {
+        trade_id = 'MOCK_' .. tick() .. '_' .. HttpService:GenerateGUID(false),
+        sender = LocalPlayer,
+        recipient = mockPartner,
+        sender_offer = { 
+            items = {}, 
+            player_name = LocalPlayer.Name,
+            negotiated = false,
+            confirmed = false 
+        },
+        recipient_offer = { 
+            items = {}, 
+            player_name = CONFIG.PARTNER_NAME,
+            negotiated = false,
+            confirmed = false 
+        },
+        current_stage = 'negotiation',
+        offer_version = 1,
+        sender_has_trade_license = true,
+        recipient_has_trade_license = true,
+        busy_indicators = {},
+    }
+end
+
+-- ============================================
+-- ОБНОВЛЕНИЕ GUI
+-- ============================================
+local function updateTradeUI()
+    if not mockState.active or not mockState.trade then return end
+    
+    local gui = getTradeGUI()
+    if not gui then return end
+    
+    -- Обновляем статус
+    local statusLabel = gui:FindFirstChild("StatusLabel")
+    if statusLabel and statusLabel:IsA("TextLabel") then
+        local statusText = ""
+        if mockState.trade.current_stage == "negotiation" then
+            statusText = "🟡 Waiting for your action..."
+        elseif mockState.trade.current_stage == "confirmation" then
+            statusText = "🟢 Both accepted! Confirm the trade."
+        elseif mockState.trade.current_stage == "completed" then
+            statusText = "✅ Trade completed!"
+        end
+        statusLabel.Text = statusText
+    end
+    
+    -- Обновляем кнопки
+    local actions = findElement(gui, {"Trade", "Actions"})
+    if actions then
+        for _, btnName in ipairs({"Accept", "Confirm", "Decline"}) do
+            local btn = actions:FindFirstChild(btnName)
+            if btn then
+                if mockState.trade.current_stage == "negotiation" then
+                    btn.Visible = btnName == "Accept" or btnName == "Decline"
+                elseif mockState.trade.current_stage == "confirmation" then
+                    btn.Visible = btnName == "Confirm" or btnName == "Decline"
+                elseif mockState.trade.current_stage == "completed" then
+                    btn.Visible = false
+                end
+            end
+        end
+    end
+    
+    -- Обновляем YourOffer
+    local yourOffer = findElement(gui, {"Trade", "YourOffer", "Container"})
+    if yourOffer then
+        for _, child in ipairs(yourOffer:GetChildren()) do
+            if child:IsA("Frame") and child.Name:match("NewItem") then
+                child:Destroy()
+            end
+        end
+        
+        for _, item in ipairs(mockState.trade.sender_offer.items) do
+            local newItem = yourOffer:FindFirstChild("NewItem1")
+            if newItem then
+                local clone = newItem:Clone()
+                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
+                clone.Parent = yourOffer
+                
+                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
+                if icon and icon:IsA("ImageLabel") then
+                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
+                end
+                
+                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
+                if amount and amount:IsA("TextLabel") then
+                    amount.Text = tostring(item.amount or 1)
+                end
+                
+                local itemName = clone:FindFirstChild("ItemName")
+                if itemName then
+                    local label = itemName:FindFirstChild("Label")
+                    if label and label:IsA("TextLabel") then
+                        label.Text = item.name or "Unknown"
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Обновляем TheirOffer
+    local theirOffer = findElement(gui, {"Trade", "TheirOffer", "Container"})
+    if theirOffer then
+        for _, child in ipairs(theirOffer:GetChildren()) do
+            if child:IsA("Frame") and child.Name:match("NewItem") then
+                child:Destroy()
+            end
+        end
+        
+        for _, item in ipairs(mockState.trade.recipient_offer.items) do
+            local newItem = theirOffer:FindFirstChild("NewItem1")
+            if newItem then
+                local clone = newItem:Clone()
+                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
+                clone.Parent = theirOffer
+                
+                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
+                if icon and icon:IsA("ImageLabel") then
+                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
+                end
+                
+                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
+                if amount and amount:IsA("TextLabel") then
+                    amount.Text = tostring(item.amount or 1)
+                end
+                
+                local itemName = clone:FindFirstChild("ItemName")
+                if itemName then
+                    local label = itemName:FindFirstChild("Label")
+                    if label and label:IsA("TextLabel") then
+                        label.Text = item.name or "Unknown"
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- ПЕРЕХВАТ REMOTE'ОВ
+-- ============================================
+
+local originals = {}
+
+for name, remote in pairs(Remotes) do
+    if remote then
+        if remote:IsA("RemoteFunction") then
+            originals[name] = remote.InvokeServer
+        elseif remote:IsA("RemoteEvent") then
+            originals[name] = remote.FireServer
+        end
+    end
+end
+
+-- GetTradeStatus
+if Remotes.GetTradeStatus then
+    Remotes.GetTradeStatus.InvokeServer = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                return "StartTrade"
+            elseif mockState.trade.current_stage == "confirmation" then
+                return "StartTrade"
+            elseif mockState.trade.current_stage == "completed" then
+                return "None"
+            end
+            return "StartTrade"
+        end
+        return originals.GetTradeStatus and originals.GetTradeStatus(self)
+    end
+end
+
+-- SendRequest
+if Remotes.SendRequest then
+    Remotes.SendRequest.FireServer = function(self, player)
+        if mockState.active and mockState.trade then
+            if player and player.UserId == CONFIG.PARTNER_USER_ID then
+                return
+            end
+        end
+        return originals.SendRequest and originals.SendRequest(self, player)
+    end
+end
+
+-- AcceptRequest
+if Remotes.AcceptRequest then
+    Remotes.AcceptRequest.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            return
+        end
+        return originals.AcceptRequest and originals.AcceptRequest(self)
+    end
+end
+
+-- AcceptTrade
+if Remotes.AcceptTrade then
+    Remotes.AcceptTrade.FireServer = function(self, arg1, arg2)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                mockState.trade.sender_offer.negotiated = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                
+                if mockState.trade.recipient_offer.negotiated then
+                    mockState.trade.current_stage = "confirmation"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                    task.spawn(partnerAutoAction)
+                end
+                updateTradeUI()
+                return
+            end
+        end
+        return originals.AcceptTrade and originals.AcceptTrade(self, arg1, arg2)
+    end
+end
+
+-- CompleteTrade
+if Remotes.CompleteTrade then
+    Remotes.CompleteTrade.FireServer = function(self, arg1)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "confirmation" then
+                mockState.trade.sender_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                
+                if mockState.trade.recipient_offer.confirmed then
+                    mockState.trade.current_stage = "completed"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                end
+                updateTradeUI()
+                return
+            end
+        end
+        return originals.CompleteTrade and originals.CompleteTrade(self, arg1)
+    end
+end
+
+-- DeclineTrade
+if Remotes.DeclineTrade then
+    Remotes.DeclineTrade.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.DeclineTrade and originals.DeclineTrade(self)
+    end
+end
+
+-- DeclineRequest
+if Remotes.DeclineRequest then
+    Remotes.DeclineRequest.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.DeclineRequest and originals.DeclineRequest(self)
+    end
+end
+
+-- OfferItem
+if Remotes.OfferItem then
+    Remotes.OfferItem.FireServer = function(self, itemId, itemType)
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "completed" then
+                return
+            end
+            
+            local itemData = nil
+            for _, data in ipairs(ItemDatabase) do
+                if data.name == itemId then
+                    itemData = data
+                    break
+                end
+            end
+            
+            local item = {
+                id = itemId,
+                name = itemId,
+                type = itemType or "Weapons",
+                amount = 1,
+                icon = itemData and itemData.icon or "2005276185",
+                rarity = itemData and itemData.rarity or "Unknown",
+            }
+            
+            table.insert(mockState.trade.sender_offer.items, item)
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            return
+        end
+        return originals.OfferItem and originals.OfferItem(self, itemId, itemType)
+    end
+end
+
+-- RemoveOffer
+if Remotes.RemoveOffer then
+    Remotes.RemoveOffer.FireServer = function(self, itemId)
+        if mockState.active and mockState.trade then
+            for i, item in ipairs(mockState.trade.sender_offer.items) do
+                if item.id == itemId then
+                    table.remove(mockState.trade.sender_offer.items, i)
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    updateTradeUI()
+                    return
+                end
+            end
+            return
+        end
+        return originals.RemoveOffer and originals.RemoveOffer(self, itemId)
+    end
+end
+
+-- EndTrade
+if Remotes.EndTrade then
+    Remotes.EndTrade.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.active = false
+            mockState.trade = nil
+            updateTradeUI()
+            return
+        end
+        return originals.EndTrade and originals.EndTrade(self)
+    end
+end
+
+-- UpdateTrade
+if Remotes.UpdateTrade then
+    Remotes.UpdateTrade.FireServer = function(self, data)
+        if mockState.active and mockState.trade then
+            if data then
+                if data.sender_offer then
+                    mockState.trade.sender_offer.items = data.sender_offer.items or {}
+                end
+                if data.recipient_offer then
+                    mockState.trade.recipient_offer.items = data.recipient_offer.items or {}
+                end
+                if data.current_stage then
+                    mockState.trade.current_stage = data.current_stage
+                end
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            return
+        end
+        return originals.UpdateTrade and originals.UpdateTrade(self, data)
+    end
+end
+
+-- CancelAccept
+if Remotes.CancelAccept then
+    Remotes.CancelAccept.FireServer = function(self)
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.confirmed = false
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            return
+        end
+        return originals.CancelAccept and originals.CancelAccept(self)
+    end
+end
+
+-- ============================================
+-- АВТОДЕЙСТВИЯ ПАРТНЁРА
+-- ============================================
+local function partnerAutoAction()
+    if not mockState.active or not mockState.trade or mockState.partnerActionPending then
+        return
+    end
+    
+    mockState.partnerActionPending = true
+    
+    if mockState.trade.current_stage == "negotiation" then
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.negotiated = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.current_stage = "confirmation"
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            updateTradeUI()
+        end
+        
+    elseif mockState.trade.current_stage == "confirmation" then
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            
+            if mockState.trade.sender_offer.confirmed then
+                mockState.trade.current_stage = "completed"
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                updateTradeUI()
+            end
+            updateTradeUI()
+        end
+    end
+    
+    mockState.partnerActionPending = false
+end
+
+-- ============================================
+-- ЗАПУСК ФЕЙКОВОГО ТРЕЙДА
+-- ============================================
+local function startMockTrade()
+    if mockState.active then return end
+    
+    mockState.trade = createMockTrade()
+    mockState.active = true
+    
+    local gui = getTradeGUI()
+    if gui then
+        gui.Enabled = true
+        gui.Visible = true
+    end
+    
+    updateTradeUI()
+    task.spawn(partnerAutoAction)
+    
+    print("[MM2 Fake Trade] Started! Partner: " .. CONFIG.PARTNER_NAME)
+end
+
+-- ============================================
+-- ДОБАВЛЕНИЕ ПРЕДМЕТА
+-- ============================================
+local function addItemToTrade(itemData)
+    if not mockState.active or not mockState.trade then
+        return false, "No active trade"
+    end
+    
+    if mockState.trade.current_stage == "completed" then
+        return false, "Trade already completed"
+    end
+    
+    local item = {
+        id = itemData.id or itemData.name or "FakeItem_" .. HttpService:GenerateGUID(false),
+        name = itemData.name or "Unknown",
+        type = itemData.type or "Weapons",
+        amount = itemData.amount or 1,
+        icon = itemData.icon or "2005276185",
+        rarity = itemData.rarity or "Unknown",
+    }
+    
+    table.insert(mockState.trade.sender_offer.items, item)
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    updateTradeUI()
+    
+    return true, "Item added"
+end
+
+-- ============================================
+-- ПОЛУЧЕНИЕ СЛУЧАЙНОГО ПРЕДМЕТА
+-- ============================================
+local function getRandomItem()
+    return ItemDatabase[math.random(1, #ItemDatabase)]
+end
+
+-- ============================================
+-- ПОСТОЯННОЕ МЕНЮ НА ЭКРАНЕ
+-- ============================================
+local function createMenu()
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gui then return end
+    
+    -- Удаляем старую панель
+    local old = gui:FindFirstChild("FakeTradeMenu")
+    if old then old:Destroy() end
+    
+    -- Главная панель
+    local panel = Instance.new("Frame")
+    panel.Name = "FakeTradeMenu"
+    panel.Size = UDim2.new(0, 240, 0, 350)
+    panel.Position = UDim2.new(0.01, 0, 0.5, -175)  -- Слева по центру
+    panel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    panel.BorderSizePixel = 0
+    panel.ClipsDescendants = true
+    panel.ZIndex = 10
+    panel.Parent = gui
+    
+    -- Скругление
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = panel
+    
+    -- Обводка
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 80, 200)
+    stroke.Thickness = 1.5
+    stroke.Parent = panel
+    
+    -- Градиент фона
+    local bgGrad = Instance.new("UIGradient")
+    bgGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 18, 35)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 20)),
+    })
+    bgGrad.Parent = panel
+    
+    -- Заголовок
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 32)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🔪 MM2 Fake Trade"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Parent = panel
+    
+    -- Полоска под заголовком
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, -20, 0, 1.5)
+    line.Position = UDim2.new(0, 10, 0, 34)
+    line.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
+    line.BackgroundTransparency = 0.5
+    line.BorderSizePixel = 0
+    line.Parent = panel
+    
+    -- Статус
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -20, 0, 18)
+    statusLabel.Position = UDim2.new(0, 10, 0, 40)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "⏸ Idle"
+    statusLabel.Font = Enum.Font.GothamMedium
+    statusLabel.TextSize = 11
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Parent = panel
+    
+    -- Поле для имени партнёра
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.4, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 10, 0, 62)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "Partner:"
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 10
+    nameLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = panel
+    
+    local nameBox = Instance.new("TextBox")
+    nameBox.Size = UDim2.new(0.55, 0, 0, 20)
+    nameBox.Position = UDim2.new(0.42, 0, 0, 62)
+    nameBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+    nameBox.BackgroundTransparency = 0.5
+    nameBox.Text = CONFIG.PARTNER_NAME
+    nameBox.Font = Enum.Font.GothamMedium
+    nameBox.TextSize = 10
+    nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameBox.ClearTextOnFocus = false
+    nameBox.TextXAlignment = Enum.TextXAlignment.Center
+    nameBox.Parent = panel
+    Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 4)
+    
+    nameBox.FocusLost:Connect(function()
+        if nameBox.Text ~= "" then
+            CONFIG.PARTNER_NAME = nameBox.Text
+            mockPartner = createMockPartner()
+            if tradeUI.titleText then
+                tradeUI.titleText.Text = "💎 FAKE TRADE WITH " .. CONFIG.PARTNER_NAME
+            end
+        end
+    end)
+    
+    -- ==================== КНОПКИ ====================
+    local function createBtn(text, y, color, hoverColor, onClick)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -20, 0, 30)
+        btn.Position = UDim2.new(0, 10, 0, y)
+        btn.BackgroundColor3 = color
+        btn.BackgroundTransparency = 0.2
+        btn.Text = text
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 11
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.BorderSizePixel = 0
+        btn.AutoButtonColor = false
+        btn.Parent = panel
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), {
+                BackgroundTransparency = 0,
+                BackgroundColor3 = hoverColor or color
+            }):Play()
+        end)
+        
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), {
+                BackgroundTransparency = 0.2,
+                BackgroundColor3 = color
+            }):Play()
+        end)
+        
+        if onClick then
+            btn.MouseButton1Click:Connect(onClick)
+        end
+        
+        return btn
+    end
+    
+    -- Кнопка Start Trade
+    createBtn("🚀 Start Trade", 90, Color3.fromRGB(40, 160, 100), Color3.fromRGB(60, 200, 130), function()
+        if not mockState.active then
+            startMockTrade()
+            statusLabel.Text = "🟢 Trade active"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+        else
+            statusLabel.Text = "⚠️ Already active"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка Add Random
+    createBtn("📦 Add Random Item", 126, Color3.fromRGB(80, 60, 180), Color3.fromRGB(120, 80, 220), function()
+        if mockState.active and mockState.trade then
+            local item = getRandomItem()
+            addItemToTrade(item)
+            statusLabel.Text = "✅ Added: " .. item.name
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+        else
+            statusLabel.Text = "⚠️ Start trade first!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка Add Godly
+    createBtn("🎯 Add Godly/Chroma", 162, Color3.fromRGB(200, 150, 50), Color3.fromRGB(230, 180, 70), function()
+        if mockState.active and mockState.trade then
+            local godlies = {}
+            for _, item in ipairs(ItemDatabase) do
+                if item.rarity == "Godly" or item.rarity == "Chroma" then
+                    table.insert(godlies, item)
+                end
+            end
+            if #godlies > 0 then
+                local item = godlies[math.random(1, #godlies)]
+                addItemToTrade(item)
+                statusLabel.Text = "⭐ Added: " .. item.name
+                statusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+            end
+        else
+            statusLabel.Text = "⚠️ Start trade first!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка Partner Accept
+    createBtn("🔄 Partner Accept", 198, Color3.fromRGB(50, 130, 50), Color3.fromRGB(70, 170, 70), function()
+        if mockState.active and mockState.trade then
+            if mockState.trade.current_stage == "negotiation" then
+                mockState.trade.recipient_offer.negotiated = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                if mockState.trade.sender_offer.negotiated then
+                    mockState.trade.current_stage = "confirmation"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                end
+                updateTradeUI()
+                statusLabel.Text = "✅ Partner accepted"
+                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+            elseif mockState.trade.current_stage == "confirmation" then
+                mockState.trade.recipient_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                if mockState.trade.sender_offer.confirmed then
+                    mockState.trade.current_stage = "completed"
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                end
+                updateTradeUI()
+                statusLabel.Text = "✅ Partner confirmed"
+                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+            end
+        else
+            statusLabel.Text = "⚠️ No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка Clear
+    createBtn("🧹 Clear Trade", 234, Color3.fromRGB(180, 60, 60), Color3.fromRGB(220, 80, 80), function()
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.items = {}
+            mockState.trade.recipient_offer.items = {}
+            mockState.trade.sender_offer.negotiated = false
+            mockState.trade.recipient_offer.negotiated = false
+            mockState.trade.sender_offer.confirmed = false
+            mockState.trade.recipient_offer.confirmed = false
+            mockState.trade.current_stage = "negotiation"
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            updateTradeUI()
+            statusLabel.Text = "🧹 Cleared"
+            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        else
+            statusLabel.Text = "⚠️ No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка Close
+    createBtn("❌ Close Trade", 270, Color3.fromRGB(150, 40, 40), Color3.fromRGB(200, 50, 50), function()
+        if mockState.active then
+            mockState.active = false
+            mockState.trade = nil
+            local gui = getTradeGUI()
+            if gui then
+                gui.Enabled = false
+                gui.Visible = false
+            end
+            statusLabel.Text = "⏸ Closed"
+            statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+        else
+            statusLabel.Text = "⚠️ No active trade"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        end
+    end)
+    
+    -- Кнопка скрыть/показать
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 25, 0, 25)
+    toggleBtn.Position = UDim2.new(1, -32, 0, 4)
+    toggleBtn.BackgroundTransparency = 1
+    toggleBtn.Text = "−"
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.TextSize = 18
+    toggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Parent = panel
+    
+    local minimized = false
+    local fullSize = UDim2.new(0, 240, 0, 350)
+    local miniSize = UDim2.new(0, 240, 0, 36)
+    
+    toggleBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            TweenService:Create(panel, TweenInfo.new(0.3), {Size = miniSize}):Play()
+            toggleBtn.Text = "+"
+        else
+            TweenService:Create(panel, TweenInfo.new(0.3), {Size = fullSize}):Play()
+            toggleBtn.Text = "−"
+        end
+    end)
+    
+    -- Возвращаем панель
+    return panel
+end
+
+-- ============================================
+-- ПЕРЕТАСКИВАНИЕ
+-- ============================================
+local function setupDragging(frame)
     local dragging = false
-    local dragStart, startPos
+    local dragInput, dragStart, startPos
     
     frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
         end
     end)
     
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  СОЗДАНИЕ GUI (ПРЯМОЙ МЕТОД, БЕЗ cloneref)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- ============================================
+-- ИНИЦИАЛИЗАЦИЯ
+-- ============================================
+repeat task.wait() until game:IsLoaded()
 
--- Создаем ScreenGui
-local gui = Instance.new("ScreenGui")
-gui.Name = "SpeedHub"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = CoreGui
+print("[MM2 Fake Trade] Initializing...")
 
-print("✅ GUI создан!")
+task.wait(1)
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  ГЛАВНОЕ ОКНО
--- ═══════════════════════════════════════════════════════════════════════════════
+-- Создаём меню (оно сразу видно)
+local panel = createMenu()
+setupDragging(panel)
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 420, 0, 380)
-mainFrame.Position = UDim2.new(0.5, -210, 0.5, -190)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-mainFrame.BackgroundTransparency = 0.05
-mainFrame.ClipsDescendants = true
-mainFrame.Visible = true
-mainFrame.Parent = gui
-
-Corner(mainFrame, 12)
-Stroke(mainFrame, Color3.fromRGB(40, 40, 50), 1, 0.5)
-MakeDraggable(mainFrame)
-
-print("✅ Окно создано!")
-
--- Заголовок
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -60, 0, 45)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.BackgroundTransparency = 1
-title.Text = "⚡ Speed Hub v3.0"
-title.TextColor3 = Color3.fromRGB(235, 235, 245)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 22
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = mainFrame
-
--- Кнопка закрытия
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -38, 0, 8)
-closeBtn.BackgroundTransparency = 1
-closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
-closeBtn.Font = Enum.Font.Gotham
-closeBtn.TextSize = 18
-closeBtn.Parent = mainFrame
-
-closeBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    floatingButton.Visible = true
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  ВКЛАДКИ
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local tabContainer = Instance.new("Frame")
-tabContainer.Size = UDim2.new(0, 120, 1, -50)
-tabContainer.Position = UDim2.new(0, 0, 0, 50)
-tabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-tabContainer.BackgroundTransparency = 0.3
-tabContainer.BorderSizePixel = 0
-tabContainer.Parent = mainFrame
-
-Corner(tabContainer, 12)
-
-local contentContainer = Instance.new("Frame")
-contentContainer.Size = UDim2.new(1, -130, 1, -60)
-contentContainer.Position = UDim2.new(0, 130, 0, 50)
-contentContainer.BackgroundTransparency = 1
-contentContainer.Parent = mainFrame
-
--- Данные вкладок
-local tabs = {
-    {name = "Speed", icon = "⚡"},
-    {name = "Settings", icon = "⚙️"},
-    {name = "Info", icon = "ℹ️"},
-}
-
-local tabContents = {}
-local selectedTab = nil
-
-for i, tabData in ipairs(tabs) do
-    -- Кнопка вкладки
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.Position = UDim2.new(0, 5, 0, (i-1) * 45 + 5)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    btn.BackgroundTransparency = 0.7
-    btn.BorderSizePixel = 0
-    btn.Text = tabData.icon .. " " .. tabData.name
-    btn.TextColor3 = Color3.fromRGB(160, 160, 175)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 13
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.AutoButtonColor = false
-    btn.Parent = tabContainer
-    
-    Corner(btn, 8)
-    
-    -- Контент вкладки
-    local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1, 0, 1, 0)
-    content.BackgroundTransparency = 1
-    content.BorderSizePixel = 0
-    content.ScrollBarThickness = 3
-    content.ScrollBarImageColor3 = Color3.fromRGB(100, 80, 255)
-    content.Visible = false
-    content.Parent = contentContainer
-    
-    tabContents[tabData.name] = content
-    
-    btn.MouseButton1Click:Connect(function()
-        for name, frame in pairs(tabContents) do
-            frame.Visible = (name == tabData.name)
-        end
-        selectedTab = tabData.name
-    end)
-end
-
--- Функция получения вкладки
-local function GetTab(name)
-    return tabContents[name]
-end
-
--- Выбираем первую вкладку
-for name, frame in pairs(tabContents) do
-    frame.Visible = (name == "Speed")
-    selectedTab = "Speed"
-    break
-end
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  СПИДХАК
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local SpeedHack = {
-    Enabled = false,
-    Speed = 50,
-    OldSpeed = nil,
-    Humanoid = nil,
-}
-
-local function GetCharacter()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        return char
-    end
-    return nil
-end
-
-function SpeedHack:Enable()
-    if self.Enabled then return end
-    
-    local char = GetCharacter()
-    if not char then return end
-    
-    self.Humanoid = char:FindFirstChild("Humanoid")
-    if not self.Humanoid then return end
-    
-    self.OldSpeed = self.Humanoid.WalkSpeed
-    self.Enabled = true
-    self.Humanoid.WalkSpeed = self.Speed
-    
-    -- Уведомление
-    local notif = Instance.new("TextLabel")
-    notif.Size = UDim2.new(0, 250, 0, 35)
-    notif.Position = UDim2.new(0.5, -125, 1, -50)
-    notif.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    notif.Text = "⚡ Спидхак включен! Скорость: " .. self.Speed
-    notif.TextColor3 = Color3.fromRGB(100, 255, 150)
-    notif.Font = Enum.Font.Gotham
-    notif.TextSize = 14
-    notif.Parent = gui
-    Corner(notif, 8)
-    
-    task.delay(2, function() notif:Destroy() end)
-end
-
-function SpeedHack:Disable()
-    if not self.Enabled then return end
-    
-    if self.Humanoid and self.OldSpeed then
-        self.Humanoid.WalkSpeed = self.OldSpeed
-    end
-    
-    self.Enabled = false
-    self.OldSpeed = nil
-    
-    local notif = Instance.new("TextLabel")
-    notif.Size = UDim2.new(0, 200, 0, 35)
-    notif.Position = UDim2.new(0.5, -100, 1, -50)
-    notif.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    notif.Text = "⚡ Спидхак выключен"
-    notif.TextColor3 = Color3.fromRGB(255, 150, 150)
-    notif.Font = Enum.Font.Gotham
-    notif.TextSize = 14
-    notif.Parent = gui
-    Corner(notif, 8)
-    
-    task.delay(2, function() notif:Destroy() end)
-end
-
-function SpeedHack:Toggle()
-    if self.Enabled then
-        self:Disable()
-    else
-        self:Enable()
-    end
-end
-
-function SpeedHack:SetSpeed(newSpeed)
-    self.Speed = newSpeed
-    if self.Enabled and self.Humanoid then
-        self.Humanoid.WalkSpeed = self.Speed
-    end
-end
-
--- Авто-восстановление
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    if SpeedHack.Enabled then
-        SpeedHack:Disable()
-        task.wait(0.1)
-        SpeedHack.Humanoid = char:FindFirstChild("Humanoid")
-        SpeedHack:Enable()
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  СОЗДАНИЕ КОМПОНЕНТОВ НА ВКЛАДКЕ SPEED
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local speedContent = GetTab("Speed")
-
--- Заголовок секции
-local sectionTitle = Instance.new("TextLabel")
-sectionTitle.Size = UDim2.new(1, 0, 0, 30)
-sectionTitle.BackgroundTransparency = 1
-sectionTitle.Text = "Настройки скорости"
-sectionTitle.TextColor3 = Color3.fromRGB(235, 235, 245)
-sectionTitle.Font = Enum.Font.GothamBold
-sectionTitle.TextSize = 16
-sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-sectionTitle.Parent = speedContent
-
--- Toggle
-local toggleFrame = Instance.new("Frame")
-toggleFrame.Size = UDim2.new(1, 0, 0, 35)
-toggleFrame.Position = UDim2.new(0, 0, 0, 35)
-toggleFrame.BackgroundTransparency = 1
-toggleFrame.Parent = speedContent
-
-local toggleLabel = Instance.new("TextLabel")
-toggleLabel.Size = UDim2.new(0.6, 0, 1, 0)
-toggleLabel.BackgroundTransparency = 1
-toggleLabel.Text = "Спидхак"
-toggleLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-toggleLabel.Font = Enum.Font.Gotham
-toggleLabel.TextSize = 14
-toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-toggleLabel.Parent = toggleFrame
-
-local toggleBtn = Instance.new("Frame")
-toggleBtn.Size = UDim2.new(0, 40, 0, 22)
-toggleBtn.Position = UDim2.new(0.85, 0, 0.5, -11)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-toggleBtn.BorderSizePixel = 0
-toggleBtn.Parent = toggleFrame
-Corner(toggleBtn, 11)
-
-local toggleCircle = Instance.new("Frame")
-toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-toggleCircle.Position = UDim2.new(0, 2, 0.5, -9)
-toggleCircle.BackgroundColor3 = Color3.fromRGB(160, 160, 175)
-toggleCircle.BorderSizePixel = 0
-toggleCircle.Parent = toggleBtn
-Corner(toggleCircle, 9)
-
-local toggleHit = Instance.new("TextButton")
-toggleHit.Size = UDim2.new(1, 0, 1, 0)
-toggleHit.BackgroundTransparency = 1
-toggleHit.Text = ""
-toggleHit.AutoButtonColor = false
-toggleHit.Parent = toggleBtn
-
-local toggleState = false
-
-toggleHit.MouseButton1Click:Connect(function()
-    toggleState = not toggleState
-    if toggleState then
-        Tween(toggleBtn, {BackgroundColor3 = Color3.fromRGB(100, 80, 255)}, 0.2)
-        Tween(toggleCircle, {Position = UDim2.new(0, 20, 0.5, -9)}, 0.2)
-        SpeedHack:Enable()
-    else
-        Tween(toggleBtn, {BackgroundColor3 = Color3.fromRGB(40, 40, 48)}, 0.2)
-        Tween(toggleCircle, {Position = UDim2.new(0, 2, 0.5, -9)}, 0.2)
-        SpeedHack:Disable()
-    end
-end)
-
--- Slider
-local sliderFrame = Instance.new("Frame")
-sliderFrame.Size = UDim2.new(1, 0, 0, 50)
-sliderFrame.Position = UDim2.new(0, 0, 0, 75)
-sliderFrame.BackgroundTransparency = 1
-sliderFrame.Parent = speedContent
-
-local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Size = UDim2.new(0.6, 0, 0, 20)
-sliderLabel.BackgroundTransparency = 1
-sliderLabel.Text = "Скорость"
-sliderLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-sliderLabel.Font = Enum.Font.Gotham
-sliderLabel.TextSize = 14
-sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-sliderLabel.Parent = sliderFrame
-
-local sliderValue = Instance.new("TextLabel")
-sliderValue.Size = UDim2.new(0.3, 0, 0, 20)
-sliderValue.Position = UDim2.new(0.7, 0, 0, 0)
-sliderValue.BackgroundTransparency = 1
-sliderValue.Text = "50"
-sliderValue.TextColor3 = Color3.fromRGB(100, 80, 255)
-sliderValue.Font = Enum.Font.Gotham
-sliderValue.TextSize = 14
-sliderValue.TextXAlignment = Enum.TextXAlignment.Right
-sliderValue.Parent = sliderFrame
-
-local sliderBg = Instance.new("Frame")
-sliderBg.Size = UDim2.new(1, 0, 0, 4)
-sliderBg.Position = UDim2.new(0, 0, 0, 30)
-sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-sliderBg.BorderSizePixel = 0
-sliderBg.Parent = sliderFrame
-Corner(sliderBg, 2)
-
-local sliderFill = Instance.new("Frame")
-sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(100, 80, 255)
-sliderFill.BorderSizePixel = 0
-sliderFill.Parent = sliderBg
-Corner(sliderFill, 2)
-
-local sliderKnob = Instance.new("Frame")
-sliderKnob.Size = UDim2.new(0, 14, 0, 14)
-sliderKnob.Position = UDim2.new(0.5, -7, 0.5, -7)
-sliderKnob.BackgroundColor3 = Color3.fromRGB(235, 235, 245)
-sliderKnob.BorderSizePixel = 0
-sliderKnob.Parent = sliderBg
-Corner(sliderKnob, 7)
-
-local sliderDragging = false
-local sliderValueNum = 50
-
-local function UpdateSlider(pos)
-    pos = math.max(0, math.min(1, pos))
-    sliderValueNum = math.floor(16 + pos * 484)
-    sliderFill.Size = UDim2.new(pos, 0, 1, 0)
-    sliderKnob.Position = UDim2.new(pos, -7, 0.5, -7)
-    sliderValue.Text = tostring(sliderValueNum)
-    SpeedHack:SetSpeed(sliderValueNum)
-end
-
-sliderBg.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sliderDragging = true
-        local pos = (input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-        UpdateSlider(pos)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if sliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local pos = (input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
-        UpdateSlider(pos)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sliderDragging = false
-    end
-end)
-
--- Пресеты
-local presetTitle = Instance.new("TextLabel")
-presetTitle.Size = UDim2.new(1, 0, 0, 25)
-presetTitle.Position = UDim2.new(0, 0, 0, 130)
-presetTitle.BackgroundTransparency = 1
-presetTitle.Text = "Быстрые пресеты:"
-presetTitle.TextColor3 = Color3.fromRGB(200, 200, 210)
-presetTitle.Font = Enum.Font.Gotham
-presetTitle.TextSize = 13
-presetTitle.TextXAlignment = Enum.TextXAlignment.Left
-presetTitle.Parent = speedContent
-
-local presetFrame = Instance.new("Frame")
-presetFrame.Size = UDim2.new(1, 0, 0, 35)
-presetFrame.Position = UDim2.new(0, 0, 0, 160)
-presetFrame.BackgroundTransparency = 1
-presetFrame.Parent = speedContent
-
-local presets = {16, 50, 100, 250, 500}
-
-for i, val in ipairs(presets) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.18, 0, 1, 0)
-    btn.Position = UDim2.new((i-1) * 0.205, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-    btn.BorderSizePixel = 0
-    btn.Text = tostring(val)
-    btn.TextColor3 = Color3.fromRGB(200, 200, 210)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 13
-    btn.Parent = presetFrame
-    Corner(btn, 8)
-    
-    btn.MouseButton1Click:Connect(function()
-        local pos = (val - 16) / 484
-        UpdateSlider(pos)
-        SpeedHack:SetSpeed(val)
-    end)
-end
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  ВКЛАДКА INFO
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local infoContent = GetTab("Info")
-
-local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1, 0, 1, 0)
-infoText.BackgroundTransparency = 1
-infoText.Text = "Speed Hub v3.0\n\nФункции:\n• Спидхак с регулировкой скорости\n• Быстрые пресеты\n• Красивый интерфейс\n\nУправление:\nRightShift - открыть/закрыть"
-infoText.TextColor3 = Color3.fromRGB(200, 200, 210)
-infoText.Font = Enum.Font.Gotham
-infoText.TextSize = 14
-infoText.TextYAlignment = Enum.TextYAlignment.Top
-infoText.TextXAlignment = Enum.TextXAlignment.Left
-infoText.Parent = infoContent
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  ПЛАВАЮЩАЯ КНОПКА
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local floatingButton = Instance.new("TextButton")
-floatingButton.Size = UDim2.new(0, 60, 0, 60)
-floatingButton.Position = UDim2.new(0, 20, 1, -90)
-floatingButton.AnchorPoint = Vector2.new(0, 1)
-floatingButton.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-floatingButton.BackgroundTransparency = 0.2
-floatingButton.BorderSizePixel = 0
-floatingButton.Text = "⚡"
-floatingButton.TextColor3 = Color3.fromRGB(100, 80, 255)
-floatingButton.Font = Enum.Font.Gotham
-floatingButton.TextSize = 28
-floatingButton.AutoButtonColor = false
-floatingButton.ZIndex = 100
-floatingButton.Visible = false
-floatingButton.Parent = gui
-
-Corner(floatingButton, 30)
-Stroke(floatingButton, Color3.fromRGB(100, 80, 255), 2, 0.4)
-
-floatingButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = true
-    floatingButton.Visible = false
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  ОТКРЫТИЕ/ЗАКРЫТИЕ ПО RightShift
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local isOpen = true
-
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        isOpen = not isOpen
-        mainFrame.Visible = isOpen
-        floatingButton.Visible = not isOpen
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  УВЕДОМЛЕНИЕ О ЗАПУСКЕ
--- ═══════════════════════════════════════════════════════════════════════════════
-
-task.wait(0.5)
-
-local startNotif = Instance.new("TextLabel")
-startNotif.Size = UDim2.new(0, 280, 0, 40)
-startNotif.Position = UDim2.new(0.5, -140, 1, -60)
-startNotif.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-startNotif.Text = "🚀 Speed Hub загружен! Нажми RightShift"
-startNotif.TextColor3 = Color3.fromRGB(200, 200, 210)
-startNotif.Font = Enum.Font.Gotham
-startNotif.TextSize = 14
-startNotif.Parent = gui
-Corner(startNotif, 8)
-
-task.delay(3, function() startNotif:Destroy() end)
-
-print("✅ Speed Hub полностью загружен!")
-print("📌 Нажми RightShift для открытия/закрытия")
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  ЭКСПОРТ
--- ═══════════════════════════════════════════════════════════════════════════════
-
-getgenv().SpeedHub = {
-    Toggle = function() SpeedHack:Toggle() end,
-    SetSpeed = function(s) SpeedHack:SetSpeed(s) end,
-    IsEnabled = function() return SpeedHack.Enabled end,
-}
-
-return true
+print("[MM2 Fake Trade] Loaded! Menu is on the left side of the screen.")
