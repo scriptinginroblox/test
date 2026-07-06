@@ -42,7 +42,7 @@ local IsStudio = Services.Run:IsStudio()
 local Camera = Services.Workspace.CurrentCamera
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  UTILITIES (from Eclipse, Ather Hub, Ultimate, CompKiller)
+--  UTILITIES
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 local Utilities = {}
@@ -282,7 +282,7 @@ function Utilities:Connect(signal, callback)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  SVG ICONS (from CompKiller 13.txt, Ather Hub 8.txt, Avilon 4.txt)
+--  ICONS
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 local Icons = {
@@ -463,7 +463,7 @@ function VoltageHub:CreateIcon(name, size, color)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  THEMES (from Eclipse 2.txt, Eternal 11.txt, Ventura 9.txt)
+--  THEMES
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 local Themes = {
@@ -630,10 +630,11 @@ local VoltageHub = {
     _watermark = nil,
     _keyList = nil,
     _configFolder = "VoltageHub",
+    _floatingButton = nil,
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  CONFIG SYSTEM (from Eclipse 2.txt, Ultimate 10.txt, Eternal 11.txt)
+--  CONFIG SYSTEM
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:GetConfig()
@@ -762,10 +763,11 @@ function VoltageHub:Unload()
     self._main = nil
     self._watermark = nil
     self._keyList = nil
+    self._floatingButton = nil
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  NOTIFICATION SYSTEM (from Eclipse 2.txt, Neverlose 12.txt, Herby 5.txt)
+--  NOTIFICATION SYSTEM
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:Notify(config)
@@ -856,7 +858,7 @@ function VoltageHub:Notify(config)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  WATERMARK (from Eclipse 2.txt, Ventura 9.txt, Herby 5.txt)
+--  WATERMARK
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:CreateWatermark(config)
@@ -901,7 +903,7 @@ function VoltageHub:CreateWatermark(config)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  KEYBIND LIST (from Eclipse 2.txt, CompKiller 13.txt)
+--  KEYBIND LIST
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:CreateKeybindList(config)
@@ -1001,7 +1003,7 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  TOGGLE (from Eclipse 2.txt, Ultimate 10.txt, Ventura 9.txt)
+--  TOGGLE
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateToggle(parent, config)
@@ -1083,7 +1085,7 @@ function VoltageHub:CreateToggle(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  SLIDER (from Ather Hub 8.txt, Ultimate 10.txt, Catalyst 3.txt)
+--  SLIDER
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateSlider(parent, config)
@@ -1198,7 +1200,7 @@ function VoltageHub:CreateSlider(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  DROPDOWN (from Eclipse 2.txt, Neverlose 12.txt, Catalyst 3.txt)
+--  DROPDOWN
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateDropdown(parent, config)
@@ -1335,7 +1337,7 @@ function VoltageHub:CreateDropdown(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  BUTTON (from Catalyst 3.txt, Ather Hub 8.txt, Ventura 9.txt)
+--  BUTTON
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateButton(parent, config)
@@ -1384,7 +1386,7 @@ function VoltageHub:CreateButton(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  LABEL (from Eclipse 2.txt, Ultimate 10.txt)
+--  LABEL
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateLabel(parent, config)
@@ -1412,7 +1414,7 @@ function VoltageHub:CreateLabel(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  COLOR PICKER (from Eclipse 2.txt, Ather Hub 8.txt, Ultimate 10.txt)
+--  COLOR PICKER
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateColorPicker(parent, config)
@@ -1586,7 +1588,7 @@ function VoltageHub:CreateColorPicker(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  KEYBIND (from Eclipse 2.txt, Neverlose 12.txt, CompKiller 13.txt)
+--  KEYBIND
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateKeybind(parent, config)
@@ -1659,7 +1661,7 @@ function VoltageHub:CreateKeybind(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  TEXT INPUT (from Eclipse 2.txt, Ultimate 10.txt)
+--  TEXT INPUT
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateTextInput(parent, config)
@@ -1721,7 +1723,7 @@ function VoltageHub:CreateTextInput(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  PARAGRAPH (from Eclipse 2.txt, Ventura 9.txt, Herby 5.txt)
+--  PARAGRAPH
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateParagraph(parent, config)
@@ -1769,7 +1771,7 @@ function VoltageHub:CreateParagraph(parent, config)
 end
 
 -- ────────────────────────────────────────────────────────────────────────────────
---  SECTION (from Eclipse 2.txt, Catalyst 3.txt, Ventura 9.txt)
+--  SECTION
 -- ────────────────────────────────────────────────────────────────────────────────
 
 function VoltageHub:CreateSection(parent, config)
@@ -1884,7 +1886,7 @@ function VoltageHub:Window(config)
         Logo = config.Logo or "logo",
         Tabs = {},
         CurrentTab = nil,
-        IsOpen = false,
+        IsOpen = true, -- Меню открыто по умолчанию
         Elements = {},
         Sections = {},
     }
@@ -1902,11 +1904,12 @@ function VoltageHub:Window(config)
     main.Name = "MainFrame"
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 0.5, 0)
-    main.Size = UDim2.new(0, 0, 0, 0)
+    main.Size = UDim2.new(0, 520, 0, 400)
     main.BackgroundColor3 = self.Theme.Background
-    main.BackgroundTransparency = 1
+    main.BackgroundTransparency = 0.05
     main.ClipsDescendants = true
     main.ZIndex = 2
+    main.Visible = true -- Видимо по умолчанию
     main.Parent = gui
     
     Utilities:Corner(main, 12)
@@ -1918,7 +1921,7 @@ function VoltageHub:Window(config)
     local HEIGHT = 400
     
     local UIScale = Instance.new("UIScale")
-    UIScale.Scale = 0
+    UIScale.Scale = 1
     UIScale.Parent = main
     
     -- Left Panel
@@ -2022,6 +2025,7 @@ function VoltageHub:Window(config)
         {name = "Stats", icon = "stats"},
         {name = "Aim", icon = "aim"},
         {name = "Combat", icon = "combat"},
+        {name = "Settings", icon = "settings"},
     }
     
     for i, data in ipairs(tabData) do
@@ -2156,19 +2160,18 @@ function VoltageHub:Window(config)
         window.IsOpen = not window.IsOpen
         if window.IsOpen then
             main.Visible = true
+            Utilities:Tween(main, {BackgroundTransparency = 0.05}, 0.3)
             Utilities:Tween(UIScale, {Scale = 1}, 0.3, Enum.EasingStyle.Back)
-            Utilities:Tween(main, {
-                Size = UDim2.new(0, TOTAL_WIDTH, 0, HEIGHT),
-                BackgroundTransparency = 0.05
-            }, 0.3)
         else
             Utilities:Tween(UIScale, {Scale = 0}, 0.2, Enum.EasingStyle.Quad)
-            Utilities:Tween(main, {
-                Size = UDim2.new(0, 0, 0, 0),
-                BackgroundTransparency = 1
-            }, 0.2)
+            Utilities:Tween(main, {BackgroundTransparency = 1}, 0.2)
             task.wait(0.2)
             main.Visible = false
+        end
+        
+        -- Обновляем видимость плавающей кнопки
+        if self._floatingButton then
+            self._floatingButton.Visible = not window.IsOpen
         end
     end
     
@@ -2187,8 +2190,6 @@ function VoltageHub:Window(config)
         end
     end)
     
-    main.Visible = false
-    
     table.insert(self.Windows, window)
     
     return window
@@ -2200,7 +2201,8 @@ end
 
 function VoltageHub:CreateSettingsPage(window)
     local tab = window:Tab("Settings")
-    local section = tab:Section({Name = "Configs"})
+    
+    local configSection = tab:Section({Name = "Configs"})
     
     local configs = self:GetConfigs()
     local selected = nil
@@ -2305,7 +2307,7 @@ function VoltageHub:CreateSettingsPage(window)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
---  ПЛАВАЮЩАЯ КНОПКА ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
+--  ПЛАВАЮЩАЯ КНОПКА ДЛЯ ОТКРЫТИЯ/ЗАКРЫТИЯ МЕНЮ
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 function VoltageHub:CreateFloatingButton(window)
@@ -2319,6 +2321,7 @@ function VoltageHub:CreateFloatingButton(window)
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.ZIndex = 100
+    btn.Visible = false -- Скрыта пока меню открыто
     btn.Parent = self._gui
     
     Utilities:Corner(btn, 30)
@@ -2343,10 +2346,22 @@ function VoltageHub:CreateFloatingButton(window)
     glow.ZIndex = -1
     glow.Parent = btn
     
+    -- Текст "MENU" под иконкой
+    local menuLabel = Instance.new("TextLabel")
+    menuLabel.Size = UDim2.new(1, 0, 0, 14)
+    menuLabel.Position = UDim2.new(0, 0, 1, -2)
+    menuLabel.BackgroundTransparency = 1
+    menuLabel.Text = "MENU"
+    menuLabel.TextColor3 = self.Theme.TextDim
+    menuLabel.FontFace = self.FontBold
+    menuLabel.TextSize = 10
+    menuLabel.TextScaled = false
+    menuLabel.Parent = btn
+    
     -- Пульсация
     task.spawn(function()
         local direction = 1
-        while btn.Parent do
+        while btn.Parent and btn.Visible do
             local scale = 1 + direction * 0.05
             Utilities:Tween(btn, {Size = UDim2.new(0, 60 * scale, 0, 60 * scale)}, 0.5)
             direction = direction * -1
@@ -2359,12 +2374,14 @@ function VoltageHub:CreateFloatingButton(window)
         Utilities:Tween(btn, {BackgroundTransparency = 0.05}, 0.15)
         local img = logo:FindFirstChildWhichIsA("ImageLabel")
         if img then Utilities:Tween(img, {ImageColor3 = Color3.fromRGB(255, 255, 255)}, 0.15) end
+        Utilities:Tween(menuLabel, {TextColor3 = self.Theme.Text}, 0.15)
     end)
     
     btn.MouseLeave:Connect(function()
         Utilities:Tween(btn, {BackgroundTransparency = 0.2}, 0.15)
         local img = logo:FindFirstChildWhichIsA("ImageLabel")
         if img then Utilities:Tween(img, {ImageColor3 = self.Theme.Accent}, 0.15) end
+        Utilities:Tween(menuLabel, {TextColor3 = self.Theme.TextDim}, 0.15)
     end)
     
     -- Открытие меню
@@ -2372,37 +2389,134 @@ function VoltageHub:CreateFloatingButton(window)
         window:Toggle()
     end)
     
-    -- Скрываем кнопку, когда меню открыто
-    local function updateVisibility()
-        btn.Visible = not window.IsOpen
-    end
-    
-    updateVisibility()
-    
-    -- Подписываемся на изменение состояния
-    local oldToggle = window.Toggle
-    window.Toggle = function()
-        oldToggle()
-        updateVisibility()
-    end
+    -- Сохраняем ссылку на кнопку
+    self._floatingButton = btn
     
     return btn
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
+--  ИНИЦИАЛИЗАЦИЯ И ЗАПУСК
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Создаем основное окно
+local mainWindow = VoltageHub:Window({
+    Title = "Voltage Hub",
+    Subtitle = "Ultimate Fusion Engine v3.0",
+    Logo = "logo",
+})
+
+-- Создаем страницу настроек
+VoltageHub:CreateSettingsPage(mainWindow)
+
+-- Создаем плавающую кнопку
+VoltageHub:CreateFloatingButton(mainWindow)
+
+-- Создаем водяной знак
+VoltageHub:CreateWatermark({
+    Text = "Voltage Hub v3.0"
+})
+
+-- Добавляем примеры элементов на вкладку Home
+local homeTab = mainWindow:Tab("Home")
+
+local homeSection = homeTab:Section({Name = "Welcome"})
+
+homeTab:Paragraph({
+    Title = "Добро пожаловать в Voltage Hub!",
+    Text = "Это многофункциональный интерфейс для управления читами в Roblox. Используйте вкладки слева для навигации по функциям."
+})
+
+local demoSection = homeTab:Section({Name = "Демо-компоненты"})
+
+homeTab:Toggle({
+    Name = "Пример переключателя",
+    Default = true,
+    Callback = function(value)
+        VoltageHub:Notify({
+            Title = "Toggle",
+            Text = "Состояние: " .. tostring(value),
+            Type = "info"
+        })
+    end
+})
+
+homeTab:Slider({
+    Name = "Пример ползунка",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Suffix = "%",
+    Callback = function(value)
+        -- ваш код
+    end
+})
+
+homeTab:Dropdown({
+    Name = "Пример выпадающего списка",
+    Options = {"Опция 1", "Опция 2", "Опция 3"},
+    Default = "Опция 1",
+    Callback = function(value)
+        VoltageHub:Notify({
+            Title = "Dropdown",
+            Text = "Выбрано: " .. value,
+            Type = "info"
+        })
+    end
+})
+
+homeTab:Button({
+    Name = "Пример кнопки",
+    Callback = function()
+        VoltageHub:Notify({
+            Title = "Кнопка нажата!",
+            Text = "Вы нажали на кнопку",
+            Type = "success"
+        })
+    end
+})
+
+homeTab:ColorPicker({
+    Name = "Пример выбора цвета",
+    Default = Color3.fromRGB(100, 80, 255),
+    Callback = function(color)
+        -- ваш код
+    end
+})
+
+local scriptsTab = mainWindow:Tab("Scripts")
+
+scriptsTab:Paragraph({
+    Title = "Скрипты",
+    Text = "Здесь будут ваши скрипты для автоматизации."
+})
+
+scriptsTab:Button({
+    Name = "Пример скрипта",
+    Callback = function()
+        VoltageHub:Notify({
+            Title = "Скрипт запущен",
+            Text = "Ваш скрипт выполняется...",
+            Type = "info"
+        })
+    end
+})
+
+-- Отправляем уведомление о запуске
+task.wait(0.5)
+VoltageHub:Notify({
+    Title = "Voltage Hub v3.0",
+    Text = "Меню успешно загружено!",
+    Type = "success",
+    Duration = 3
+})
+
+-- ═══════════════════════════════════════════════════════════════════════════════
 --  EXPORT
 -- ═══════════════════════════════════════════════════════════════════════════════
 
--- Делаем библиотеку доступной глобально для всех скриптов
 getgenv().VoltageHub = VoltageHub
-
--- Для старых executor'ов
 _G.VoltageHub = VoltageHub
-
--- Для совместимости с некоторыми инжекторами
-if getfenv then
-    getfenv().VoltageHub = VoltageHub
-end
 
 -- Возвращаем библиотеку для loadstring
 return VoltageHub
