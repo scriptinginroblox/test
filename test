@@ -81,13 +81,13 @@ ScreenGui.Parent = CoreGui
 VoltageUI._sg = ScreenGui
 
 -- ===== ГЛОБАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ ОКНА =====
-local Window = nil  -- будет заполнена после создания
+local Window = nil
 
 -- ===== ФУНКЦИЯ СОЗДАНИЯ ОКНА =====
 function VoltageUI:CreateWindow(config)
     config = config or {}
     local title = config.title or "Voltage Hub"
-    local width = config.width or 640
+    local width = config.width or 620
     local height = config.height or 480
 
     local main = Instance.new("Frame")
@@ -243,15 +243,15 @@ function VoltageUI:CreateWindow(config)
         self._open = not self._open
         if self._open then
             self._main.Visible = true
-            tween(self._main, { BackgroundTransparency = 0 }, 0.3)
+            tween(self._main, { BackgroundTransparency = 0 }, 0.2)
             if self._currentTab then
                 self:SelectTab(self._currentTab)
             elseif #self._tabs > 0 then
                 self:SelectTab(self._tabs[1].name)
             end
         else
-            tween(self._main, { BackgroundTransparency = 1 }, 0.25)
-            task.wait(0.25)
+            tween(self._main, { BackgroundTransparency = 1 }, 0.15)
+            task.wait(0.15)
             self._main.Visible = false
         end
     end
@@ -335,11 +335,11 @@ function VoltageUI:CreateWindow(config)
             win:SelectTab(tabName)
         end)
 
-        table.insert(self._tabs, tab)
-        if not self._tabButtons then self._tabButtons = {} end
-        table.insert(self._tabButtons, btn)
+        table.insert(win._tabs, tab)
+        if not win._tabButtons then win._tabButtons = {} end
+        table.insert(win._tabButtons, btn)
 
-        if #self._tabs == 1 then
+        if #win._tabs == 1 then
             win:SelectTab(tabName)
         end
 
@@ -350,7 +350,6 @@ function VoltageUI:CreateWindow(config)
         return tabObj
     end
 
-    -- Создание секции и элементов (код из предыдущей версии)
     function win:_createSection(config, parent)
         local secName = config.name or "Section"
         local secFrame = Instance.new("Frame")
@@ -397,105 +396,540 @@ function VoltageUI:CreateWindow(config)
         pad(content, 0)
 
         local sectionObj = {}
-        sectionObj.Toggle = function(cfg) return self:_addToggle(cfg, content) end
-        sectionObj.Slider = function(cfg) return self:_addSlider(cfg, content) end
-        sectionObj.Dropdown = function(cfg) return self:_addDropdown(cfg, content) end
-        sectionObj.Button = function(cfg) return self:_addButton(cfg, content) end
-        sectionObj.Colorpicker = function(cfg) return self:_addColorpicker(cfg, content) end
-        sectionObj.Keybind = function(cfg) return self:_addKeybind(cfg, content) end
-        sectionObj.Textbox = function(cfg) return self:_addTextbox(cfg, content) end
-        sectionObj.Label = function(cfg) return self:_addLabel(cfg, content) end
-        return sectionObj
-    end
+        function sectionObj:Toggle(config)
+            local flag = config.flag or "toggle_" .. tostring(math.random(1000, 9999))
+            local default = config.default or false
+            local callback = config.callback or function() end
 
-    -- Фабрики элементов (сокращённо, они такие же как в прошлой версии)
-    win._addToggle = function(self, config, content)
-        local flag = config.flag or "toggle_" .. tostring(math.random(1000, 9999))
-        local default = config.default or false
-        local callback = config.callback or function() end
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 32)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
 
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 0, 32)
-        frame.BackgroundTransparency = 1
-        frame.ZIndex = 11
-        frame.Parent = content
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -60, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Toggle"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
 
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -60, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Text = config.name or "Toggle"
-        label.TextColor3 = VoltageUI.Theme.Text
-        label.TextSize = 15
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.ZIndex = 12
-        label.Parent = frame
+            local pill = Instance.new("Frame")
+            pill.Size = UDim2.new(0, 40, 0, 22)
+            pill.Position = UDim2.new(1, -40, 0.5, -11)
+            pill.AnchorPoint = Vector2.new(0, 0.5)
+            pill.BackgroundColor3 = default and VoltageUI.Theme.Accent or Color3.fromRGB(60, 70, 85)
+            pill.BorderSizePixel = 0
+            pill.ZIndex = 12
+            pill.Parent = frame
+            corner(pill, 11)
 
-        local pill = Instance.new("Frame")
-        pill.Size = UDim2.new(0, 40, 0, 22)
-        pill.Position = UDim2.new(1, -40, 0.5, -11)
-        pill.AnchorPoint = Vector2.new(0, 0.5)
-        pill.BackgroundColor3 = default and VoltageUI.Theme.Accent or Color3.fromRGB(60, 70, 85)
-        pill.BorderSizePixel = 0
-        pill.ZIndex = 12
-        pill.Parent = frame
-        corner(pill, 11)
+            local knob = Instance.new("Frame")
+            knob.Size = UDim2.new(0, 18, 0, 18)
+            knob.Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+            knob.AnchorPoint = Vector2.new(0, 0.5)
+            knob.BackgroundColor3 = Color3.new(1, 1, 1)
+            knob.BorderSizePixel = 0
+            knob.ZIndex = 13
+            knob.Parent = pill
+            corner(knob, 9)
 
-        local knob = Instance.new("Frame")
-        knob.Size = UDim2.new(0, 18, 0, 18)
-        knob.Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
-        knob.AnchorPoint = Vector2.new(0, 0.5)
-        knob.BackgroundColor3 = Color3.new(1, 1, 1)
-        knob.BorderSizePixel = 0
-        knob.ZIndex = 13
-        knob.Parent = pill
-        corner(knob, 9)
+            local state = default
+            local function setState(v)
+                state = v
+                tween(pill, { BackgroundColor3 = state and VoltageUI.Theme.Accent or Color3.fromRGB(60, 70, 85) }, 0.15)
+                tween(knob, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) }, 0.15)
+                VoltageUI.Flags[flag] = state
+                callback(state)
+            end
 
-        local state = default
-        local function setState(v)
-            state = v
-            tween(pill, { BackgroundColor3 = state and VoltageUI.Theme.Accent or Color3.fromRGB(60, 70, 85) }, 0.15)
-            tween(knob, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) }, 0.15)
-            VoltageUI.Flags[flag] = state
-            callback(state)
+            frame.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    setState(not state)
+                end
+            end)
+
+            setState(default)
+            local obj = { Set = setState, Get = function() return state end }
+            VoltageUI.Config[flag] = obj
+            return obj
         end
 
-        frame.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                setState(not state)
+        function sectionObj:Slider(config)
+            local flag = config.flag or "slider_" .. tostring(math.random(1000, 9999))
+            local min = config.min or 0
+            local max = config.max or 100
+            local default = config.default or 50
+            local suffix = config.suffix or ""
+            local decimals = config.decimals or 0
+            local callback = config.callback or function() end
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 50)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -80, 0, 20)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Slider"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
+
+            local valLbl = Instance.new("TextLabel")
+            valLbl.Size = UDim2.new(0, 70, 0, 20)
+            valLbl.Position = UDim2.new(1, -70, 0, 0)
+            valLbl.AnchorPoint = Vector2.new(1, 0)
+            valLbl.BackgroundTransparency = 1
+            valLbl.Text = tostring(default) .. suffix
+            valLbl.TextColor3 = VoltageUI.Theme.Accent
+            valLbl.TextSize = 15
+            valLbl.Font = Enum.Font.GothamBold
+            valLbl.TextXAlignment = Enum.TextXAlignment.Right
+            valLbl.ZIndex = 12
+            valLbl.Parent = frame
+
+            local track = Instance.new("Frame")
+            track.Size = UDim2.new(1, 0, 0, 6)
+            track.Position = UDim2.new(0, 0, 1, -6)
+            track.BackgroundColor3 = Color3.fromRGB(40, 48, 58)
+            track.BorderSizePixel = 0
+            track.ZIndex = 12
+            track.Parent = frame
+            corner(track, 3)
+
+            local fill = Instance.new("Frame")
+            fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+            fill.BackgroundColor3 = VoltageUI.Theme.Accent
+            fill.BorderSizePixel = 0
+            fill.ZIndex = 13
+            fill.Parent = track
+            corner(fill, 3)
+
+            local knob = Instance.new("TextButton")
+            knob.Size = UDim2.new(0, 16, 0, 16)
+            knob.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+            knob.AnchorPoint = Vector2.new(0, 0.5)
+            knob.BackgroundColor3 = Color3.new(1, 1, 1)
+            knob.BorderSizePixel = 0
+            knob.ZIndex = 14
+            knob.Text = ""
+            knob.Parent = track
+            corner(knob, 8)
+
+            local dragging = false
+            local function setValue(val)
+                val = math.clamp(val, min, max)
+                local alpha = (val - min) / (max - min)
+                fill.Size = UDim2.new(alpha, 0, 1, 0)
+                knob.Position = UDim2.new(alpha, -8, 0.5, -8)
+                valLbl.Text = tostring(math.round(val * (10^decimals)) / (10^decimals)) .. suffix
+                VoltageUI.Flags[flag] = val
+                callback(val)
             end
-        end)
 
-        setState(default)
-        local obj = { Set = setState, Get = function() return state end }
-        VoltageUI.Config[flag] = obj
-        return obj
+            track.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    local pos = input.Position.X - track.AbsolutePosition.X
+                    local alpha = math.clamp(pos / track.AbsoluteSize.X, 0, 1)
+                    setValue(min + alpha * (max - min))
+                end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local pos = input.Position.X - track.AbsolutePosition.X
+                    local alpha = math.clamp(pos / track.AbsoluteSize.X, 0, 1)
+                    setValue(min + alpha * (max - min))
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+
+            setValue(default)
+            local obj = { Set = setValue, Get = function() return VoltageUI.Flags[flag] end }
+            VoltageUI.Config[flag] = obj
+            return obj
+        end
+
+        function sectionObj:Dropdown(config)
+            local flag = config.flag or "dropdown_" .. tostring(math.random(1000, 9999))
+            local items = config.items or {}
+            local default = config.default or items[1]
+            local callback = config.callback or function() end
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 38)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(0, 100, 0, 20)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Dropdown"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
+
+            local dropdown = Instance.new("TextButton")
+            dropdown.Size = UDim2.new(1, -110, 0, 30)
+            dropdown.Position = UDim2.new(0, 110, 0, 4)
+            dropdown.BackgroundColor3 = VoltageUI.Theme.Element
+            dropdown.Text = ""
+            dropdown.ZIndex = 12
+            dropdown.Parent = frame
+            corner(dropdown, 6)
+
+            local ddText = Instance.new("TextLabel")
+            ddText.Size = UDim2.new(1, -30, 1, 0)
+            ddText.Position = UDim2.new(0, 10, 0, 0)
+            ddText.BackgroundTransparency = 1
+            ddText.Text = default or "..."
+            ddText.TextColor3 = VoltageUI.Theme.Text
+            ddText.TextSize = 15
+            ddText.Font = Enum.Font.Gotham
+            ddText.TextXAlignment = Enum.TextXAlignment.Left
+            ddText.ZIndex = 13
+            ddText.Parent = dropdown
+
+            local arrow = Instance.new("TextLabel")
+            arrow.Size = UDim2.new(0, 20, 1, 0)
+            arrow.Position = UDim2.new(1, -20, 0, 0)
+            arrow.BackgroundTransparency = 1
+            arrow.Text = "⌄"
+            arrow.TextColor3 = VoltageUI.Theme.SubText
+            arrow.TextSize = 18
+            arrow.Font = Enum.Font.Gotham
+            arrow.ZIndex = 13
+            arrow.Parent = dropdown
+
+            local list = Instance.new("Frame")
+            list.Size = UDim2.new(1, 0, 0, 0)
+            list.Position = UDim2.new(0, 0, 0, 34)
+            list.BackgroundColor3 = VoltageUI.Theme.Element
+            list.Visible = false
+            list.ZIndex = 15
+            list.Parent = dropdown
+            corner(list, 6)
+            local listLayout = Instance.new("UIListLayout")
+            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            listLayout.Padding = UDim.new(0, 2)
+            listLayout.Parent = list
+
+            local selected = default
+            local function setSelected(val)
+                selected = val
+                ddText.Text = val
+                VoltageUI.Flags[flag] = val
+                callback(val)
+            end
+
+            for _, item in ipairs(items) do
+                local opt = Instance.new("TextButton")
+                opt.Size = UDim2.new(1, 0, 0, 30)
+                opt.BackgroundTransparency = 1
+                opt.Text = item
+                opt.TextColor3 = VoltageUI.Theme.Text
+                opt.TextSize = 15
+                opt.Font = Enum.Font.Gotham
+                opt.TextXAlignment = Enum.TextXAlignment.Left
+                opt.ZIndex = 16
+                opt.Parent = list
+                pad(opt, 8)
+                opt.MouseButton1Click:Connect(function()
+                    setSelected(item)
+                    list.Visible = false
+                end)
+            end
+
+            dropdown.MouseButton1Click:Connect(function()
+                list.Visible = not list.Visible
+                if list.Visible then
+                    list.Size = UDim2.new(1, 0, 0, #items * 32)
+                end
+            end)
+
+            setSelected(selected)
+            local obj = { Set = setSelected, Get = function() return VoltageUI.Flags[flag] end }
+            VoltageUI.Config[flag] = obj
+            return obj
+        end
+
+        function sectionObj:Button(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 36)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 1, 0)
+            btn.BackgroundColor3 = VoltageUI.Theme.Accent
+            btn.Text = config.name or "Button"
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.TextSize = 16
+            btn.Font = Enum.Font.GothamBold
+            btn.ZIndex = 12
+            btn.Parent = frame
+            corner(btn, 6)
+
+            btn.MouseEnter:Connect(function()
+                tween(btn, { BackgroundColor3 = Color3.fromRGB(
+                    VoltageUI.Theme.Accent.R*255 + 20,
+                    VoltageUI.Theme.Accent.G*255 + 20,
+                    VoltageUI.Theme.Accent.B*255 + 20
+                ) }, 0.15)
+            end)
+            btn.MouseLeave:Connect(function()
+                tween(btn, { BackgroundColor3 = VoltageUI.Theme.Accent }, 0.15)
+            end)
+
+            btn.MouseButton1Click:Connect(function()
+                pcall(config.callback or function() end)
+            end)
+            return { Press = function() pcall(config.callback or function() end) end }
+        end
+
+        function sectionObj:Colorpicker(config)
+            local flag = config.flag or "color_" .. tostring(math.random(1000, 9999))
+            local default = config.default or Color3.fromRGB(255, 255, 255)
+            local callback = config.callback or function() end
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 36)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -50, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Color"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
+
+            local preview = Instance.new("TextButton")
+            preview.Size = UDim2.new(0, 30, 0, 30)
+            preview.Position = UDim2.new(1, -30, 0.5, -15)
+            preview.AnchorPoint = Vector2.new(0, 0.5)
+            preview.BackgroundColor3 = default
+            preview.Text = ""
+            preview.ZIndex = 12
+            preview.Parent = frame
+            corner(preview, 6)
+
+            local currentColor = default
+            preview.MouseButton1Click:Connect(function()
+                local r = math.random(0, 255)
+                local g = math.random(0, 255)
+                local b = math.random(0, 255)
+                currentColor = Color3.fromRGB(r, g, b)
+                preview.BackgroundColor3 = currentColor
+                VoltageUI.Flags[flag] = currentColor
+                callback(currentColor)
+            end)
+
+            local obj = { Set = function(c) currentColor = c; preview.BackgroundColor3 = c; callback(c) end,
+                          Get = function() return currentColor end }
+            VoltageUI.Config[flag] = obj
+            return obj
+        end
+
+        function sectionObj:Keybind(config)
+            local flag = config.flag or "keybind_" .. tostring(math.random(1000, 9999))
+            local default = config.default or Enum.KeyCode.E
+            local callback = config.callback or function() end
+            local mode = config.mode or "Toggle"
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 36)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -120, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Keybind"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
+
+            local keyBtn = Instance.new("TextButton")
+            keyBtn.Size = UDim2.new(0, 100, 0, 30)
+            keyBtn.Position = UDim2.new(1, -100, 0.5, -15)
+            keyBtn.AnchorPoint = Vector2.new(0, 0.5)
+            keyBtn.BackgroundColor3 = VoltageUI.Theme.Element
+            keyBtn.Text = tostring(default.Name)
+            keyBtn.TextColor3 = VoltageUI.Theme.Text
+            keyBtn.TextSize = 15
+            keyBtn.Font = Enum.Font.GothamBold
+            keyBtn.ZIndex = 12            keyBtn.Parent = frame
+            corner(keyBtn, 6)
+
+            local listening = false
+            local currentKey = default
+            local function setKey(key)
+                currentKey = key
+                keyBtn.Text = key.Name
+                VoltageUI.Flags[flag] = key
+                callback(key)
+            end
+
+            keyBtn.MouseButton1Click:Connect(function()
+                if listening then return end
+                listening = true
+                keyBtn.Text = "..."
+                local conn
+                conn = UserInputService.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        setKey(input.KeyCode)
+                        listening = false
+                        conn:Disconnect()
+                    end
+                end)
+            end)
+
+            local state = false
+            UserInputService.InputBegan:Connect(function(input)
+                if input.KeyCode == currentKey then
+                    if mode == "Toggle" then
+                        state = not state
+                        callback(state)
+                    elseif mode == "Hold" then
+                        state = true
+                        callback(true)
+                    end
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.KeyCode == currentKey and mode == "Hold" then
+                    state = false
+                    callback(false)
+                end
+            end)
+
+            local obj = { Set = setKey, Get = function() return currentKey end }
+            VoltageUI.Config[flag] = obj
+            return obj
+        end
+
+        function sectionObj:Textbox(config)
+            local flag = config.flag or "textbox_" .. tostring(math.random(1000, 9999))
+            local default = config.default or ""
+            local placeholder = config.placeholder or "Enter text..."
+            local callback = config.callback or function() end
+
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 44)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.BackgroundTransparency = 1
+            label.Text = config.name or "Textbox"
+            label.TextColor3 = VoltageUI.Theme.Text
+            label.TextSize = 15
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.ZIndex = 12
+            label.Parent = frame
+
+            local box = Instance.new("TextBox")
+            box.Size = UDim2.new(1, 0, 0, 30)
+            box.Position = UDim2.new(0, 0, 0, 22)
+            box.BackgroundColor3 = VoltageUI.Theme.Element
+            box.Text = default
+            box.PlaceholderText = placeholder
+            box.TextColor3 = VoltageUI.Theme.Text
+            box.PlaceholderColor3 = VoltageUI.Theme.SubText
+            box.TextSize = 15
+            box.Font = Enum.Font.Gotham
+            box.TextXAlignment = Enum.TextXAlignment.Left
+            box.ZIndex = 12
+            box.Parent = frame
+            corner(box, 6)
+            pad(box, 8)
+
+            box.FocusLost:Connect(function()
+                VoltageUI.Flags[flag] = box.Text
+                callback(box.Text)
+            end)
+
+            local obj = { Set = function(t) box.Text = t; callback(t) end,
+                          Get = function() return box.Text end }
+            VoltageUI.Config[flag] = obj
+            return obj
+        end
+
+        function sectionObj:Label(config)
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 0, 24)
+            frame.BackgroundTransparency = 1
+            frame.ZIndex = 11
+            frame.Parent = content
+
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 1, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = config.text or "Label"
+            lbl.TextColor3 = VoltageUI.Theme.SubText
+            lbl.TextSize = 13
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.ZIndex = 12
+            lbl.Parent = frame
+
+            return { Set = function(t) lbl.Text = t end }
+        end
+
+        return sectionObj
     end
-
-    -- Остальные фабрики (Slider, Dropdown, Button, Colorpicker, Keybind, Textbox, Label) аналогичны предыдущей версии.
-    -- Для экономии места я их не копирую, они должны быть такими же.
-    -- В финальном ответе я приведу полный код.
 
     return win
 end
 
--- ===== СОЗДАНИЕ FAB ПОСЛЕ СОЗДАНИЯ ОКНА =====
--- Теперь мы создадим окно и сохраним его в глобальную переменную Window
+-- ===== СОЗДАНИЕ ОКНА =====
 Window = VoltageUI:CreateWindow({
     title = "Voltage Hub",
     width = 620,
     height = 480
 })
 
--- ===== КНОПКА ВЫЗОВА (FAB) =====
--- Создаём после того, как Window определена
+-- ===== КНОПКА ВЫЗОВА (FAB) С ИКОНКОЙ ≡ =====
 local FAB = Instance.new("TextButton")
 FAB.Size = UDim2.new(0, 56, 0, 56)
 FAB.Position = UDim2.new(0, 20, 0, 120)
 FAB.BackgroundColor3 = VoltageUI.Theme.Accent
-FAB.Text = "☰"
+FAB.Text = "≡"
 FAB.TextColor3 = Color3.new(1, 1, 1)
-FAB.TextSize = 28
+FAB.TextSize = 32
 FAB.Font = Enum.Font.GothamBold
 FAB.ZIndex = 20
 FAB.Parent = ScreenGui
@@ -514,34 +948,39 @@ fabShadow.ImageTransparency = 0.6
 fabShadow.ZIndex = -1
 fabShadow.Parent = FAB
 
--- Перетаскивание FAB
+-- Перетаскивание FAB с правильной логикой клика
 local fabDrag = false
 local fabOffset = Vector2.new()
-local fabStartPos = UDim2.new()
+local fabMoved = false  -- флаг, чтобы понять, был ли сдвиг
+
 FAB.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         fabDrag = true
+        fabMoved = false
         fabOffset = Vector2.new(input.Position.X - FAB.AbsolutePosition.X,
                                 input.Position.Y - FAB.AbsolutePosition.Y)
-        fabStartPos = FAB.Position
     end
 end)
+
 UserInputService.InputChanged:Connect(function(input)
     if fabDrag and input.UserInputType == Enum.UserInputType.MouseMovement then
         local pos = Vector2.new(input.Position.X - fabOffset.X, input.Position.Y - fabOffset.Y)
         FAB.Position = UDim2.new(0, pos.X, 0, pos.Y)
+        fabMoved = true  -- если был сдвиг, это перетаскивание, а не клик
     end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and fabDrag then
         fabDrag = false
-        if FAB.Position == fabStartPos then
+        -- Если кнопка не была перетащена — это клик, открываем меню
+        if not fabMoved then
             Window:Toggle()
         end
     end
 end)
 
--- ===== ПРИМЕР ВКЛАДОК (как в исходном коде) =====
+-- ===== ПРИМЕР ВКЛАДОК =====
 local visualTab = Window:CreateTab({
     name = "Visual",
     icon = "👁️",
@@ -577,4 +1016,4 @@ local invisibleColor = chamsSection:Colorpicker({
     callback = function(c) print("Invisible Color:", c) end
 })
 
-print("Voltage Hub загружен! Нажми на круглую кнопку для открытия меню.")
+print("Voltage Hub загружен! Нажми на ≡ для открытия меню.")
