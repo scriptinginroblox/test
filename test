@@ -1,184 +1,2327 @@
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+--[[
+    ═══════════════════════════════════════════════════════════════════════════════
+    VOLTAGE HUB UI v3.0 — Ultimate Fusion Engine
+    Based on: Ventura UI / Catalyst / Eclipse / Ather Hub / Ultimate / Eternal
+    Activation: RightShift
+    ═══════════════════════════════════════════════════════════════════════════════
+]]
 
--- GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "PulseUI"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  SERVICES
+-- ═══════════════════════════════════════════════════════════════════════════════
 
--- ===== КНОПКА =====
-local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 50, 0, 50)
-openBtn.Position = UDim2.new(0, 100, 0, 100)
-openBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-openBtn.Text = "☰"
-openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-openBtn.TextSize = 24
-openBtn.Font = Enum.Font.GothamBold
-openBtn.ZIndex = 20
-openBtn.Parent = gui
-
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 10)
-btnCorner.Parent = openBtn
-
--- ===== МЕНЮ =====
-local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, 520, 0, 430)
-menu.BackgroundColor3 = Color3.fromRGB(30, 38, 50)
-menu.Visible = false
-menu.ZIndex = 5
-menu.Parent = gui
-
-local menuCorner = Instance.new("UICorner")
-menuCorner.CornerRadius = UDim.new(0, 10)
-menuCorner.Parent = menu
-
--- позиционирование меню (справа/слева от кнопки)
-local function updateMenuPos()
-	local vp = workspace.CurrentCamera.ViewportSize
-	local btnPos = openBtn.AbsolutePosition
-
-	local rightX = btnPos.X + 60
-	local leftX = btnPos.X - 520 - 10
-	local y = btnPos.Y
-
-	if rightX + 520 < vp.X then
-		menu.Position = UDim2.new(0, rightX, 0, y)
-	else
-		menu.Position = UDim2.new(0, math.max(10, leftX), 0, y)
-	end
+local ServiceCache = {}
+local function GetService(name)
+    if not ServiceCache[name] then
+        ServiceCache[name] = cloneref and cloneref(game:GetService(name)) or game:GetService(name)
+    end
+    return ServiceCache[name]
 end
 
--- ===== ЛЕВАЯ ЧАСТЬ =====
-local left = Instance.new("Frame")
-left.Size = UDim2.new(0, 200, 1, 0)
-left.BackgroundTransparency = 1
-left.Parent = menu
+local Services = {
+    Players = GetService("Players"),
+    UserInput = GetService("UserInputService"),
+    Tween = GetService("TweenService"),
+    Run = GetService("RunService"),
+    CoreGui = GetService("CoreGui"),
+    Http = GetService("HttpService"),
+    Text = GetService("TextService"),
+    Lighting = GetService("Lighting"),
+    Gui = GetService("GuiService"),
+    ContentProvider = GetService("ContentProvider"),
+    Marketplace = GetService("MarketplaceService"),
+    StarterGui = GetService("StarterGui"),
+    Workspace = GetService("Workspace"),
+    Stats = GetService("Stats"),
+}
 
--- верх зона
-local top = Instance.new("Frame")
-top.Size = UDim2.new(1, 0, 0, 150)
-top.BackgroundTransparency = 1
-top.Parent = left
+local LocalPlayer = Services.Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local IsMobile = Services.UserInput.TouchEnabled and not Services.UserInput.KeyboardEnabled
+local IsStudio = Services.Run:IsStudio()
+local Camera = Services.Workspace.CurrentCamera
 
--- круг
-local circle = Instance.new("Frame")
-circle.Size = UDim2.new(0, 65, 0, 65)
-circle.Position = UDim2.new(0, 67.5, 0, 20)
-circle.BackgroundColor3 = Color3.fromRGB(154, 71, 226)
-circle.Parent = top
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  UTILITIES (from Eclipse, Ather Hub, Ultimate, CompKiller)
+-- ═══════════════════════════════════════════════════════════════════════════════
 
-local cCorner = Instance.new("UICorner")
-cCorner.CornerRadius = UDim.new(1, 0)
-cCorner.Parent = circle
+local Utilities = {}
 
--- текст PULSE
-local pulse = Instance.new("TextLabel")
-pulse.Size = UDim2.new(0, 180, 0, 40)
-pulse.Position = UDim2.new(0, 10, 0, 95)
-pulse.BackgroundTransparency = 1
-pulse.Text = "PULSE"
-pulse.TextColor3 = Color3.fromRGB(255,255,255)
-pulse.TextSize = 38
-pulse.Font = Enum.Font.GothamBold
-pulse.Parent = top
-
--- ===== НИЖНЯЯ ЧАСТЬ =====
-local bottom = Instance.new("Frame")
-bottom.Position = UDim2.new(0, 0, 0, 150)
-bottom.Size = UDim2.new(1, 0, 1, -150)
-bottom.BackgroundTransparency = 1
-bottom.Parent = left
-
-local function createColumn(xPos)
-	local col = Instance.new("Frame")
-	col.Size = UDim2.new(0, 85, 1, -10)
-	col.Position = UDim2.new(0, xPos, 0, 0)
-	col.BackgroundTransparency = 1
-	col.Parent = bottom
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-	layout.Padding = UDim.new(0, 6)
-	layout.Parent = col
-
-	return col
+function Utilities:Clamp(v, min, max) return math.max(min, math.min(max, v)) end
+function Utilities:Lerp(a, b, t) return a + (b - a) * t end
+function Utilities:Round(num, decimals)
+    local mult = 10 ^ (decimals or 0)
+    return math.floor(num * mult + 0.5) / mult
 end
 
-local leftCol = createColumn(6)
-local rightCol = createColumn(101)
-
-local function createBtn(parent, emoji, name)
-	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 80)
-	b.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
-	b.Text = ""
-	b.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = b
-
-	local icon = Instance.new("TextLabel")
-	icon.Size = UDim2.new(1, 0, 0, 42)
-	icon.Position = UDim2.new(0, 0, 0, 4)
-	icon.BackgroundTransparency = 1
-	icon.Text = emoji
-	icon.TextSize = 28
-	icon.Font = Enum.Font.GothamBold
-	icon.TextColor3 = Color3.fromRGB(255,255,255)
-	icon.Parent = b
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 20)
-	label.Position = UDim2.new(0, 0, 0, 48)
-	label.BackgroundTransparency = 1
-	label.Text = name
-	label.TextSize = 13
-	label.Font = Enum.Font.GothamBold
-	label.TextColor3 = Color3.fromRGB(255,255,255)
-	label.Parent = b
-
-	b.MouseEnter:Connect(function()
-		b.BackgroundColor3 = Color3.fromRGB(60, 66, 80)
-	end)
-
-	b.MouseLeave:Connect(function()
-		b.BackgroundColor3 = Color3.fromRGB(74, 81, 97)
-	end)
-
-	return b
+function Utilities:HexToRGB(hex)
+    hex = hex:gsub("#", "")
+    return Color3.fromRGB(
+        tonumber(hex:sub(1,2), 16) or 0,
+        tonumber(hex:sub(3,4), 16) or 0,
+        tonumber(hex:sub(5,6), 16) or 0
+    )
 end
 
--- левая колонка
-createBtn(leftCol, "🧩", "Misc")
-createBtn(leftCol, "👁️", "Visual")
-createBtn(leftCol, "🎯", "Aim")
+function Utilities:RGBToHex(color)
+    return string.format("#%02X%02X%02X",
+        math.floor(color.R * 255),
+        math.floor(color.G * 255),
+        math.floor(color.B * 255)
+    )
+end
 
--- правая колонка
-createBtn(rightCol, "⚙️", "Settings")
-createBtn(rightCol, "📊", "Stats")
-createBtn(rightCol, "⚔️", "Combat")
+function Utilities:IsMouseOver(frame)
+    if not frame then return false end
+    local pos = frame.AbsolutePosition
+    local size = frame.AbsoluteSize
+    return Mouse.X >= pos.X and Mouse.X <= pos.X + size.X
+        and Mouse.Y >= pos.Y and Mouse.Y <= pos.Y + size.Y
+end
 
--- ===== ОТКРЫТИЕ/ЗАКРЫТИЕ =====
-local opened = false
+function Utilities:Corner(frame, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 6)
+    c.Parent = frame
+    return c
+end
 
-openBtn.MouseButton1Click:Connect(function()
-	opened = not opened
-	menu.Visible = opened
+function Utilities:Stroke(frame, color, thickness, transparency)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(50, 50, 50)
+    s.Thickness = thickness or 1
+    s.Transparency = transparency or 0
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = frame
+    return s
+end
 
-	if opened then
-		updateMenuPos()
-	end
-end)
+function Utilities:Padding(frame, top, right, bottom, left)
+    local p = Instance.new("UIPadding")
+    p.PaddingTop = UDim.new(0, top or 0)
+    p.PaddingRight = UDim.new(0, right or 0)
+    p.PaddingBottom = UDim.new(0, bottom or 0)
+    p.PaddingLeft = UDim.new(0, left or 0)
+    p.Parent = frame
+    return p
+end
 
-openBtn:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-	if menu.Visible then
-		updateMenuPos()
-	end
-end)
+function Utilities:ListLayout(frame, padding, direction, alignment)
+    local l = Instance.new("UIListLayout")
+    l.Padding = UDim.new(0, padding or 5)
+    l.SortOrder = Enum.SortOrder.LayoutOrder
+    if direction then l.FillDirection = direction end
+    if alignment then l.HorizontalAlignment = alignment end
+    l.Parent = frame
+    return l
+end
+
+function Utilities:GridLayout(frame, cellSize, padding)
+    local g = Instance.new("UIGridLayout")
+    g.CellSize = cellSize or UDim2.fromOffset(100, 30)
+    g.CellPadding = padding or UDim2.fromOffset(5, 5)
+    g.SortOrder = Enum.SortOrder.LayoutOrder
+    g.Parent = frame
+    return g
+end
+
+function Utilities:Tween(obj, props, time, style, dir)
+    local t = Services.Tween:Create(obj,
+        TweenInfo.new(time or 0.2, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out),
+        props
+    )
+    t:Play()
+    return t
+end
+
+function Utilities:TweenInfo(time, style, dir, repeats, reverse, delay)
+    return TweenInfo.new(
+        time or 0.2,
+        style or Enum.EasingStyle.Quad,
+        dir or Enum.EasingDirection.Out,
+        repeats or 0,
+        reverse or false,
+        delay or 0
+    )
+end
+
+function Utilities:GetTweenProperties(obj)
+    if obj:IsA("Frame") then
+        return {"BackgroundTransparency"}
+    elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+        return {"TextTransparency", "BackgroundTransparency"}
+    elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+        return {"BackgroundTransparency", "ImageTransparency"}
+    elseif obj:IsA("ScrollingFrame") then
+        return {"BackgroundTransparency", "ScrollBarImageTransparency"}
+    elseif obj:IsA("TextBox") then
+        return {"TextTransparency", "BackgroundTransparency"}
+    elseif obj:IsA("UIStroke") then
+        return {"Transparency"}
+    end
+    return {}
+end
+
+function Utilities:Fade(obj, property, visible, speed)
+    local old = obj[property]
+    obj[property] = visible and 1 or old
+    local t = Utilities:Tween(obj, {[property] = visible and old or 1}, speed or 0.2)
+    t.Completed:Connect(function()
+        if not visible then obj[property] = old end
+    end)
+    return t
+end
+
+function Utilities:FadeDescendants(frame, visible, speed, callback)
+    if visible then frame.Visible = true end
+    local children = frame:GetDescendants()
+    table.insert(children, frame)
+    local lastTween
+    for _, child in ipairs(children) do
+        local props = Utilities:GetTweenProperties(child)
+        for _, prop in ipairs(props) do
+            lastTween = Utilities:Fade(child, prop, visible, speed)
+        end
+    end
+    if lastTween then
+        lastTween.Completed:Connect(function()
+            frame.Visible = visible
+            if callback then callback() end
+        end)
+    else
+        frame.Visible = visible
+        if callback then callback() end
+    end
+end
+
+function Utilities:MakeDraggable(frame)
+    local dragging = false
+    local dragStart, startPos
+    
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    
+    Services.UserInput.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    Services.UserInput.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+function Utilities:MakeResizeable(frame, minSize)
+    local resizing = false
+    local startMouse, startSize
+    
+    local handle = Instance.new("TextButton")
+    handle.Size = UDim2.new(0, 12, 0, 12)
+    handle.Position = UDim2.new(1, -12, 1, -12)
+    handle.AnchorPoint = Vector2.new(1, 1)
+    handle.BackgroundTransparency = 1
+    handle.Text = ""
+    handle.AutoButtonColor = false
+    handle.Parent = frame
+    
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            startMouse = input.Position
+            startSize = frame.Size
+        end
+    end)
+    
+    Services.UserInput.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - startMouse
+            local newW = math.max(minSize and minSize.X or 200, startSize.X.Offset + delta.X)
+            local newH = math.max(minSize and minSize.Y or 150, startSize.Y.Offset + delta.Y)
+            frame.Size = UDim2.new(0, newW, 0, newH)
+        end
+    end)
+    
+    Services.UserInput.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = false
+        end
+    end)
+end
+
+function Utilities:SafeCall(func, ...)
+    local args = {...}
+    local success, result = pcall(func, table.unpack(args))
+    if not success then
+        warn("[VoltageHub] Error: " .. tostring(result))
+    end
+    return success, result
+end
+
+function Utilities:Thread(func)
+    local thread = coroutine.create(func)
+    coroutine.wrap(function() coroutine.resume(thread) end)()
+    return thread
+end
+
+function Utilities:Connect(signal, callback)
+    return signal:Connect(callback)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  SVG ICONS (from CompKiller 13.txt, Ather Hub 8.txt, Avilon 4.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+local Icons = {
+    ["home"] = "rbxassetid://6031093026",
+    ["scripts"] = "rbxassetid://6031093364",
+    ["settings"] = "rbxassetid://6031093762",
+    ["visuals"] = "rbxassetid://6031094160",
+    ["stats"] = "rbxassetid://6031094518",
+    ["aim"] = "rbxassetid://6031094916",
+    ["combat"] = "rbxassetid://6031095304",
+    ["logo"] = "rbxassetid://6031095662",
+    ["folder"] = "rbxassetid://6031096040",
+    ["plus"] = "rbxassetid://6031096410",
+    ["minus"] = "rbxassetid://6031096782",
+    ["close"] = "rbxassetid://6031097148",
+    ["minimize"] = "rbxassetid://6031097510",
+    ["maximize"] = "rbxassetid://6031097870",
+    ["search"] = "rbxassetid://6031098228",
+    ["check"] = "rbxassetid://6031098586",
+    ["warning"] = "rbxassetid://6031098944",
+    ["info"] = "rbxassetid://6031099304",
+    ["error"] = "rbxassetid://6031099660",
+    ["success"] = "rbxassetid://6031100018",
+    
+    ["lucide:home"] = "rbxassetid://10723407389",
+    ["lucide:settings"] = "rbxassetid://10734950309",
+    ["lucide:folder"] = "rbxassetid://10723387563",
+    ["lucide:users"] = "rbxassetid://10747373426",
+    ["lucide:shield"] = "rbxassetid://10734951847",
+    ["lucide:sword"] = "rbxassetid://10734975486",
+    ["lucide:eye"] = "rbxassetid://10723346959",
+    ["lucide:zap"] = "rbxassetid://130551565616516",
+    ["lucide:heart"] = "rbxassetid://10723406885",
+    ["lucide:star"] = "rbxassetid://10734966248",
+    ["lucide:clock"] = "rbxassetid://10709805144",
+    ["lucide:calendar"] = "rbxassetid://10709789505",
+    ["lucide:user"] = "rbxassetid://10747373176",
+    ["lucide:trash"] = "rbxassetid://10747362393",
+    ["lucide:download"] = "rbxassetid://10723344270",
+    ["lucide:upload"] = "rbxassetid://10747366434",
+    ["lucide:search"] = "rbxassetid://10734943674",
+    ["lucide:plus"] = "rbxassetid://10734924532",
+    ["lucide:minus"] = "rbxassetid://10734896206",
+    ["lucide:x"] = "rbxassetid://10747384394",
+    ["lucide:check"] = "rbxassetid://10709790644",
+    ["lucide:chevron-down"] = "rbxassetid://10709790948",
+    ["lucide:chevron-right"] = "rbxassetid://10709791437",
+    ["lucide:chevron-left"] = "rbxassetid://10709791281",
+    ["lucide:chevron-up"] = "rbxassetid://10709791523",
+    ["lucide:menu"] = "rbxassetid://10734887784",
+    ["lucide:more-vertical"] = "rbxassetid://10734897387",
+    ["lucide:more-horizontal"] = "rbxassetid://10734897250",
+    ["lucide:copy"] = "rbxassetid://10709812159",
+    ["lucide:paste"] = "rbxassetid://10747366120",
+    ["lucide:save"] = "rbxassetid://10734941499",
+    ["lucide:refresh"] = "rbxassetid://10734933222",
+    ["lucide:lock"] = "rbxassetid://10723434711",
+    ["lucide:unlock"] = "rbxassetid://10747366027",
+    ["lucide:key"] = "rbxassetid://10723416652",
+    ["lucide:globe"] = "rbxassetid://10709769286",
+    ["lucide:target"] = "rbxassetid://10734977012",
+    ["lucide:compass"] = "rbxassetid://10709811445",
+    ["lucide:map-pin"] = "rbxassetid://10734886004",
+    ["lucide:bell"] = "rbxassetid://10709775704",
+    ["lucide:bell-off"] = "rbxassetid://10709775320",
+    ["lucide:message-circle"] = "rbxassetid://10734888000",
+    ["lucide:message-square"] = "rbxassetid://10734888228",
+    ["lucide:mail"] = "rbxassetid://10734885430",
+    ["lucide:mail-open"] = "rbxassetid://10723435342",
+    ["lucide:inbox"] = "rbxassetid://10723415335",
+    ["lucide:send"] = "rbxassetid://10734943902",
+    ["lucide:reply"] = "rbxassetid://10734934252",
+    ["lucide:share"] = "rbxassetid://10734950813",
+    ["lucide:link"] = "rbxassetid://10723426722",
+    ["lucide:external-link"] = "rbxassetid://10723346684",
+    ["lucide:info"] = "rbxassetid://10723415903",
+    ["lucide:alert-triangle"] = "rbxassetid://10709753149",
+    ["lucide:alert-circle"] = "rbxassetid://10709752996",
+    ["lucide:help-circle"] = "rbxassetid://10723406988",
+    ["lucide:loader"] = "rbxassetid://10723434070",
+    ["lucide:loader-2"] = "rbxassetid://10723433935",
+    ["lucide:bot"] = "rbxassetid://10709782230",
+    ["lucide:brain"] = "rbxassetid://10734908827",
+    ["lucide:chip"] = "rbxassetid://10734909155",
+    ["lucide:cpu"] = "rbxassetid://10709813383",
+    ["lucide:database"] = "rbxassetid://10709818996",
+    ["lucide:server"] = "rbxassetid://10734949856",
+    ["lucide:terminal"] = "rbxassetid://10734982144",
+    ["lucide:code"] = "rbxassetid://10709810463",
+    ["lucide:git-branch"] = "rbxassetid://10723396676",
+    ["lucide:git-commit"] = "rbxassetid://10723396812",
+    ["lucide:git-merge"] = "rbxassetid://10723397165",
+    ["lucide:git-pull-request"] = "rbxassetid://10723397431",
+    ["lucide:github"] = "rbxassetid://10747365003",
+    ["lucide:discord"] = "rbxassetid://10747366035",
+    ["lucide:twitter"] = "rbxassetid://10747365007",
+    ["lucide:youtube"] = "rbxassetid://10747365012",
+    ["lucide:twitch"] = "rbxassetid://10747365015",
+    
+    ["fa:check"] = "rbxassetid://129443092324752",
+    ["fa:times"] = "rbxassetid://10747384394",
+    ["fa:home"] = "rbxassetid://86540166012974",
+    ["fa:user"] = "rbxassetid://98376828270066",
+    ["fa:users"] = "rbxassetid://10747373426",
+    ["fa:cog"] = "rbxassetid://137945854328407",
+    ["fa:gear"] = "rbxassetid://137945854328407",
+    ["fa:trash"] = "rbxassetid://82859108629080",
+    ["fa:folder"] = "rbxassetid://131374292202389",
+    ["fa:folder-open"] = "rbxassetid://78238714442180",
+    ["fa:download"] = "rbxassetid://122321311031549",
+    ["fa:upload"] = "rbxassetid://10747366434",
+    ["fa:search"] = "rbxassetid://74387839235930",
+    ["fa:plus"] = "rbxassetid://133137619535544",
+    ["fa:minus"] = "rbxassetid://118026365011536",
+    ["fa:chevron-down"] = "rbxassetid://109535175596957",
+    ["fa:chevron-right"] = "rbxassetid://105723602996553",
+    ["fa:chevron-left"] = "rbxassetid://129113930144228",
+    ["fa:chevron-up"] = "rbxassetid://117264500851637",
+    ["fa:bars"] = "rbxassetid://127661324755454",
+    ["fa:ellipsis-v"] = "rbxassetid://10734939704",
+    ["fa:ellipsis-h"] = "rbxassetid://10734939597",
+    ["fa:copy"] = "rbxassetid://76996819137437",
+    ["fa:paste"] = "rbxassetid://88846256867074",
+    ["fa:save"] = "rbxassetid://101374426361499",
+    ["fa:sync"] = "rbxassetid://109882153776270",
+    ["fa:lock"] = "rbxassetid://80031239225283",
+    ["fa:unlock"] = "rbxassetid://99060354229117",
+    ["fa:key"] = "rbxassetid://109882153776270",
+    ["fa:globe"] = "rbxassetid://102861769355196",
+    ["fa:bullseye"] = "rbxassetid://83080500555400",
+    ["fa:compass"] = "rbxassetid://10734903730",
+    ["fa:map-marker"] = "rbxassetid://10734886004",
+    ["fa:bell"] = "rbxassetid://109971903438934",
+    ["fa:bell-slash"] = "rbxassetid://101758939103378",
+    ["fa:envelope"] = "rbxassetid://136184483524922",
+    ["fa:envelope-open"] = "rbxassetid://132492127839357",
+    ["fa:inbox"] = "rbxassetid://10734912127",
+    ["fa:paper-plane"] = "rbxassetid://10734943902",
+    ["fa:reply"] = "rbxassetid://10747374139",
+    ["fa:share"] = "rbxassetid://10747365017",
+    ["fa:link"] = "rbxassetid://10734936805",
+    ["fa:external-link"] = "rbxassetid://101883941536459",
+    ["fa:info"] = "rbxassetid://113157514619684",
+    ["fa:warning"] = "rbxassetid://10747373649",
+    ["fa:exclamation"] = "rbxassetid://125718656366676",
+    ["fa:question"] = "rbxassetid://10747374141",
+    ["fa:spinner"] = "rbxassetid://10734933056",
+    ["fa:robot"] = "rbxassetid://134497060038109",
+    ["fa:microchip"] = "rbxassetid://10734911836",
+    ["fa:database"] = "rbxassetid://109882554524389",
+    ["fa:server"] = "rbxassetid://10747374263",
+    ["fa:terminal"] = "rbxassetid://10747374143",
+    ["fa:code"] = "rbxassetid://91882036126433",
+    ["fa:github"] = "rbxassetid://123783733365919",
+    ["fa:discord"] = "rbxassetid://75871011309830",
+    ["fa:twitter"] = "rbxassetid://88791703276842",
+    ["fa:youtube"] = "rbxassetid://123663668456341",
+    ["fa:twitch"] = "rbxassetid://71383308134888",
+}
+
+function VoltageHub:GetIcon(name)
+    return Icons[name] or name
+end
+
+function VoltageHub:CreateIcon(name, size, color)
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Size = size or UDim2.fromOffset(20, 20)
+    
+    local image = Instance.new("ImageLabel")
+    image.BackgroundTransparency = 1
+    image.Size = UDim2.new(1, 0, 1, 0)
+    image.Image = self:GetIcon(name)
+    image.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    image.Parent = frame
+    
+    return frame
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  THEMES (from Eclipse 2.txt, Eternal 11.txt, Ventura 9.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+local Themes = {
+    ["Default"] = {
+        Background = Color3.fromRGB(12, 12, 14),
+        Sidebar = Color3.fromRGB(15, 15, 18),
+        Surface = Color3.fromRGB(20, 20, 24),
+        SurfaceHover = Color3.fromRGB(28, 28, 34),
+        Accent = Color3.fromRGB(100, 80, 255),
+        AccentGradient = Color3.fromRGB(200, 80, 200),
+        Text = Color3.fromRGB(235, 235, 245),
+        TextDim = Color3.fromRGB(160, 160, 175),
+        TextDisabled = Color3.fromRGB(80, 80, 90),
+        Border = Color3.fromRGB(40, 40, 48),
+        BorderHover = Color3.fromRGB(60, 60, 72),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(16, 16, 18),
+        Accent2 = Color3.fromRGB(150, 100, 255),
+        Accent3 = Color3.fromRGB(200, 120, 255),
+    },
+    ["Dark"] = {
+        Background = Color3.fromRGB(10, 10, 12),
+        Sidebar = Color3.fromRGB(14, 14, 16),
+        Surface = Color3.fromRGB(18, 18, 22),
+        SurfaceHover = Color3.fromRGB(26, 26, 32),
+        Accent = Color3.fromRGB(120, 90, 255),
+        AccentGradient = Color3.fromRGB(220, 70, 200),
+        Text = Color3.fromRGB(240, 240, 248),
+        TextDim = Color3.fromRGB(150, 150, 165),
+        TextDisabled = Color3.fromRGB(70, 70, 80),
+        Border = Color3.fromRGB(35, 35, 42),
+        BorderHover = Color3.fromRGB(55, 55, 65),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(14, 14, 16),
+        Accent2 = Color3.fromRGB(160, 100, 255),
+        Accent3 = Color3.fromRGB(210, 130, 255),
+    },
+    ["Purple"] = {
+        Background = Color3.fromRGB(14, 8, 20),
+        Sidebar = Color3.fromRGB(18, 10, 26),
+        Surface = Color3.fromRGB(22, 14, 32),
+        SurfaceHover = Color3.fromRGB(30, 20, 42),
+        Accent = Color3.fromRGB(160, 80, 255),
+        AccentGradient = Color3.fromRGB(255, 80, 220),
+        Text = Color3.fromRGB(240, 235, 248),
+        TextDim = Color3.fromRGB(180, 165, 200),
+        TextDisabled = Color3.fromRGB(90, 75, 110),
+        Border = Color3.fromRGB(45, 30, 60),
+        BorderHover = Color3.fromRGB(65, 45, 85),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(16, 10, 22),
+        Accent2 = Color3.fromRGB(200, 100, 255),
+        Accent3 = Color3.fromRGB(255, 130, 220),
+    },
+    ["Ocean"] = {
+        Background = Color3.fromRGB(8, 16, 24),
+        Sidebar = Color3.fromRGB(10, 20, 30),
+        Surface = Color3.fromRGB(14, 26, 38),
+        SurfaceHover = Color3.fromRGB(20, 34, 48),
+        Accent = Color3.fromRGB(80, 180, 255),
+        AccentGradient = Color3.fromRGB(80, 255, 220),
+        Text = Color3.fromRGB(235, 245, 255),
+        TextDim = Color3.fromRGB(160, 190, 210),
+        TextDisabled = Color3.fromRGB(70, 100, 120),
+        Border = Color3.fromRGB(30, 50, 70),
+        BorderHover = Color3.fromRGB(50, 75, 100),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(10, 18, 26),
+        Accent2 = Color3.fromRGB(100, 200, 255),
+        Accent3 = Color3.fromRGB(150, 255, 230),
+    },
+    ["Crimson"] = {
+        Background = Color3.fromRGB(20, 8, 10),
+        Sidebar = Color3.fromRGB(26, 10, 14),
+        Surface = Color3.fromRGB(32, 14, 18),
+        SurfaceHover = Color3.fromRGB(42, 20, 26),
+        Accent = Color3.fromRGB(255, 70, 80),
+        AccentGradient = Color3.fromRGB(255, 150, 50),
+        Text = Color3.fromRGB(248, 235, 240),
+        TextDim = Color3.fromRGB(200, 165, 175),
+        TextDisabled = Color3.fromRGB(110, 75, 85),
+        Border = Color3.fromRGB(60, 30, 38),
+        BorderHover = Color3.fromRGB(85, 45, 55),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(22, 10, 12),
+        Accent2 = Color3.fromRGB(255, 100, 100),
+        Accent3 = Color3.fromRGB(255, 180, 80),
+    },
+    ["Neon"] = {
+        Background = Color3.fromRGB(8, 8, 12),
+        Sidebar = Color3.fromRGB(12, 12, 16),
+        Surface = Color3.fromRGB(16, 16, 22),
+        SurfaceHover = Color3.fromRGB(24, 24, 34),
+        Accent = Color3.fromRGB(0, 255, 180),
+        AccentGradient = Color3.fromRGB(0, 180, 255),
+        Text = Color3.fromRGB(240, 255, 250),
+        TextDim = Color3.fromRGB(150, 200, 190),
+        TextDisabled = Color3.fromRGB(60, 100, 90),
+        Border = Color3.fromRGB(30, 50, 45),
+        BorderHover = Color3.fromRGB(50, 80, 70),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(10, 10, 14),
+        Accent2 = Color3.fromRGB(50, 255, 200),
+        Accent3 = Color3.fromRGB(50, 200, 255),
+    },
+    ["Material You"] = {
+        Background = Color3.fromRGB(16, 18, 26),
+        Sidebar = Color3.fromRGB(20, 22, 32),
+        Surface = Color3.fromRGB(24, 27, 38),
+        SurfaceHover = Color3.fromRGB(32, 36, 52),
+        Accent = Color3.fromRGB(130, 177, 255),
+        AccentGradient = Color3.fromRGB(200, 150, 255),
+        Text = Color3.fromRGB(225, 228, 240),
+        TextDim = Color3.fromRGB(138, 143, 163),
+        TextDisabled = Color3.fromRGB(60, 65, 85),
+        Border = Color3.fromRGB(45, 52, 78),
+        BorderHover = Color3.fromRGB(70, 80, 110),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(18, 20, 28),
+        Accent2 = Color3.fromRGB(160, 200, 255),
+        Accent3 = Color3.fromRGB(220, 180, 255),
+    },
+    ["Glass"] = {
+        Background = Color3.fromRGB(20, 22, 28),
+        Sidebar = Color3.fromRGB(24, 26, 32),
+        Surface = Color3.fromRGB(28, 30, 38),
+        SurfaceHover = Color3.fromRGB(36, 38, 48),
+        Accent = Color3.fromRGB(150, 200, 255),
+        AccentGradient = Color3.fromRGB(200, 150, 255),
+        Text = Color3.fromRGB(240, 245, 255),
+        TextDim = Color3.fromRGB(180, 190, 210),
+        TextDisabled = Color3.fromRGB(90, 100, 120),
+        Border = Color3.fromRGB(55, 60, 75),
+        BorderHover = Color3.fromRGB(80, 85, 105),
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Topbar = Color3.fromRGB(22, 24, 30),
+        Accent2 = Color3.fromRGB(180, 220, 255),
+        Accent3 = Color3.fromRGB(220, 180, 255),
+    },
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  MAIN ENGINE
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+local VoltageHub = {
+    Version = "3.0",
+    Keybind = Enum.KeyCode.RightShift,
+    IsOpen = false,
+    Windows = {},
+    Flags = {},
+    Elements = {},
+    Connections = {},
+    Threads = {},
+    OpenFrames = {},
+    Notifications = {},
+    CurrentTheme = "Default",
+    Theme = Themes.Default,
+    Font = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium, Enum.FontStyle.Normal),
+    FontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal),
+    FontLight = Font.new("rbxassetid://12187365364", Enum.FontWeight.Light, Enum.FontStyle.Normal),
+    _gui = nil,
+    _main = nil,
+    _watermark = nil,
+    _keyList = nil,
+    _configFolder = "VoltageHub",
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  CONFIG SYSTEM (from Eclipse 2.txt, Ultimate 10.txt, Eternal 11.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:GetConfig()
+    local config = {}
+    for key, value in pairs(self.Flags) do
+        if type(value) == "Color3" then
+            config[key] = {Color = Utilities:RGBToHex(value)}
+        elseif type(value) == "table" and value.Key then
+            config[key] = {Key = value.Key, Mode = value.Mode}
+        else
+            config[key] = value
+        end
+    end
+    return Services.Http:JSONEncode(config)
+end
+
+function VoltageHub:LoadConfig(data)
+    local success, decoded = pcall(Services.Http.JSONDecode, Services.Http, data)
+    if not success then return false end
+    for key, value in pairs(decoded) do
+        if type(value) == "table" and value.Color then
+            self.Flags[key] = Utilities:HexToRGB(value.Color)
+        elseif type(value) == "table" and value.Key then
+            self.Flags[key] = {Key = value.Key, Mode = value.Mode}
+        else
+            self.Flags[key] = value
+        end
+    end
+    return true
+end
+
+function VoltageHub:SaveConfig(name)
+    if not isfolder(self._configFolder) then
+        makefolder(self._configFolder)
+    end
+    writefile(self._configFolder .. "/" .. name .. ".json", self:GetConfig())
+end
+
+function VoltageHub:LoadConfigFile(name)
+    if isfile(self._configFolder .. "/" .. name .. ".json") then
+        return self:LoadConfig(readfile(self._configFolder .. "/" .. name .. ".json"))
+    end
+    return false
+end
+
+function VoltageHub:GetConfigs()
+    local files = {}
+    if isfolder(self._configFolder) then
+        for _, file in ipairs(listfiles(self._configFolder)) do
+            local name = file:match("([^/\\]+)%.json$")
+            if name then table.insert(files, name) end
+        end
+    end
+    return files
+end
+
+function VoltageHub:DeleteConfig(name)
+    if isfile(self._configFolder .. "/" .. name .. ".json") then
+        delfile(self._configFolder .. "/" .. name .. ".json")
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  THEME MANAGEMENT
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:SetTheme(name)
+    if Themes[name] then
+        self.Theme = Themes[name]
+        self.CurrentTheme = name
+        self:RefreshTheme()
+    end
+end
+
+function VoltageHub:RefreshTheme()
+    for _, elem in ipairs(self.Elements) do
+        if elem.UpdateTheme then
+            elem:UpdateTheme(self.Theme)
+        end
+    end
+    if self._watermark then
+        self._watermark:UpdateTheme(self.Theme)
+    end
+end
+
+function VoltageHub:GetTheme()
+    return self.Theme
+end
+
+function VoltageHub:GetThemes()
+    local names = {}
+    for name, _ in pairs(Themes) do
+        table.insert(names, name)
+    end
+    return names
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  CONNECTIONS & THREADS
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:Connect(signal, callback)
+    local conn = signal:Connect(callback)
+    table.insert(self.Connections, conn)
+    return conn
+end
+
+function VoltageHub:Thread(func)
+    local thread = coroutine.create(func)
+    coroutine.wrap(function() coroutine.resume(thread) end)()
+    table.insert(self.Threads, thread)
+    return thread
+end
+
+function VoltageHub:Unload()
+    for _, conn in ipairs(self.Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    for _, thread in ipairs(self.Threads) do
+        pcall(function() coroutine.close(thread) end)
+    end
+    if self._gui then
+        pcall(function() self._gui:Destroy() end)
+    end
+    self._gui = nil
+    self._main = nil
+    self._watermark = nil
+    self._keyList = nil
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  NOTIFICATION SYSTEM (from Eclipse 2.txt, Neverlose 12.txt, Herby 5.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:Notify(config)
+    config = config or {}
+    local title = config.Title or "Notification"
+    local text = config.Text or ""
+    local duration = config.Duration or 3
+    local type = config.Type or "info"
+    
+    local colors = {
+        info = {bg = self.Theme.Surface, accent = self.Theme.Accent},
+        success = {bg = self.Theme.Surface, accent = Color3.fromRGB(60, 200, 100)},
+        warning = {bg = self.Theme.Surface, accent = Color3.fromRGB(230, 180, 0)},
+        error = {bg = self.Theme.Surface, accent = Color3.fromRGB(220, 60, 60)},
+    }
+    
+    local color = colors[type] or colors.info
+    
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(0, 300, 0, 60)
+    notif.Position = UDim2.new(1, 20, 1, -80)
+    notif.AnchorPoint = Vector2.new(1, 0)
+    notif.BackgroundColor3 = color.bg
+    notif.BackgroundTransparency = 1
+    notif.ClipsDescendants = true
+    notif.ZIndex = 100
+    notif.Parent = self._gui
+    
+    Utilities:Corner(notif, 8)
+    Utilities:Stroke(notif, self.Theme.Border, 1, 0.5)
+    
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(0, 4, 1, -12)
+    accent.Position = UDim2.new(0, 6, 0, 6)
+    accent.BackgroundColor3 = color.accent
+    accent.BorderSizePixel = 0
+    accent.Parent = notif
+    
+    Utilities:Corner(accent, 2)
+    
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -20, 0, 20)
+    titleLabel.Position = UDim2.new(0, 18, 0, 8)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = self.Theme.Text
+    titleLabel.FontFace = self.FontBold
+    titleLabel.TextSize = 14
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = notif
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -20, 0, 24)
+    textLabel.Position = UDim2.new(0, 18, 0, 30)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = self.Theme.TextDim
+    textLabel.FontFace = self.Font
+    textLabel.TextSize = 12
+    textLabel.TextWrapped = true
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Parent = notif
+    
+    local progress = Instance.new("Frame")
+    progress.Size = UDim2.new(1, 0, 0, 2)
+    progress.Position = UDim2.new(0, 0, 1, -2)
+    progress.BackgroundColor3 = color.accent
+    progress.BorderSizePixel = 0
+    progress.Parent = notif
+    
+    notif.Position = UDim2.new(1, 20, 1, -80)
+    Utilities:Tween(notif, {
+        Position = UDim2.new(1, -320, 1, -80),
+        BackgroundTransparency = 0.05
+    }, 0.3)
+    
+    Utilities:Tween(progress, {Size = UDim2.new(0, 0, 0, 2)}, duration)
+    
+    task.delay(duration, function()
+        Utilities:Tween(notif, {
+            Position = UDim2.new(1, 20, 1, -80),
+            BackgroundTransparency = 1
+        }, 0.3)
+        task.wait(0.3)
+        notif:Destroy()
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  WATERMARK (from Eclipse 2.txt, Ventura 9.txt, Herby 5.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:CreateWatermark(config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 0, 0, 0)
+    frame.Position = UDim2.new(0, 15, 0, 15)
+    frame.BackgroundColor3 = self.Theme.Surface
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.AutomaticSize = Enum.AutomaticSize.XY
+    frame.Parent = self._gui
+    
+    Utilities:Corner(frame, 6)
+    Utilities:Stroke(frame, self.Theme.Border, 1, 0.5)
+    
+    Utilities:Padding(frame, 6, 10, 6, 10)
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 0, 0, 16)
+    label.BackgroundTransparency = 1
+    label.Text = config.Text or "Voltage Hub v3.0"
+    label.TextColor3 = self.Theme.TextDim
+    label.FontFace = self.Font
+    label.TextSize = 12
+    label.AutomaticSize = Enum.AutomaticSize.XY
+    label.Parent = frame
+    
+    Utilities:MakeDraggable(frame)
+    
+    self._watermark = {
+        Frame = frame,
+        Label = label,
+        UpdateTheme = function(theme)
+            frame.BackgroundColor3 = theme.Surface
+            label.TextColor3 = theme.TextDim
+        end
+    }
+    
+    return self._watermark
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  KEYBIND LIST (from Eclipse 2.txt, CompKiller 13.txt)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:CreateKeybindList(config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 200, 0, 0)
+    frame.Position = UDim2.new(0, 15, 0.5, 0)
+    frame.BackgroundColor3 = self.Theme.Surface
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.Parent = self._gui
+    
+    Utilities:Corner(frame, 6)
+    Utilities:Stroke(frame, self.Theme.Border, 1, 0.5)
+    
+    Utilities:Padding(frame, 8, 8, 8, 8)
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 20)
+    title.BackgroundTransparency = 1
+    title.Text = config.Title or "Keybinds"
+    title.TextColor3 = self.Theme.Text
+    title.FontFace = self.FontBold
+    title.TextSize = 14
+    title.Parent = frame
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.Position = UDim2.new(0, 0, 0, 25)
+    content.BackgroundTransparency = 1
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.Parent = frame
+    
+    Utilities:ListLayout(content, 4)
+    
+    Utilities:MakeDraggable(frame)
+    
+    self._keyList = {
+        Frame = frame,
+        Content = content,
+        Items = {},
+        Add = function(self, name, key)
+            local item = Instance.new("Frame")
+            item.Size = UDim2.new(1, 0, 0, 20)
+            item.BackgroundTransparency = 1
+            item.Parent = content
+            
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = name or "Keybind"
+            nameLabel.TextColor3 = self.Theme.Text
+            nameLabel.FontFace = self.Font
+            nameLabel.TextSize = 12
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.Parent = item
+            
+            local keyLabel = Instance.new("TextLabel")
+            keyLabel.Size = UDim2.new(0.3, 0, 1, 0)
+            keyLabel.Position = UDim2.new(0.7, 0, 0, 0)
+            keyLabel.BackgroundTransparency = 1
+            keyLabel.Text = key or "None"
+            keyLabel.TextColor3 = self.Theme.Accent
+            keyLabel.FontFace = self.FontBold
+            keyLabel.TextSize = 12
+            keyLabel.TextXAlignment = Enum.TextXAlignment.Right
+            keyLabel.Parent = item
+            
+            table.insert(self._keyList.Items, {Item = item, NameLabel = nameLabel, KeyLabel = keyLabel})
+            
+            return {
+                SetName = function(text) nameLabel.Text = text end,
+                SetKey = function(text) keyLabel.Text = text end,
+                UpdateTheme = function(theme)
+                    nameLabel.TextColor3 = theme.Text
+                    keyLabel.TextColor3 = theme.Accent
+                end
+            }
+        end,
+        UpdateTheme = function(theme)
+            frame.BackgroundColor3 = theme.Surface
+            title.TextColor3 = theme.Text
+            for _, item in ipairs(self._keyList.Items) do
+                item.NameLabel.TextColor3 = theme.Text
+                item.KeyLabel.TextColor3 = theme.Accent
+            end
+        end
+    }
+    
+    return self._keyList
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  COMPONENTS
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  TOGGLE (from Eclipse 2.txt, Ultimate 10.txt, Ventura 9.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateToggle(parent, config)
+    config = config or {}
+    local state = config.Default or false
+    local callback = config.Callback or function() end
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Toggle"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local toggleBtn = Instance.new("Frame")
+    toggleBtn.Size = UDim2.new(0, 40, 0, 22)
+    toggleBtn.Position = UDim2.new(0.85, 0, 0.5, -11)
+    toggleBtn.BackgroundColor3 = self.Theme.Surface
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Parent = frame
+    
+    Utilities:Corner(toggleBtn, 11)
+    
+    local toggleCircle = Instance.new("Frame")
+    toggleCircle.Size = UDim2.new(0, 18, 0, 18)
+    toggleCircle.Position = UDim2.new(0, 2, 0.5, -9)
+    toggleCircle.BackgroundColor3 = self.Theme.TextDim
+    toggleCircle.BorderSizePixel = 0
+    toggleCircle.Parent = toggleBtn
+    
+    Utilities:Corner(toggleCircle, 9)
+    
+    local function setState(newState)
+        state = newState
+        if state then
+            Utilities:Tween(toggleBtn, {BackgroundColor3 = self.Theme.Accent}, 0.2)
+            Utilities:Tween(toggleCircle, {Position = UDim2.new(0, 20, 0.5, -9)}, 0.2)
+        else
+            Utilities:Tween(toggleBtn, {BackgroundColor3 = self.Theme.Surface}, 0.2)
+            Utilities:Tween(toggleCircle, {Position = UDim2.new(0, 2, 0.5, -9)}, 0.2)
+        end
+        callback(state)
+    end
+    
+    setState(state)
+    
+    local hitBtn = Instance.new("TextButton")
+    hitBtn.Size = UDim2.new(1, 0, 1, 0)
+    hitBtn.BackgroundTransparency = 1
+    hitBtn.Text = ""
+    hitBtn.AutoButtonColor = false
+    hitBtn.Parent = toggleBtn
+    
+    hitBtn.MouseButton1Click:Connect(function()
+        setState(not state)
+    end)
+    
+    return {
+        Set = setState,
+        Get = function() return state end,
+        Toggle = function() setState(not state) end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+            if state then
+                toggleBtn.BackgroundColor3 = theme.Accent
+            else
+                toggleBtn.BackgroundColor3 = theme.Surface
+            end
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  SLIDER (from Ather Hub 8.txt, Ultimate 10.txt, Catalyst 3.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateSlider(parent, config)
+    config = config or {}
+    local min = config.Min or 0
+    local max = config.Max or 100
+    local value = config.Default or 50
+    local callback = config.Callback or function() end
+    local suffix = config.Suffix or ""
+    local decimals = config.Decimals or 0
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 50)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Slider"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Size = UDim2.new(0.3, 0, 0, 20)
+    valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = tostring(value) .. suffix
+    valueLabel.TextColor3 = self.Theme.Accent
+    valueLabel.FontFace = self.Font
+    valueLabel.TextSize = 13
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = frame
+    
+    local slider = Instance.new("Frame")
+    slider.Size = UDim2.new(1, 0, 0, 4)
+    slider.Position = UDim2.new(0, 0, 0, 30)
+    slider.BackgroundColor3 = self.Theme.Surface
+    slider.BorderSizePixel = 0
+    slider.Parent = frame
+    
+    Utilities:Corner(slider, 2)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = self.Theme.Accent
+    fill.BorderSizePixel = 0
+    fill.Parent = slider
+    
+    Utilities:Corner(fill, 2)
+    
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.Position = UDim2.new((value - min) / (max - min), -6, 0.5, -6)
+    knob.BackgroundColor3 = self.Theme.Text
+    knob.BorderSizePixel = 0
+    knob.Parent = slider
+    
+    Utilities:Corner(knob, 6)
+    Utilities:Stroke(knob, self.Theme.Accent, 1.5, 0.3)
+    
+    local dragging = false
+    
+    local function setValue(newValue)
+        value = Utilities:Clamp(newValue, min, max)
+        value = Utilities:Round(value, decimals)
+        local pos = (value - min) / (max - min)
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        knob.Position = UDim2.new(pos, -6, 0.5, -6)
+        valueLabel.Text = tostring(value) .. suffix
+        callback(value)
+    end
+    
+    local function updateSlider(input)
+        local pos = (input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
+        pos = Utilities:Clamp(pos, 0, 1)
+        local newValue = min + (max - min) * pos
+        setValue(newValue)
+    end
+    
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+        end
+    end)
+    
+    self:Connect(Services.UserInput.InputChanged, function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+    
+    self:Connect(Services.UserInput.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    return {
+        Set = setValue,
+        Get = function() return value end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+            valueLabel.TextColor3 = theme.Accent
+            fill.BackgroundColor3 = theme.Accent
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  DROPDOWN (from Eclipse 2.txt, Neverlose 12.txt, Catalyst 3.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateDropdown(parent, config)
+    config = config or {}
+    local options = config.Options or {"Option 1", "Option 2", "Option 3"}
+    local selected = config.Default or options[1]
+    local callback = config.Callback or function() end
+    local open = false
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.BackgroundTransparency = 1
+    frame.ClipsDescendants = true
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.4, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Dropdown"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local dropdownBtn = Instance.new("TextButton")
+    dropdownBtn.Size = UDim2.new(0.5, 0, 1, 0)
+    dropdownBtn.Position = UDim2.new(0.5, 0, 0, 0)
+    dropdownBtn.BackgroundColor3 = self.Theme.Surface
+    dropdownBtn.BorderSizePixel = 0
+    dropdownBtn.Text = selected
+    dropdownBtn.TextColor3 = self.Theme.Text
+    dropdownBtn.FontFace = self.Font
+    dropdownBtn.TextSize = 12
+    dropdownBtn.AutoButtonColor = false
+    dropdownBtn.Parent = frame
+    
+    Utilities:Corner(dropdownBtn, 8)
+    
+    local arrow = self:CreateIcon("chevron-down", UDim2.fromOffset(14, 14), self.Theme.TextDim)
+    arrow.Position = UDim2.new(0.9, 0, 0.5, -7)
+    arrow.Parent = dropdownBtn
+    
+    local dropdownList = Instance.new("ScrollingFrame")
+    dropdownList.Size = UDim2.new(0.5, 0, 0, 0)
+    dropdownList.Position = UDim2.new(0.5, 0, 0, 40)
+    dropdownList.BackgroundColor3 = self.Theme.Surface
+    dropdownList.BorderSizePixel = 0
+    dropdownList.ClipsDescendants = true
+    dropdownList.Visible = false
+    dropdownList.ScrollBarThickness = 2
+    dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    dropdownList.ScrollBarImageColor3 = self.Theme.Accent
+    dropdownList.Parent = frame
+    
+    Utilities:Corner(dropdownList, 8)
+    Utilities:Stroke(dropdownList, self.Theme.Border, 1, 0.5)
+    
+    local listLayout = Utilities:ListLayout(dropdownList, 2)
+    
+    local function buildDropdown()
+        for _, child in pairs(dropdownList:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+        
+        for _, option in ipairs(options) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 28)
+            btn.BackgroundColor3 = self.Theme.Surface
+            btn.BackgroundTransparency = 0.5
+            btn.BorderSizePixel = 0
+            btn.Text = option
+            btn.TextColor3 = self.Theme.TextDim
+            btn.FontFace = self.Font
+            btn.TextSize = 12
+            btn.AutoButtonColor = false
+            btn.Parent = dropdownList
+            
+            btn.MouseEnter:Connect(function()
+                Utilities:Tween(btn, {BackgroundTransparency = 0.2, TextColor3 = self.Theme.Text}, 0.1)
+            end)
+            
+            btn.MouseLeave:Connect(function()
+                Utilities:Tween(btn, {BackgroundTransparency = 0.5, TextColor3 = self.Theme.TextDim}, 0.1)
+            end)
+            
+            btn.MouseButton1Click:Connect(function()
+                selected = option
+                dropdownBtn.Text = option
+                callback(option)
+                toggleDropdown(false)
+            end)
+        end
+    end
+    
+    local function toggleDropdown(state)
+        open = (state ~= nil) and state or not open
+        dropdownList.Visible = open
+        
+        if open then
+            dropdownList.Size = UDim2.new(0.5, 0, 0, math.min(#options * 30 + 10, 150))
+            local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+            if img then Utilities:Tween(img, {Rotation = 180}, 0.2) end
+        else
+            dropdownList.Size = UDim2.new(0.5, 0, 0, 0)
+            local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+            if img then Utilities:Tween(img, {Rotation = 0}, 0.2) end
+        end
+    end
+    
+    dropdownBtn.MouseButton1Click:Connect(function()
+        toggleDropdown()
+    end)
+    
+    buildDropdown()
+    
+    return {
+        Set = function(value)
+            selected = value
+            dropdownBtn.Text = value
+            callback(value)
+        end,
+        Get = function() return selected end,
+        Refresh = function(newOptions)
+            options = newOptions or {}
+            buildDropdown()
+        end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+            dropdownBtn.BackgroundColor3 = theme.Surface
+            dropdownBtn.TextColor3 = theme.Text
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  BUTTON (from Catalyst 3.txt, Ather Hub 8.txt, Ventura 9.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateButton(parent, config)
+    config = config or {}
+    local callback = config.Callback or function() end
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = self.Theme.Accent
+    btn.BackgroundTransparency = 0.8
+    btn.BorderSizePixel = 0
+    btn.Text = config.Name or "Button"
+    btn.TextColor3 = self.Theme.Text
+    btn.FontFace = self.FontBold
+    btn.TextSize = 13
+    btn.AutoButtonColor = false
+    btn.Parent = parent
+    
+    Utilities:Corner(btn, 8)
+    
+    btn.MouseEnter:Connect(function()
+        Utilities:Tween(btn, {BackgroundTransparency = 0.5}, 0.15)
+        Utilities:Tween(btn, {TextColor3 = Color3.fromRGB(255, 255, 255)}, 0.15)
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        Utilities:Tween(btn, {BackgroundTransparency = 0.8}, 0.15)
+        Utilities:Tween(btn, {TextColor3 = self.Theme.Text}, 0.15)
+    end)
+    
+    btn.MouseButton1Click:Connect(function()
+        Utilities:Tween(btn, {BackgroundTransparency = 0.3}, 0.1)
+        task.wait(0.1)
+        Utilities:Tween(btn, {BackgroundTransparency = 0.8}, 0.1)
+        callback()
+    end)
+    
+    return {
+        Press = callback,
+        SetText = function(text) btn.Text = text end,
+        UpdateTheme = function(theme)
+            btn.BackgroundColor3 = theme.Accent
+            btn.TextColor3 = theme.Text
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  LABEL (from Eclipse 2.txt, Ultimate 10.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateLabel(parent, config)
+    config = config or {}
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = config.Text or "Label"
+    label.TextColor3 = config.Color or self.Theme.TextDim
+    label.FontFace = config.Bold and self.FontBold or self.Font
+    label.TextSize = config.Size or 13
+    label.TextXAlignment = config.Alignment or Enum.TextXAlignment.Left
+    label.Parent = parent
+    
+    return {
+        SetText = function(text) label.Text = text end,
+        SetColor = function(color) label.TextColor3 = color end,
+        UpdateTheme = function(theme)
+            if not config.Color then
+                label.TextColor3 = theme.TextDim
+            end
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  COLOR PICKER (from Eclipse 2.txt, Ather Hub 8.txt, Ultimate 10.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateColorPicker(parent, config)
+    config = config or {}
+    local color = config.Default or Color3.fromRGB(255, 255, 255)
+    local callback = config.Callback or function() end
+    local h, s, v = color:ToHSV()
+    local open = false
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Color Picker"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local colorBtn = Instance.new("TextButton")
+    colorBtn.Size = UDim2.new(0, 30, 0, 22)
+    colorBtn.Position = UDim2.new(0.85, 0, 0.5, -11)
+    colorBtn.BackgroundColor3 = color
+    colorBtn.BorderSizePixel = 0
+    colorBtn.Text = ""
+    colorBtn.AutoButtonColor = false
+    colorBtn.Parent = frame
+    
+    Utilities:Corner(colorBtn, 6)
+    Utilities:Stroke(colorBtn, self.Theme.Border, 1, 0.5)
+    
+    local picker = Instance.new("Frame")
+    picker.Size = UDim2.new(0, 200, 0, 150)
+    picker.Position = UDim2.new(0, 0, 0, 40)
+    picker.BackgroundColor3 = self.Theme.Surface
+    picker.BorderSizePixel = 0
+    picker.Visible = false
+    picker.ClipsDescendants = true
+    picker.ZIndex = 10
+    picker.Parent = frame
+    
+    Utilities:Corner(picker, 8)
+    Utilities:Stroke(picker, self.Theme.Border, 1, 0.5)
+    
+    local svMap = Instance.new("ImageButton")
+    svMap.Size = UDim2.new(1, -20, 0, 100)
+    svMap.Position = UDim2.new(0, 10, 0, 10)
+    svMap.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+    svMap.BorderSizePixel = 0
+    svMap.AutoButtonColor = false
+    svMap.Parent = picker
+    
+    Utilities:Corner(svMap, 4)
+    
+    local svDot = Instance.new("Frame")
+    svDot.Size = UDim2.new(0, 8, 0, 8)
+    svDot.Position = UDim2.new(s, 0, 1 - v, 0)
+    svDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    svDot.BorderSizePixel = 0
+    svDot.Parent = svMap
+    
+    Utilities:Corner(svDot, 4)
+    Utilities:Stroke(svDot, Color3.fromRGB(0, 0, 0), 1, 0.5)
+    
+    local hueSlider = Instance.new("Frame")
+    hueSlider.Size = UDim2.new(1, -20, 0, 10)
+    hueSlider.Position = UDim2.new(0, 10, 0, 120)
+    hueSlider.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    hueSlider.BorderSizePixel = 0
+    hueSlider.Parent = picker
+    
+    Utilities:Corner(hueSlider, 4)
+    
+    local hueGrad = Instance.new("UIGradient")
+    hueGrad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+    }
+    hueGrad.Parent = hueSlider
+    
+    local hueDot = Instance.new("Frame")
+    hueDot.Size = UDim2.new(0, 4, 1, 0)
+    hueDot.Position = UDim2.new(h, 0, 0, 0)
+    hueDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    hueDot.BorderSizePixel = 0
+    hueDot.Parent = hueSlider
+    
+    Utilities:Corner(hueDot, 2)
+    
+    local draggingSV = false
+    local draggingHue = false
+    
+    local function updateColor()
+        color = Color3.fromHSV(h, s, v)
+        colorBtn.BackgroundColor3 = color
+        svMap.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        callback(color)
+    end
+    
+    svMap.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingSV = true
+            local pos = input.Position
+            s = Utilities:Clamp((pos.X - svMap.AbsolutePosition.X) / svMap.AbsoluteSize.X, 0, 1)
+            v = 1 - Utilities:Clamp((pos.Y - svMap.AbsolutePosition.Y) / svMap.AbsoluteSize.Y, 0, 1)
+            svDot.Position = UDim2.new(s, 0, 1 - v, 0)
+            updateColor()
+        end
+    end)
+    
+    hueSlider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingHue = true
+            h = Utilities:Clamp((input.Position.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+            hueDot.Position = UDim2.new(h, 0, 0, 0)
+            updateColor()
+        end
+    end)
+    
+    self:Connect(Services.UserInput.InputChanged, function(input)
+        if draggingSV and input.UserInputType == Enum.UserInputType.MouseMovement then
+            s = Utilities:Clamp((input.Position.X - svMap.AbsolutePosition.X) / svMap.AbsoluteSize.X, 0, 1)
+            v = 1 - Utilities:Clamp((input.Position.Y - svMap.AbsolutePosition.Y) / svMap.AbsoluteSize.Y, 0, 1)
+            svDot.Position = UDim2.new(s, 0, 1 - v, 0)
+            updateColor()
+        end
+        if draggingHue and input.UserInputType == Enum.UserInputType.MouseMovement then
+            h = Utilities:Clamp((input.Position.X - hueSlider.AbsolutePosition.X) / hueSlider.AbsoluteSize.X, 0, 1)
+            hueDot.Position = UDim2.new(h, 0, 0, 0)
+            updateColor()
+        end
+    end)
+    
+    self:Connect(Services.UserInput.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingSV = false
+            draggingHue = false
+        end
+    end)
+    
+    colorBtn.MouseButton1Click:Connect(function()
+        open = not open
+        picker.Visible = open
+    end)
+    
+    return {
+        Set = function(c)
+            color = c
+            h, s, v = color:ToHSV()
+            colorBtn.BackgroundColor3 = color
+            svMap.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            svDot.Position = UDim2.new(s, 0, 1 - v, 0)
+            hueDot.Position = UDim2.new(h, 0, 0, 0)
+            callback(color)
+        end,
+        Get = function() return color end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  KEYBIND (from Eclipse 2.txt, Neverlose 12.txt, CompKiller 13.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateKeybind(parent, config)
+    config = config or {}
+    local key = config.Default or Enum.KeyCode.E
+    local callback = config.Callback or function() end
+    local listening = false
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Keybind"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local keyBtn = Instance.new("TextButton")
+    keyBtn.Size = UDim2.new(0, 80, 0, 22)
+    keyBtn.Position = UDim2.new(0.85, 0, 0.5, -11)
+    keyBtn.BackgroundColor3 = self.Theme.Surface
+    keyBtn.BorderSizePixel = 0
+    keyBtn.Text = key and key.Name or "None"
+    keyBtn.TextColor3 = self.Theme.Text
+    keyBtn.FontFace = self.Font
+    keyBtn.TextSize = 12
+    keyBtn.AutoButtonColor = false
+    keyBtn.Parent = frame
+    
+    Utilities:Corner(keyBtn, 6)
+    Utilities:Stroke(keyBtn, self.Theme.Border, 1, 0.5)
+    
+    keyBtn.MouseButton1Click:Connect(function()
+        if listening then return end
+        listening = true
+        keyBtn.Text = "..."
+        keyBtn.TextColor3 = self.Theme.Accent
+        
+        local conn
+        conn = Services.UserInput.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                key = input.KeyCode
+                keyBtn.Text = key.Name
+                keyBtn.TextColor3 = self.Theme.Text
+                listening = false
+                callback(key)
+                conn:Disconnect()
+            end
+        end)
+    end)
+    
+    return {
+        Set = function(k)
+            key = k
+            keyBtn.Text = k and k.Name or "None"
+        end,
+        Get = function() return key end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+            keyBtn.BackgroundColor3 = theme.Surface
+            keyBtn.TextColor3 = theme.Text
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  TEXT INPUT (from Eclipse 2.txt, Ultimate 10.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateTextInput(parent, config)
+    config = config or {}
+    local callback = config.Callback or function() end
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 50)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 18)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Input"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.Font
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local inputBg = Instance.new("Frame")
+    inputBg.Size = UDim2.new(1, 0, 0, 26)
+    inputBg.Position = UDim2.new(0, 0, 0, 22)
+    inputBg.BackgroundColor3 = self.Theme.Surface
+    inputBg.BorderSizePixel = 0
+    inputBg.Parent = frame
+    
+    Utilities:Corner(inputBg, 6)
+    Utilities:Stroke(inputBg, self.Theme.Border, 1, 0.5)
+    
+    local inputBox = Instance.new("TextBox")
+    inputBox.Size = UDim2.new(1, -16, 1, 0)
+    inputBox.Position = UDim2.new(0, 8, 0, 0)
+    inputBox.BackgroundTransparency = 1
+    inputBox.BorderSizePixel = 0
+    inputBox.Text = config.Default or ""
+    inputBox.TextColor3 = self.Theme.Text
+    inputBox.PlaceholderText = config.Placeholder or "Type here..."
+    inputBox.PlaceholderColor3 = self.Theme.TextDisabled
+    inputBox.FontFace = self.Font
+    inputBox.TextSize = 12
+    inputBox.TextXAlignment = Enum.TextXAlignment.Left
+    inputBox.Parent = inputBg
+    
+    inputBox.FocusLost:Connect(function()
+        callback(inputBox.Text)
+    end)
+    
+    return {
+        Set = function(text) inputBox.Text = text end,
+        Get = function() return inputBox.Text end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+            inputBox.TextColor3 = theme.Text
+            inputBox.PlaceholderColor3 = theme.TextDisabled
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  PARAGRAPH (from Eclipse 2.txt, Ventura 9.txt, Herby 5.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateParagraph(parent, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.Parent = parent
+    
+    if config.Title then
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, 0, 0, 22)
+        title.BackgroundTransparency = 1
+        title.Text = config.Title
+        title.TextColor3 = self.Theme.Text
+        title.FontFace = self.FontBold
+        title.TextSize = 15
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = frame
+    end
+    
+    local body = Instance.new("TextLabel")
+    body.Size = UDim2.new(1, 0, 0, 0)
+    body.BackgroundTransparency = 1
+    body.Text = config.Text or ""
+    body.TextColor3 = self.Theme.TextDim
+    body.FontFace = self.Font
+    body.TextSize = 13
+    body.TextWrapped = true
+    body.TextXAlignment = Enum.TextXAlignment.Left
+    body.TextYAlignment = Enum.TextYAlignment.Top
+    body.AutomaticSize = Enum.AutomaticSize.Y
+    body.Parent = frame
+    
+    return {
+        SetTitle = function(text) if title then title.Text = text end end,
+        SetText = function(text) body.Text = text end,
+        UpdateTheme = function(theme)
+            if title then title.TextColor3 = theme.Text end
+            body.TextColor3 = theme.TextDim
+        end
+    }
+end
+
+-- ────────────────────────────────────────────────────────────────────────────────
+--  SECTION (from Eclipse 2.txt, Catalyst 3.txt, Ventura 9.txt)
+-- ────────────────────────────────────────────────────────────────────────────────
+
+function VoltageHub:CreateSection(parent, config)
+    config = config or {}
+    local collapsed = config.Collapsed or false
+    
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(1, 0, 0, 0)
+    section.BackgroundTransparency = 1
+    section.AutomaticSize = Enum.AutomaticSize.Y
+    section.ClipsDescendants = true
+    section.Parent = parent
+    
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 35)
+    header.BackgroundTransparency = 1
+    header.Parent = section
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -30, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = config.Name or "Section"
+    label.TextColor3 = self.Theme.Text
+    label.FontFace = self.FontBold
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = header
+    
+    local arrow = self:CreateIcon("chevron-down", UDim2.fromOffset(16, 16), self.Theme.TextDim)
+    arrow.Position = UDim2.new(1, -20, 0.5, -8)
+    arrow.Parent = header
+    if collapsed then
+        local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+        if img then img.Rotation = -90 end
+    end
+    
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 0, 34)
+    line.BackgroundColor3 = self.Theme.Border
+    line.BackgroundTransparency = 0.5
+    line.BorderSizePixel = 0
+    line.Parent = header
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.Position = UDim2.new(0, 0, 0, 35)
+    content.BackgroundTransparency = 1
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.Parent = section
+    
+    if collapsed then
+        content.Visible = false
+    end
+    
+    local headerBtn = Instance.new("TextButton")
+    headerBtn.Size = UDim2.new(1, 0, 1, 0)
+    headerBtn.BackgroundTransparency = 1
+    headerBtn.Text = ""
+    headerBtn.AutoButtonColor = false
+    headerBtn.Parent = header
+    
+    headerBtn.MouseButton1Click:Connect(function()
+        collapsed = not collapsed
+        content.Visible = not collapsed
+        local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+        if img then
+            Utilities:Tween(img, {Rotation = collapsed and -90 or 0}, 0.2)
+        end
+    end)
+    
+    return {
+        Content = content,
+        Collapse = function()
+            collapsed = true
+            content.Visible = false
+            local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+            if img then img.Rotation = -90 end
+        end,
+        Expand = function()
+            collapsed = false
+            content.Visible = true
+            local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+            if img then img.Rotation = 0 end
+        end,
+        Toggle = function()
+            collapsed = not collapsed
+            content.Visible = not collapsed
+            local img = arrow:FindFirstChildWhichIsA("ImageLabel")
+            if img then
+                Utilities:Tween(img, {Rotation = collapsed and -90 or 0}, 0.2)
+            end
+        end,
+        UpdateTheme = function(theme)
+            label.TextColor3 = theme.Text
+        end
+    }
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  MAIN WINDOW
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:Window(config)
+    config = config or {}
+    
+    local window = {
+        Title = config.Title or "Voltage Hub",
+        Subtitle = config.Subtitle or "Ultimate Fusion Engine",
+        Keybind = config.Keybind or Enum.KeyCode.RightShift,
+        Size = config.Size or UDim2.fromOffset(520, 400),
+        Logo = config.Logo or "logo",
+        Tabs = {},
+        CurrentTab = nil,
+        IsOpen = false,
+        Elements = {},
+        Sections = {},
+    }
+    
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "VoltageHub"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 999999
+    gui.Parent = Services.CoreGui
+    
+    self._gui = gui
+    
+    local main = Instance.new("Frame")
+    main.Name = "MainFrame"
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.Position = UDim2.new(0.5, 0, 0.5, 0)
+    main.Size = UDim2.new(0, 0, 0, 0)
+    main.BackgroundColor3 = self.Theme.Background
+    main.BackgroundTransparency = 1
+    main.ClipsDescendants = true
+    main.ZIndex = 2
+    main.Parent = gui
+    
+    Utilities:Corner(main, 12)
+    Utilities:Stroke(main, self.Theme.Border, 1, 0.5)
+    
+    local LEFT_WIDTH = 200
+    local RIGHT_WIDTH = 320
+    local TOTAL_WIDTH = LEFT_WIDTH + RIGHT_WIDTH + 20
+    local HEIGHT = 400
+    
+    local UIScale = Instance.new("UIScale")
+    UIScale.Scale = 0
+    UIScale.Parent = main
+    
+    -- Left Panel
+    local leftPanel = Instance.new("Frame")
+    leftPanel.Size = UDim2.new(0, LEFT_WIDTH, 1, 0)
+    leftPanel.BackgroundColor3 = self.Theme.Sidebar
+    leftPanel.BackgroundTransparency = 0.3
+    leftPanel.BorderSizePixel = 0
+    leftPanel.ClipsDescendants = true
+    leftPanel.Parent = main
+    
+    Utilities:Corner(leftPanel, 12)
+    
+    local divider = Instance.new("Frame")
+    divider.Size = UDim2.new(0, 1, 1, -20)
+    divider.Position = UDim2.new(1, 0, 0, 10)
+    divider.BackgroundColor3 = self.Theme.Border
+    divider.BackgroundTransparency = 0.5
+    divider.BorderSizePixel = 0
+    divider.Parent = leftPanel
+    
+    -- Logo
+    local logoContainer = Instance.new("Frame")
+    logoContainer.Size = UDim2.new(0, 65, 0, 65)
+    logoContainer.Position = UDim2.new(0.5, -32.5, 0, 20)
+    logoContainer.BackgroundColor3 = self.Theme.Surface
+    logoContainer.BackgroundTransparency = 0.5
+    logoContainer.BorderSizePixel = 0
+    logoContainer.Parent = leftPanel
+    
+    Utilities:Corner(logoContainer, 16)
+    Utilities:Stroke(logoContainer, self.Theme.Accent, 2, 0.3)
+    
+    local logoIcon = self:CreateIcon(window.Logo, UDim2.fromOffset(40, 40), self.Theme.Accent)
+    logoIcon.Position = UDim2.new(0.5, -20, 0.5, -20)
+    logoIcon.Parent = logoContainer
+    
+    -- Title
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -20, 0, 38)
+    titleLabel.Position = UDim2.new(0, 10, 0, 95)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = window.Title
+    titleLabel.TextColor3 = self.Theme.Text
+    titleLabel.FontFace = self.FontBold
+    titleLabel.TextSize = 28
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    titleLabel.Parent = leftPanel
+    
+    local subLabel = Instance.new("TextLabel")
+    subLabel.Size = UDim2.new(1, -20, 0, 20)
+    subLabel.Position = UDim2.new(0, 10, 0, 135)
+    subLabel.BackgroundTransparency = 1
+    subLabel.Text = window.Subtitle
+    subLabel.TextColor3 = self.Theme.TextDim
+    subLabel.FontFace = self.Font
+    subLabel.TextSize = 14
+    subLabel.TextXAlignment = Enum.TextXAlignment.Center
+    subLabel.Parent = leftPanel
+    
+    local divider2 = Instance.new("Frame")
+    divider2.Size = UDim2.new(0.8, 0, 0, 1)
+    divider2.Position = UDim2.new(0.1, 0, 0, 165)
+    divider2.BackgroundColor3 = self.Theme.Border
+    divider2.BackgroundTransparency = 0.5
+    divider2.BorderSizePixel = 0
+    divider2.Parent = leftPanel
+    
+    -- Nav Buttons
+    local navContainer = Instance.new("Frame")
+    navContainer.Size = UDim2.new(0.85, 0, 0, 200)
+    navContainer.Position = UDim2.new(0.075, 0, 0, 180)
+    navContainer.BackgroundTransparency = 1
+    navContainer.Parent = leftPanel
+    
+    -- Right Panel
+    local rightPanel = Instance.new("Frame")
+    rightPanel.Size = UDim2.new(0, RIGHT_WIDTH, 1, 0)
+    rightPanel.Position = UDim2.new(0, LEFT_WIDTH + 10, 0, 0)
+    rightPanel.BackgroundTransparency = 1
+    rightPanel.Parent = main
+    
+    local contentContainer = Instance.new("ScrollingFrame")
+    contentContainer.Size = UDim2.new(1, -20, 1, -20)
+    contentContainer.Position = UDim2.new(0, 10, 0, 10)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.BorderSizePixel = 0
+    contentContainer.ScrollBarThickness = 3
+    contentContainer.ScrollBarImageColor3 = self.Theme.Accent
+    contentContainer.Parent = rightPanel
+    
+    -- Tab System
+    local navButtons = {}
+    local selectedTab = nil
+    local tabContent = {}
+    
+    local tabData = {
+        {name = "Home", icon = "home"},
+        {name = "Scripts", icon = "scripts"},
+        {name = "Visuals", icon = "visuals"},
+        {name = "Stats", icon = "stats"},
+        {name = "Aim", icon = "aim"},
+        {name = "Combat", icon = "combat"},
+    }
+    
+    for i, data in ipairs(tabData) do
+        local row = math.floor((i-1) / 2)
+        local col = (i-1) % 2
+        
+        local btn = Instance.new("TextButton")
+        btn.Name = data.name
+        btn.Size = UDim2.new(0.42, 0, 0, 45)
+        btn.Position = UDim2.new(0.04 + col * 0.52, 0, row * 55 + 5, 0)
+        btn.BackgroundColor3 = self.Theme.Surface
+        btn.BackgroundTransparency = 0.7
+        btn.BorderSizePixel = 0
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        btn.Parent = navContainer
+        
+        Utilities:Corner(btn, 10)
+        
+        local icon = self:CreateIcon(data.icon, UDim2.fromOffset(20, 20), self.Theme.TextDim)
+        icon.Position = UDim2.new(0.15, 0, 0.5, -10)
+        icon.Parent = btn
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0.5, 0, 1, 0)
+        label.Position = UDim2.new(0.4, 0, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = data.name
+        label.TextColor3 = self.Theme.TextDim
+        label.FontFace = self.Font
+        label.TextSize = 11
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = btn
+        
+        local indicator = Instance.new("Frame")
+        indicator.Size = UDim2.new(0, 3, 1, -8)
+        indicator.Position = UDim2.new(0, 0, 0, 4)
+        indicator.BackgroundColor3 = self.Theme.Accent
+        indicator.BackgroundTransparency = 0.7
+        indicator.BorderSizePixel = 0
+        indicator.Parent = btn
+        
+        Utilities:Corner(indicator, 2)
+        
+        local content = Instance.new("Frame")
+        content.Size = UDim2.new(1, 0, 1, 0)
+        content.BackgroundTransparency = 1
+        content.Visible = false
+        content.Parent = contentContainer
+        
+        tabContent[data.name] = content
+        
+        btn.MouseEnter:Connect(function()
+            if selectedTab ~= data.name then
+                Utilities:Tween(btn, {BackgroundTransparency = 0.5}, 0.15)
+                local img = icon:FindFirstChildWhichIsA("ImageLabel")
+                if img then Utilities:Tween(img, {ImageColor3 = self.Theme.Text}, 0.15) end
+                Utilities:Tween(label, {TextColor3 = self.Theme.Text}, 0.15)
+            end
+        end)
+        
+        btn.MouseLeave:Connect(function()
+            if selectedTab ~= data.name then
+                Utilities:Tween(btn, {BackgroundTransparency = 0.7}, 0.15)
+                local img = icon:FindFirstChildWhichIsA("ImageLabel")
+                if img then Utilities:Tween(img, {ImageColor3 = self.Theme.TextDim}, 0.15) end
+                Utilities:Tween(label, {TextColor3 = self.Theme.TextDim}, 0.15)
+            end
+        end)
+        
+        btn.MouseButton1Click:Connect(function()
+            for _, v in pairs(navContainer:GetChildren()) do
+                if v:IsA("TextButton") then
+                    local ind = v:FindFirstChildWhichIsA("Frame")
+                    if ind then
+                        Utilities:Tween(ind, {BackgroundTransparency = 0.7}, 0.2)
+                    end
+                end
+            end
+            
+            for name, frame in pairs(tabContent) do
+                frame.Visible = (name == data.name)
+            end
+            
+            Utilities:Tween(indicator, {BackgroundTransparency = 0}, 0.2)
+            selectedTab = data.name
+        end)
+        
+        if i == 1 then
+            for name, frame in pairs(tabContent) do
+                frame.Visible = (name == data.name)
+            end
+            Utilities:Tween(indicator, {BackgroundTransparency = 0}, 0.2)
+            selectedTab = data.name
+        end
+        
+        navButtons[data.name] = btn
+    end
+    
+    -- Tab Builder
+    function window:Tab(name)
+        local content = tabContent[name]
+        if not content then
+            content = Instance.new("Frame")
+            content.Size = UDim2.new(1, 0, 1, 0)
+            content.BackgroundTransparency = 1
+            content.Visible = false
+            content.Parent = contentContainer
+            tabContent[name] = content
+        end
+        
+        return {
+            Content = content,
+            Section = function(config) return self:CreateSection(content, config) end,
+            Toggle = function(config) return self:CreateToggle(content, config) end,
+            Slider = function(config) return self:CreateSlider(content, config) end,
+            Dropdown = function(config) return self:CreateDropdown(content, config) end,
+            Button = function(config) return self:CreateButton(content, config) end,
+            Label = function(config) return self:CreateLabel(content, config) end,
+            ColorPicker = function(config) return self:CreateColorPicker(content, config) end,
+            Keybind = function(config) return self:CreateKeybind(content, config) end,
+            TextInput = function(config) return self:CreateTextInput(content, config) end,
+            Paragraph = function(config) return self:CreateParagraph(content, config) end,
+        }
+    end
+    
+    -- Window management
+    Utilities:MakeDraggable(main)
+    Utilities:MakeResizeable(main, Vector2.new(400, 300))
+    
+    function window:Toggle()
+        window.IsOpen = not window.IsOpen
+        if window.IsOpen then
+            main.Visible = true
+            Utilities:Tween(UIScale, {Scale = 1}, 0.3, Enum.EasingStyle.Back)
+            Utilities:Tween(main, {
+                Size = UDim2.new(0, TOTAL_WIDTH, 0, HEIGHT),
+                BackgroundTransparency = 0.05
+            }, 0.3)
+        else
+            Utilities:Tween(UIScale, {Scale = 0}, 0.2, Enum.EasingStyle.Quad)
+            Utilities:Tween(main, {
+                Size = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1
+            }, 0.2)
+            task.wait(0.2)
+            main.Visible = false
+        end
+    end
+    
+    function window:Open()
+        if not window.IsOpen then window:Toggle() end
+    end
+    
+    function window:Close()
+        if window.IsOpen then window:Toggle() end
+    end
+    
+    -- Keybind
+    self:Connect(Services.UserInput.InputBegan, function(input)
+        if input.KeyCode == window.Keybind then
+            window:Toggle()
+        end
+    end)
+    
+    main.Visible = false
+    
+    table.insert(self.Windows, window)
+    
+    return window
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  SETTINGS PAGE BUILDER
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+function VoltageHub:CreateSettingsPage(window)
+    local tab = window:Tab("Settings")
+    local section = tab:Section({Name = "Configs"})
+    
+    local configs = self:GetConfigs()
+    local selected = nil
+    
+    local dropdown = tab:Dropdown({
+        Name = "Configs",
+        Options = configs,
+        Default = configs[1],
+        Callback = function(value) selected = value end
+    })
+    
+    tab:TextInput({
+        Name = "Config Name",
+        Placeholder = "Enter name...",
+        Callback = function(value) 
+            -- store name
+        end
+    })
+    
+    tab:Button({
+        Name = "Save Config",
+        Callback = function()
+            if selected then
+                self:SaveConfig(selected)
+                self:Notify("Config Saved", "Saved " .. selected, 2, "success")
+            end
+        end
+    })
+    
+    tab:Button({
+        Name = "Load Config",
+        Callback = function()
+            if selected then
+                self:LoadConfigFile(selected)
+                self:Notify("Config Loaded", "Loaded " .. selected, 2, "success")
+            end
+        end
+    })
+    
+    tab:Button({
+        Name = "Delete Config",
+        Callback = function()
+            if selected then
+                self:DeleteConfig(selected)
+                dropdown:Refresh(self:GetConfigs())
+                self:Notify("Config Deleted", "Deleted " .. selected, 2, "warning")
+            end
+        end
+    })
+    
+    tab:Button({
+        Name = "Refresh List",
+        Callback = function()
+            dropdown:Refresh(self:GetConfigs())
+        end
+    })
+    
+    local themeSection = tab:Section({Name = "Themes"})
+    local themes = self:GetThemes()
+    
+    tab:Dropdown({
+        Name = "Theme",
+        Options = themes,
+        Default = self.CurrentTheme,
+        Callback = function(value)
+            self:SetTheme(value)
+        end
+    })
+    
+    tab:ColorPicker({
+        Name = "Accent Color",
+        Default = self.Theme.Accent,
+        Callback = function(color)
+            self.Theme.Accent = color
+            self:RefreshTheme()
+        end
+    })
+    
+    tab:ColorPicker({
+        Name = "Accent Gradient",
+        Default = self.Theme.AccentGradient,
+        Callback = function(color)
+            self.Theme.AccentGradient = color
+            self:RefreshTheme()
+        end
+    })
+    
+    local keySection = tab:Section({Name = "Keybinds"})
+    
+    tab:Keybind({
+        Name = "Toggle Menu",
+        Default = Enum.KeyCode.RightShift,
+        Callback = function(key)
+            self.Keybind = key
+            for _, win in ipairs(self.Windows) do
+                win.Keybind = key
+            end
+        end
+    })
+    
+    return tab
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  EXPORT
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Делаем библиотеку доступной глобально для всех скриптов
+getgenv().VoltageHub = VoltageHub
+
+-- Для старых executor'ов
+_G.VoltageHub = VoltageHub
+
+-- Для совместимости с некоторыми инжекторами
+if getfenv then
+    getfenv().VoltageHub = VoltageHub
+end
+
+-- Возвращаем библиотеку для loadstring
+return VoltageHub
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+--  КОНЕЦ СКРИПТА
+-- ═══════════════════════════════════════════════════════════════════════════════
