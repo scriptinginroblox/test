@@ -1,968 +1,2379 @@
--- ============================================
--- MM2 FAKE TRADE SYSTEM
--- EXACT COPY OF lollll.txt FOR MURDER MYSTERY 2
--- ============================================
+-- ═══════════════════════════════════════════════════════════════════════
+-- Voltage Hub ─ Premium UI Library
+-- Version: 2.5.0
+-- ═══════════════════════════════════════════════════════════════════════
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+if getgenv().Library and getgenv().Library.Unload then
+    getgenv().Library:Unload()
+end
+
+getgenv().Library = {
+    Version = "2.5.0",
+    Directory = "Voltage",
+    Folders = {
+        ["Configs"] = "Voltage/Configs",
+        ["Themes"] = "Voltage/Themes",
+        ["Fonts"] = "Voltage/Fonts",
+        ["Icons"] = "Voltage/Icons"
+    },
+    
+    Flags = {},
+    ConfigFlags = {},
+    Connections = {},
+    Threads = {},
+    ThemeItems = {},
+    ThemeMap = {},
+    OpenFrames = {},
+    SearchItems = {},
+    
+    TweenTime = 0.25,
+    TweenStyle = Enum.EasingStyle.Quart,
+    TweenDirection = Enum.EasingDirection.Out,
+}
+
+local Library = getgenv().Library
+Library.__index = Library
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SERVICES
+-- ═══════════════════════════════════════════════════════════════════════
+
+local Services = {}
+local function GetService(Service)
+    if not Services[Service] then
+        Services[Service] = cloneref and cloneref(game:GetService(Service)) or game:GetService(Service)
+    end
+    return Services[Service]
+end
+
+local Players = GetService("Players")
+local UserInputService = GetService("UserInputService")
+local RunService = GetService("RunService")
+local TweenService = GetService("TweenService")
+local HttpService = GetService("HttpService")
+local CoreGui = GetService("CoreGui")
+local Workspace = GetService("Workspace")
+local Lighting = GetService("Lighting")
+local GuiService = GetService("GuiService")
+local TextService = GetService("TextService")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+local GuiInset = GuiService:GetGuiInset().Y
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
--- ============================================
--- ALL TRADE REMOTES
--- ============================================
-local Trade = ReplicatedStorage:FindFirstChild("Trade")
-if not Trade then
-    warn("Trade not found!")
-    return
+gethui = gethui or function() return CoreGui end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SVG ICON SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+local SVGIcons = {
+    -- Navigation
+    Home = "rbxassetid://108020878442937",
+    Settings = "rbxassetid://117366234081415",
+    Speed = "rbxassetid://99535812794533",
+    Combat = "rbxassetid://124448418211665",
+    Visuals = "rbxassetid://100033680381365",
+    Friends = "rbxassetid://115725480722697",
+    Config = "rbxassetid://103129505225192",
+    Info = "rbxassetid://124560466474914",
+    
+    -- UI Elements
+    Close = "rbxassetid://76001605964586",
+    Minimize = "rbxassetid://94817928404736",
+    Maximize = "rbxassetid://79119806011839",
+    Check = "rbxassetid://129443092324752",
+    ChevronDown = "rbxassetid://96215562143920",
+    ChevronRight = "rbxassetid://10709791437",
+    Search = "rbxassetid://86737463322606",
+    Plus = "rbxassetid://10709752825",
+    Minus = "rbxassetid://10709752732",
+    Trash = "rbxassetid://10747362393",
+    Copy = "rbxassetid://78979572434545",
+    Save = "rbxassetid://126116963775616",
+    Load = "rbxassetid://10723344270",
+    Refresh = "rbxassetid://105648271243690",
+    
+    -- Status
+    Lock = "rbxassetid://80031239225283",
+    Unlock = "rbxassetid://99060354229117",
+    Warning = "rbxassetid://125920361880643",
+    Success = "rbxassetid://93898873302694",
+    Error = "rbxassetid://10747384394",
+    Info = "rbxassetid://124560466474914",
+    
+    -- Misc
+    User = "rbxassetid://81589895647169",
+    Users = "rbxassetid://115398113982385",
+    Folder = "rbxassetid://80846616596607",
+    Palette = "rbxassetid://86350350950064",
+    Key = "rbxassetid://96510194465420",
+    Gamepad = "rbxassetid://121607283959010",
+    Code = "rbxassetid://107380207681249",
+}
+
+function Library:GetIcon(name)
+    return SVGIcons[name] or SVGIcons.Info
 end
 
-local Remotes = {
-    GetTradeStatus = Trade:FindFirstChild("GetTradeStatus"),
-    SendRequest = Trade:FindFirstChild("SendRequest"),
-    AcceptRequest = Trade:FindFirstChild("AcceptRequest"),
-    AcceptTrade = Trade:FindFirstChild("AcceptTrade"),
-    CancelAccept = Trade:FindFirstChild("CancelAccept"),
-    CancelRequest = Trade:FindFirstChild("CancelRequest"),
-    CompleteTrade = Trade:FindFirstChild("CompleteTrade"),
-    DeclineRequest = Trade:FindFirstChild("DeclineRequest"),
-    DeclineTrade = Trade:FindFirstChild("DeclineTrade"),
-    EndTrade = Trade:FindFirstChild("EndTrade"),
-    OfferItem = Trade:FindFirstChild("OfferItem"),
-    RemoveOffer = Trade:FindFirstChild("RemoveOffer"),
-    RequestSent = Trade:FindFirstChild("RequestSent"),
-    SetRequestsEnabled = Trade:FindFirstChild("SetRequestsEnabled"),
-    StartTrade = Trade:FindFirstChild("StartTrade"),
-    UpdateOffers = Trade:FindFirstChild("UpdateOffers"),
-    UpdateTrade = Trade:FindFirstChild("UpdateTrade"),
+function Library:CreateIcon(iconName, size, color)
+    local icon = Instance.new("ImageLabel")
+    icon.BackgroundTransparency = 1
+    icon.Size = size or UDim2.fromOffset(18, 18)
+    icon.Image = self:GetIcon(iconName)
+    icon.ImageColor3 = color or self.Theme.Text
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    return icon
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- THEME SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+Library.Theme = {
+    Background = Color3.fromRGB(13, 13, 16),
+    Surface = Color3.fromRGB(20, 20, 24),
+    Element = Color3.fromRGB(28, 28, 34),
+    Hover = Color3.fromRGB(38, 38, 46),
+    Border = Color3.fromRGB(45, 45, 54),
+    Text = Color3.fromRGB(235, 235, 245),
+    TextDim = Color3.fromRGB(145, 145, 160),
+    TextDark = Color3.fromRGB(80, 80, 95),
+    Accent = Color3.fromRGB(88, 160, 255),
+    AccentGradient = Color3.fromRGB(130, 180, 255),
+    Success = Color3.fromRGB(60, 210, 100),
+    Error = Color3.fromRGB(230, 70, 70),
+    Warning = Color3.fromRGB(255, 180, 50),
 }
 
--- ============================================
--- CONFIGURATION
--- ============================================
-local CONFIG = {
-    PARTNER_NAME = "FakeTradeBot",
-    PARTNER_USER_ID = 123456789,
-    AUTO_ACCEPT_DELAY = 0.5,
-    AUTO_CONFIRM_DELAY = 1.0,
+local PresetThemes = {
+    Dark = {
+        Background = Color3.fromRGB(13, 13, 16),
+        Surface = Color3.fromRGB(20, 20, 24),
+        Element = Color3.fromRGB(28, 28, 34),
+        Hover = Color3.fromRGB(38, 38, 46),
+        Border = Color3.fromRGB(45, 45, 54),
+        Text = Color3.fromRGB(235, 235, 245),
+        TextDim = Color3.fromRGB(145, 145, 160),
+        TextDark = Color3.fromRGB(80, 80, 95),
+        Accent = Color3.fromRGB(88, 160, 255),
+        AccentGradient = Color3.fromRGB(130, 180, 255),
+        Success = Color3.fromRGB(60, 210, 100),
+        Error = Color3.fromRGB(230, 70, 70),
+        Warning = Color3.fromRGB(255, 180, 50),
+    },
+    Crimson = {
+        Background = Color3.fromRGB(20, 10, 12),
+        Surface = Color3.fromRGB(30, 14, 18),
+        Element = Color3.fromRGB(40, 18, 24),
+        Hover = Color3.fromRGB(55, 25, 32),
+        Border = Color3.fromRGB(70, 30, 40),
+        Text = Color3.fromRGB(245, 220, 225),
+        TextDim = Color3.fromRGB(180, 140, 150),
+        TextDark = Color3.fromRGB(100, 70, 80),
+        Accent = Color3.fromRGB(230, 60, 80),
+        AccentGradient = Color3.fromRGB(255, 100, 120),
+        Success = Color3.fromRGB(60, 210, 100),
+        Error = Color3.fromRGB(255, 50, 50),
+        Warning = Color3.fromRGB(255, 180, 50),
+    },
+    Midnight = {
+        Background = Color3.fromRGB(10, 10, 18),
+        Surface = Color3.fromRGB(16, 16, 28),
+        Element = Color3.fromRGB(24, 24, 40),
+        Hover = Color3.fromRGB(34, 34, 55),
+        Border = Color3.fromRGB(40, 40, 65),
+        Text = Color3.fromRGB(225, 225, 255),
+        TextDim = Color3.fromRGB(140, 140, 180),
+        TextDark = Color3.fromRGB(70, 70, 100),
+        Accent = Color3.fromRGB(130, 120, 255),
+        AccentGradient = Color3.fromRGB(170, 150, 255),
+        Success = Color3.fromRGB(60, 210, 100),
+        Error = Color3.fromRGB(230, 70, 70),
+        Warning = Color3.fromRGB(255, 180, 50),
+    },
+    Forest = {
+        Background = Color3.fromRGB(10, 18, 12),
+        Surface = Color3.fromRGB(16, 28, 18),
+        Element = Color3.fromRGB(24, 40, 26),
+        Hover = Color3.fromRGB(34, 55, 36),
+        Border = Color3.fromRGB(40, 70, 42),
+        Text = Color3.fromRGB(220, 245, 225),
+        TextDim = Color3.fromRGB(140, 180, 150),
+        TextDark = Color3.fromRGB(70, 100, 80),
+        Accent = Color3.fromRGB(60, 230, 120),
+        AccentGradient = Color3.fromRGB(100, 255, 160),
+        Success = Color3.fromRGB(60, 210, 100),
+        Error = Color3.fromRGB(230, 70, 70),
+        Warning = Color3.fromRGB(255, 180, 50),
+    },
+    Neon = {
+        Background = Color3.fromRGB(10, 8, 18),
+        Surface = Color3.fromRGB(18, 14, 28),
+        Element = Color3.fromRGB(28, 22, 42),
+        Hover = Color3.fromRGB(40, 32, 58),
+        Border = Color3.fromRGB(55, 45, 75),
+        Text = Color3.fromRGB(235, 220, 255),
+        TextDim = Color3.fromRGB(160, 150, 190),
+        TextDark = Color3.fromRGB(80, 70, 100),
+        Accent = Color3.fromRGB(255, 80, 200),
+        AccentGradient = Color3.fromRGB(100, 200, 255),
+        Success = Color3.fromRGB(60, 210, 100),
+        Error = Color3.fromRGB(230, 70, 70),
+        Warning = Color3.fromRGB(255, 180, 50),
+    },
 }
 
--- ============================================
--- FAKE TRADE STATE
--- ============================================
-local mockState = {
-    active = false,
-    trade = nil,
-    partnerActionPending = false,
-    originalFunctions = {},
-    tradeCompleting = false,
-}
+Library.PresetThemes = PresetThemes
 
--- ============================================
--- CREATE FAKE PARTNER
--- ============================================
-local function createMockPartner(player)
-    local partnerName = player and player.Name or CONFIG.PARTNER_NAME
-    local partnerUserId = player and player.UserId or CONFIG.PARTNER_USER_ID
+function Library:ApplyTheme(themeName)
+    local theme = PresetThemes[themeName]
+    if not theme then return end
     
-    local mockPlayer = {
-        Name = partnerName,
-        DisplayName = partnerName,
-        UserId = partnerUserId,
-        ClassName = 'Player',
-        Character = nil,
-        AccountAge = 365,
+    for key, value in pairs(theme) do
+        self.Theme[key] = value
+        self:RefreshTheme(key, value)
+    end
+    self.CurrentTheme = themeName
+end
+
+function Library:RefreshTheme(themeKey, color)
+    for _, item in pairs(self.ThemeItems) do
+        if item.Properties then
+            for prop, val in pairs(item.Properties) do
+                if val == themeKey then
+                    item.Item[prop] = color
+                end
+            end
+        end
+    end
+end
+
+function Library:AddToTheme(item, properties)
+    item = item.Instance or item
+    local data = { Item = item, Properties = properties }
+    for prop, val in pairs(properties) do
+        if type(val) == "string" then
+            item[prop] = self.Theme[val]
+        else
+            item[prop] = val()
+        end
+    end
+    table.insert(self.ThemeItems, data)
+    self.ThemeMap[item] = data
+    return item
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- UTILITY FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Create(class, properties)
+    local obj = Instance.new(class)
+    for prop, val in pairs(properties or {}) do
+        obj[prop] = val
+    end
+    if class == "TextButton" then
+        obj.AutoButtonColor = false
+        obj.Text = ""
+    end
+    return setmetatable({ Instance = obj }, Library)
+end
+
+function Library:Corner(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 6)
+    c.Parent = obj.Instance or obj
+    return c
+end
+
+function Library:Stroke(obj, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or self.Theme.Border
+    s.Thickness = thickness or 1
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = obj.Instance or obj
+    return s
+end
+
+function Library:Tween(obj, properties, time, style, direction)
+    local target = obj.Instance or obj
+    local info = TweenInfo.new(time or self.TweenTime, style or self.TweenStyle, direction or self.TweenDirection)
+    local tween = TweenService:Create(target, info, properties)
+    tween:Play()
+    return tween
+end
+
+function Library:Connect(event, callback)
+    local conn = event:Connect(callback)
+    table.insert(self.Connections, conn)
+    return conn
+end
+
+function Library:Thread(func)
+    local thread = coroutine.create(func)
+    coroutine.resume(thread)
+    table.insert(self.Threads, thread)
+    return thread
+end
+
+function Library:SafeCall(func, ...)
+    local args = {...}
+    local success, result = pcall(func, unpack(args))
+    if not success then warn(result) end
+    return success, result
+end
+
+function Library:Round(num, decimals)
+    local mult = 10 ^ (decimals or 0)
+    return math.floor(num * mult + 0.5) / mult
+end
+
+function Library:Clamp(num, min, max)
+    return math.max(min, math.min(max, num))
+end
+
+function Library:Lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- FOLDER SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+for _, folder in pairs(Library.Folders) do
+    if not isfolder(folder) then
+        makefolder(folder)
+    end
+end
+
+if not isfile(Library.Directory .. "/autoload.json") then
+    writefile(Library.Directory .. "/autoload.json", "")
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- HOLDER
+-- ═══════════════════════════════════════════════════════════════════════
+
+Library.Holder = Library:Create("ScreenGui", {
+    Parent = gethui(),
+    ZIndexBehavior = Enum.ZIndexBehavior.Global,
+    ResetOnSpawn = false,
+    DisplayOrder = 999999,
+})
+
+Library.UnusedHolder = Library:Create("ScreenGui", {
+    Parent = gethui(),
+    Enabled = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Global,
+    ResetOnSpawn = false,
+})
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- NOTIFICATION SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+local NotificationHolder = Library:Create("Frame", {
+    Parent = Library.Holder.Instance,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(1, -20, 0, 20),
+    AnchorPoint = Vector2.new(1, 0),
+    Size = UDim2.new(0, 320, 1, -40),
+    AutomaticSize = Enum.AutomaticSize.X,
+})
+
+local NotificationLayout = Instance.new("UIListLayout")
+NotificationLayout.Padding = UDim.new(0, 8)
+NotificationLayout.FillDirection = Enum.FillDirection.Vertical
+NotificationLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+NotificationLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+NotificationLayout.Parent = NotificationHolder.Instance
+
+function Library:Notify(data)
+    data = data or {}
+    local title = data.Title or "Notification"
+    local description = data.Description or ""
+    local duration = data.Duration or 4
+    local icon = data.Icon or "Info"
+    local type = data.Type or "info"
+    
+    local colors = {
+        info = { accent = self.Theme.Accent, bg = self.Theme.Surface },
+        success = { accent = self.Theme.Success, bg = self.Theme.Surface },
+        warning = { accent = self.Theme.Warning, bg = self.Theme.Surface },
+        error = { accent = self.Theme.Error, bg = self.Theme.Surface },
     }
+    local color = colors[type] or colors.info
     
-    return setmetatable(mockPlayer, {
-        __index = function(t, k)
-            if k == 'Parent' then return Players end
-            if k == 'IsA' then 
-                return function(self, className) 
-                    return className == 'Player' or className == 'Instance'
-                end 
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, 0, 0, 0)
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.BackgroundColor3 = color.bg
+    card.BorderSizePixel = 0
+    card.BackgroundTransparency = 1
+    card.Parent = NotificationHolder.Instance
+    self:Corner(card, 8)
+    self:Stroke(card, self.Theme.Border)
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 10)
+    padding.PaddingBottom = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    padding.Parent = card
+    
+    local iconImg = Library:CreateIcon(icon, UDim2.fromOffset(18, 18), color.accent)
+    iconImg.Position = UDim2.new(0, 0, 0.5, 0)
+    iconImg.AnchorPoint = Vector2.new(0, 0.5)
+    iconImg.Parent = card
+    
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Position = UDim2.new(0, 26, 0, 0)
+    titleLbl.Size = UDim2.new(1, -26, 0, 18)
+    titleLbl.Text = title
+    titleLbl.TextColor3 = self.Theme.Text
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextSize = 14
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.Parent = card
+    
+    local descLbl = Instance.new("TextLabel")
+    descLbl.BackgroundTransparency = 1
+    descLbl.Position = UDim2.new(0, 26, 0, 20)
+    descLbl.Size = UDim2.new(1, -26, 0, 0)
+    descLbl.AutomaticSize = Enum.AutomaticSize.Y
+    descLbl.Text = description
+    descLbl.TextColor3 = self.Theme.TextDim
+    descLbl.Font = Enum.Font.Gotham
+    descLbl.TextSize = 12
+    descLbl.TextXAlignment = Enum.TextXAlignment.Left
+    descLbl.TextWrapped = true
+    descLbl.Parent = card
+    
+    local progressBg = Instance.new("Frame")
+    progressBg.Position = UDim2.new(0, 0, 1, -2)
+    progressBg.Size = UDim2.new(1, 0, 0, 2)
+    progressBg.BackgroundColor3 = self.Theme.Element
+    progressBg.BorderSizePixel = 0
+    progressBg.Parent = card
+    
+    local progress = Instance.new("Frame")
+    progress.Size = UDim2.new(1, 0, 1, 0)
+    progress.BackgroundColor3 = color.accent
+    progress.BorderSizePixel = 0
+    progress.Parent = progressBg
+    
+    tween(card, 0.2, { BackgroundTransparency = 0 })
+    tween(progress, duration, { Size = UDim2.new(0, 0, 1, 0) })
+    
+    task.delay(duration, function()
+        tween(card, 0.2, { BackgroundTransparency = 1 })
+        task.wait(0.25)
+        card:Destroy()
+    end)
+    
+    return card
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- CONFIG SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:GetConfig()
+    local config = {}
+    for flag, value in pairs(self.Flags) do
+        if type(value) == "table" and value.Key then
+            config[flag] = { Key = tostring(value.Key), Mode = value.Mode }
+        elseif type(value) == "table" and value.Color then
+            config[flag] = { Color = "#" .. value.HexValue, Alpha = value.Alpha }
+        else
+            config[flag] = value
+        end
+    end
+    return HttpService:JSONEncode(config)
+end
+
+function Library:LoadConfig(json)
+    local config = HttpService:JSONDecode(json)
+    for flag, value in pairs(config) do
+        local setter = self.ConfigFlags[flag]
+        if setter then
+            if type(value) == "table" and value.Key then
+                setter(value)
+            elseif type(value) == "table" and value.Color then
+                setter(value.Color, value.Alpha)
+            else
+                setter(value)
             end
-            if k == 'FindFirstChild' then
-                return function(self, name)
-                    return nil
-                end
-            end
-            if k == 'WaitForChild' then
-                return function(self, name, timeout)
-                    return nil
-                end
-            end
-            return rawget(t, k)
-        end,
-        __tostring = function() return partnerName end,
-        __eq = function(a, b)
-            if type(b) == 'table' then
-                return rawget(a, 'UserId') == rawget(b, 'UserId')
-            end
-            return false
-        end,
+        end
+    end
+end
+
+function Library:SaveConfig(name)
+    if not name or name == "" then return end
+    local path = self.Folders.Configs .. "/" .. name .. ".json"
+    writefile(path, self:GetConfig())
+    self:Notify({ Title = "Config", Description = "Saved: " .. name, Duration = 2, Type = "success" })
+end
+
+function Library:LoadConfigFile(name)
+    if not name or name == "" then return end
+    local path = self.Folders.Configs .. "/" .. name .. ".json"
+    if isfile(path) then
+        self:LoadConfig(readfile(path))
+        self:Notify({ Title = "Config", Description = "Loaded: " .. name, Duration = 2, Type = "success" })
+    end
+end
+
+function Library:DeleteConfig(name)
+    if not name or name == "" then return end
+    local path = self.Folders.Configs .. "/" .. name .. ".json"
+    if isfile(path) then delfile(path) end
+end
+
+function Library:GetConfigList()
+    local list = {}
+    for _, file in ipairs(listfiles(self.Folders.Configs)) do
+        local name = file:match("([^/\\]+)%.json$")
+        if name then table.insert(list, name) end
+    end
+    return list
+end
+
+function Library:SetAutoLoad(name)
+    local path = self.Folders.Configs .. "/" .. name .. ".json"
+    if isfile(path) then
+        writefile(self.Directory .. "/autoload.json", readfile(path))
+    end
+end
+
+function Library:ClearAutoLoad()
+    writefile(self.Directory .. "/autoload.json", "")
+end
+
+function Library:CheckAutoLoad()
+    local path = self.Directory .. "/autoload.json"
+    if isfile(path) then
+        local content = readfile(path)
+        if content and content ~= "" then
+            self:LoadConfig(content)
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- KEYBIND LIST
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:KeybindList()
+    local list = {}
+    local items = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = Library.Holder.Instance,
+        BackgroundColor3 = Library.Theme.Surface,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 20, 0.5, -50),
+        Size = UDim2.new(0, 200, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Visible = false,
+        ClipsDescendants = true,
+        ZIndex = 999,
     })
-end
-
-local mockPartner = createMockPartner()
-
--- ============================================
--- GET TRADE GUI
--- ============================================
-local function getTradeGUI()
-    local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gui then return nil end
-    return gui:FindFirstChild("TradeGUI")
-end
-
--- ============================================
--- FIND ELEMENT IN GUI
--- ============================================
-local function findElement(gui, path)
-    if not gui then return nil end
-    local current = gui
-    for _, name in ipairs(path) do
-        current = current:FindFirstChild(name)
-        if not current then return nil end
-    end
-    return current
-end
-
--- ============================================
--- MM2 ITEM DATABASE
--- ============================================
-local ItemDatabase = {
-    -- Knives
-    {name = "Luger", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Luger", icon = "2005276185", rarity = "Chroma"},
-    {name = "Heat", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Heat", icon = "2005276185", rarity = "Chroma"},
-    {name = "Eternal", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Eternal", icon = "2005276185", rarity = "Chroma"},
-    {name = "Fang", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Fang", icon = "2005276185", rarity = "Chroma"},
-    {name = "Shark", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Shark", icon = "2005276185", rarity = "Chroma"},
-    {name = "Saw", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Saw", icon = "2005276185", rarity = "Chroma"},
-    {name = "Blaster", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Blaster", icon = "2005276185", rarity = "Chroma"},
-    {name = "Nightblade", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Nightblade", icon = "2005276185", rarity = "Chroma"},
-    {name = "Gemstone", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Gemstone", icon = "2005276185", rarity = "Chroma"},
-    {name = "Deathshard", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Deathshard", icon = "2005276185", rarity = "Chroma"},
-    {name = "Slasher", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Slasher", icon = "2005276185", rarity = "Chroma"},
-    {name = "Tides", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Tides", icon = "2005276185", rarity = "Chroma"},
-    {name = "Boneblade", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Boneblade", icon = "2005276185", rarity = "Chroma"},
-    -- Guns
-    {name = "Laser", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Laser", icon = "2005276185", rarity = "Chroma"},
-    {name = "Red Luger", icon = "2005276185", rarity = "Godly"},
-    {name = "Amerilaser", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Amerilaser", icon = "2005276185", rarity = "Chroma"},
-    {name = "Old Glory", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Old Glory", icon = "2005276185", rarity = "Chroma"},
-    {name = "Virtual", icon = "2005276185", rarity = "Godly"},
-    {name = "Chroma Virtual", icon = "2005276185", rarity = "Chroma"},
-    -- Classics
-    {name = "Seer", icon = "2005276185", rarity = "Godly"},
-    {name = "Orange Seer", icon = "2005276185", rarity = "Godly"},
-    {name = "Battle Axe", icon = "2005276185", rarity = "Godly"},
-    {name = "Skool", icon = "2005276185", rarity = "Godly"},
-}
-
--- ============================================
--- CREATE FAKE TRADE
--- ============================================
-local function createMockTrade()
-    return {
-        trade_id = 'MOCK_' .. tick() .. '_' .. HttpService:GenerateGUID(false),
-        sender = LocalPlayer,
-        recipient = mockPartner,
-        sender_offer = { 
-            items = {}, 
-            player_name = LocalPlayer.Name,
-            negotiated = false,
-            confirmed = false 
-        },
-        recipient_offer = { 
-            items = {}, 
-            player_name = CONFIG.PARTNER_NAME,
-            negotiated = false,
-            confirmed = false 
-        },
-        current_stage = 'negotiation',
-        offer_version = 1,
-        sender_has_trade_license = true,
-        recipient_has_trade_license = true,
-        busy_indicators = {},
-    }
-end
-
--- ============================================
--- UPDATE TRADE GUI
--- ============================================
-local function updateTradeUI()
-    if not mockState.active or not mockState.trade then return end
+    Library:Corner(frame, 8)
+    Library:Stroke(frame, Library.Theme.Border)
     
-    local gui = getTradeGUI()
-    if not gui then return end
-    
-    local statusLabel = gui:FindFirstChild("StatusLabel")
-    if statusLabel and statusLabel:IsA("TextLabel") then
-        local statusText = ""
-        if mockState.trade.current_stage == "negotiation" then
-            statusText = "Waiting for your action..."
-        elseif mockState.trade.current_stage == "confirmation" then
-            statusText = "Both accepted! Confirm the trade."
-        elseif mockState.trade.current_stage == "completed" then
-            statusText = "Trade completed!"
-        end
-        statusLabel.Text = statusText
-    end
-    
-    local actions = findElement(gui, {"Trade", "Actions"})
-    if actions then
-        for _, btnName in ipairs({"Accept", "Confirm", "Decline"}) do
-            local btn = actions:FindFirstChild(btnName)
-            if btn then
-                if mockState.trade.current_stage == "negotiation" then
-                    btn.Visible = btnName == "Accept" or btnName == "Decline"
-                elseif mockState.trade.current_stage == "confirmation" then
-                    btn.Visible = btnName == "Confirm" or btnName == "Decline"
-                elseif mockState.trade.current_stage == "completed" then
-                    btn.Visible = false
-                end
-            end
-        end
-    end
-    
-    local yourOffer = findElement(gui, {"Trade", "YourOffer", "Container"})
-    if yourOffer then
-        for _, child in ipairs(yourOffer:GetChildren()) do
-            if child:IsA("Frame") and child.Name:match("NewItem") then
-                child:Destroy()
-            end
-        end
-        
-        for _, item in ipairs(mockState.trade.sender_offer.items) do
-            local newItem = yourOffer:FindFirstChild("NewItem1")
-            if newItem then
-                local clone = newItem:Clone()
-                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
-                clone.Parent = yourOffer
-                
-                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
-                if icon and icon:IsA("ImageLabel") then
-                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
-                end
-                
-                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
-                if amount and amount:IsA("TextLabel") then
-                    amount.Text = tostring(item.amount or 1)
-                end
-                
-                local itemName = clone:FindFirstChild("ItemName")
-                if itemName then
-                    local label = itemName:FindFirstChild("Label")
-                    if label and label:IsA("TextLabel") then
-                        label.Text = item.name or "Unknown"
-                    end
-                end
-            end
-        end
-    end
-    
-    local theirOffer = findElement(gui, {"Trade", "TheirOffer", "Container"})
-    if theirOffer then
-        for _, child in ipairs(theirOffer:GetChildren()) do
-            if child:IsA("Frame") and child.Name:match("NewItem") then
-                child:Destroy()
-            end
-        end
-        
-        for _, item in ipairs(mockState.trade.recipient_offer.items) do
-            local newItem = theirOffer:FindFirstChild("NewItem1")
-            if newItem then
-                local clone = newItem:Clone()
-                clone.Name = "NewItem_" .. HttpService:GenerateGUID(false)
-                clone.Parent = theirOffer
-                
-                local icon = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Icon")
-                if icon and icon:IsA("ImageLabel") then
-                    icon.Image = "rbxassetid://" .. (item.icon or "2005276185")
-                end
-                
-                local amount = clone:FindFirstChild("Container") and clone.Container:FindFirstChild("Amount")
-                if amount and amount:IsA("TextLabel") then
-                    amount.Text = tostring(item.amount or 1)
-                end
-                
-                local itemName = clone:FindFirstChild("ItemName")
-                if itemName then
-                    local label = itemName:FindFirstChild("Label")
-                    if label and label:IsA("TextLabel") then
-                        label.Text = item.name or "Unknown"
-                    end
-                end
-            end
-        end
-    end
-end
-
--- ============================================
--- HOOK ALL REMOTES
--- ============================================
-
-local originals = {}
-
-for name, remote in pairs(Remotes) do
-    if remote then
-        if remote:IsA("RemoteFunction") then
-            originals[name] = remote.InvokeServer
-        elseif remote:IsA("RemoteEvent") then
-            originals[name] = remote.FireServer
-        end
-    end
-end
-
--- GetTradeStatus
-if Remotes.GetTradeStatus then
-    Remotes.GetTradeStatus.InvokeServer = function(self)
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == "negotiation" then
-                return "StartTrade"
-            elseif mockState.trade.current_stage == "confirmation" then
-                return "StartTrade"
-            elseif mockState.trade.current_stage == "completed" then
-                return "None"
-            end
-            return "StartTrade"
-        end
-        return originals.GetTradeStatus and originals.GetTradeStatus(self)
-    end
-end
-
--- SendRequest
-if Remotes.SendRequest then
-    Remotes.SendRequest.FireServer = function(self, player)
-        if mockState.active and mockState.trade then
-            if player and player.UserId == CONFIG.PARTNER_USER_ID then
-                return
-            end
-        end
-        return originals.SendRequest and originals.SendRequest(self, player)
-    end
-end
-
--- AcceptRequest
-if Remotes.AcceptRequest then
-    Remotes.AcceptRequest.FireServer = function(self)
-        if mockState.active and mockState.trade then
-            return
-        end
-        return originals.AcceptRequest and originals.AcceptRequest(self)
-    end
-end
-
--- AcceptTrade
-if Remotes.AcceptTrade then
-    Remotes.AcceptTrade.FireServer = function(self, arg1, arg2)
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == "negotiation" then
-                mockState.trade.sender_offer.negotiated = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                
-                if mockState.trade.recipient_offer.negotiated then
-                    mockState.trade.current_stage = "confirmation"
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    updateTradeUI()
-                    task.spawn(partnerAutoAction)
-                end
-                updateTradeUI()
-                return
-            end
-        end
-        return originals.AcceptTrade and originals.AcceptTrade(self, arg1, arg2)
-    end
-end
-
--- CompleteTrade
-if Remotes.CompleteTrade then
-    Remotes.CompleteTrade.FireServer = function(self, arg1)
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == "confirmation" then
-                mockState.trade.sender_offer.confirmed = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                
-                if mockState.trade.recipient_offer.confirmed then
-                    mockState.trade.current_stage = "completed"
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    updateTradeUI()
-                end
-                updateTradeUI()
-                return
-            end
-        end
-        return originals.CompleteTrade and originals.CompleteTrade(self, arg1)
-    end
-end
-
--- DeclineTrade
-if Remotes.DeclineTrade then
-    Remotes.DeclineTrade.FireServer = function(self)
-        if mockState.active and mockState.trade then
-            mockState.active = false
-            mockState.trade = nil
-            updateTradeUI()
-            return
-        end
-        return originals.DeclineTrade and originals.DeclineTrade(self)
-    end
-end
-
--- DeclineRequest
-if Remotes.DeclineRequest then
-    Remotes.DeclineRequest.FireServer = function(self)
-        if mockState.active and mockState.trade then
-            mockState.active = false
-            mockState.trade = nil
-            updateTradeUI()
-            return
-        end
-        return originals.DeclineRequest and originals.DeclineRequest(self)
-    end
-end
-
--- OfferItem
-if Remotes.OfferItem then
-    Remotes.OfferItem.FireServer = function(self, itemId, itemType)
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == "completed" then
-                return
-            end
-            
-            local itemData = nil
-            for _, data in ipairs(ItemDatabase) do
-                if data.name == itemId then
-                    itemData = data
-                    break
-                end
-            end
-            
-            local item = {
-                id = itemId,
-                name = itemId,
-                type = itemType or "Weapons",
-                amount = 1,
-                icon = itemData and itemData.icon or "2005276185",
-                rarity = itemData and itemData.rarity or "Unknown",
-            }
-            
-            table.insert(mockState.trade.sender_offer.items, item)
-            mockState.trade.offer_version = mockState.trade.offer_version + 1
-            updateTradeUI()
-            return
-        end
-        return originals.OfferItem and originals.OfferItem(self, itemId, itemType)
-    end
-end
-
--- RemoveOffer
-if Remotes.RemoveOffer then
-    Remotes.RemoveOffer.FireServer = function(self, itemId)
-        if mockState.active and mockState.trade then
-            for i, item in ipairs(mockState.trade.sender_offer.items) do
-                if item.id == itemId then
-                    table.remove(mockState.trade.sender_offer.items, i)
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    updateTradeUI()
-                    return
-                end
-            end
-            return
-        end
-        return originals.RemoveOffer and originals.RemoveOffer(self, itemId)
-    end
-end
-
--- EndTrade
-if Remotes.EndTrade then
-    Remotes.EndTrade.FireServer = function(self)
-        if mockState.active and mockState.trade then
-            mockState.active = false
-            mockState.trade = nil
-            updateTradeUI()
-            return
-        end
-        return originals.EndTrade and originals.EndTrade(self)
-    end
-end
-
--- UpdateTrade
-if Remotes.UpdateTrade then
-    Remotes.UpdateTrade.FireServer = function(self, data)
-        if mockState.active and mockState.trade then
-            if data then
-                if data.sender_offer then
-                    mockState.trade.sender_offer.items = data.sender_offer.items or {}
-                end
-                if data.recipient_offer then
-                    mockState.trade.recipient_offer.items = data.recipient_offer.items or {}
-                end
-                if data.current_stage then
-                    mockState.trade.current_stage = data.current_stage
-                end
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                updateTradeUI()
-            end
-            return
-        end
-        return originals.UpdateTrade and originals.UpdateTrade(self, data)
-    end
-end
-
--- CancelAccept
-if Remotes.CancelAccept then
-    Remotes.CancelAccept.FireServer = function(self)
-        if mockState.active and mockState.trade then
-            mockState.trade.sender_offer.confirmed = false
-            mockState.trade.offer_version = mockState.trade.offer_version + 1
-            updateTradeUI()
-            return
-        end
-        return originals.CancelAccept and originals.CancelAccept(self)
-    end
-end
-
--- ============================================
--- PARTNER AUTO ACTIONS
--- ============================================
-local function partnerAutoAction()
-    if not mockState.active or not mockState.trade or mockState.partnerActionPending then
-        return
-    end
-    
-    mockState.partnerActionPending = true
-    
-    if mockState.trade.current_stage == "negotiation" then
-        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
-        
-        if mockState.active and mockState.trade then
-            mockState.trade.recipient_offer.negotiated = true
-            mockState.trade.offer_version = mockState.trade.offer_version + 1
-            
-            if mockState.trade.sender_offer.negotiated then
-                mockState.trade.current_stage = "confirmation"
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                updateTradeUI()
-            end
-            updateTradeUI()
-        end
-        
-    elseif mockState.trade.current_stage == "confirmation" then
-        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
-        
-        if mockState.active and mockState.trade then
-            mockState.trade.recipient_offer.confirmed = true
-            mockState.trade.offer_version = mockState.trade.offer_version + 1
-            
-            if mockState.trade.sender_offer.confirmed then
-                mockState.trade.current_stage = "completed"
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                updateTradeUI()
-            end
-            updateTradeUI()
-        end
-    end
-    
-    mockState.partnerActionPending = false
-end
-
--- ============================================
--- START FAKE TRADE
--- ============================================
-local function startMockTrade()
-    if mockState.active then return end
-    
-    mockState.trade = createMockTrade()
-    mockState.active = true
-    
-    local gui = getTradeGUI()
-    if gui then
-        gui.Enabled = true
-        gui.Visible = true
-    end
-    
-    updateTradeUI()
-    task.spawn(partnerAutoAction)
-    
-    print("[MM2 Fake Trade] Started! Partner: " .. CONFIG.PARTNER_NAME)
-end
-
--- ============================================
--- ADD ITEM TO TRADE
--- ============================================
-local function addItemToTrade(itemData)
-    if not mockState.active or not mockState.trade then
-        return false, "No active trade"
-    end
-    
-    if mockState.trade.current_stage == "completed" then
-        return false, "Trade already completed"
-    end
-    
-    local item = {
-        id = itemData.id or itemData.name or "FakeItem_" .. HttpService:GenerateGUID(false),
-        name = itemData.name or "Unknown",
-        type = itemData.type or "Weapons",
-        amount = itemData.amount or 1,
-        icon = itemData.icon or "2005276185",
-        rarity = itemData.rarity or "Unknown",
-    }
-    
-    table.insert(mockState.trade.sender_offer.items, item)
-    mockState.trade.offer_version = mockState.trade.offer_version + 1
-    updateTradeUI()
-    
-    return true, "Item added"
-end
-
--- ============================================
--- GET RANDOM ITEM
--- ============================================
-local function getRandomItem()
-    return ItemDatabase[math.random(1, #ItemDatabase)]
-end
-
--- ============================================
--- PERMANENT MENU ON SCREEN
--- ============================================
-local function createMenu()
-    local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gui then return end
-    
-    local old = gui:FindFirstChild("FakeTradeMenu")
-    if old then old:Destroy() end
-    
-    local panel = Instance.new("Frame")
-    panel.Name = "FakeTradeMenu"
-    panel.Size = UDim2.new(0, 240, 0, 350)
-    panel.Position = UDim2.new(0.01, 0, 0.5, -175)
-    panel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    panel.BorderSizePixel = 0
-    panel.ClipsDescendants = true
-    panel.ZIndex = 10
-    panel.Parent = gui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = panel
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(100, 80, 200)
-    stroke.Thickness = 1.5
-    stroke.Parent = panel
-    
-    local bgGrad = Instance.new("UIGradient")
-    bgGrad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 18, 35)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 20)),
-    })
-    bgGrad.Parent = panel
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 28)
+    header.BackgroundColor3 = Library.Theme.Element
+    header.BorderSizePixel = 0
+    header.Parent = frame.Instance
     
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 32)
-    title.Position = UDim2.new(0, 0, 0, 0)
+    title.Size = UDim2.new(1, -36, 1, 0)
+    title.Position = UDim2.new(0, 12, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MM2 Fake Trade"
+    title.Text = "Keybinds"
+    title.TextColor3 = Library.Theme.Text
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Parent = panel
+    title.TextSize = 12
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
     
-    local line = Instance.new("Frame")
-    line.Size = UDim2.new(1, -20, 0, 1.5)
-    line.Position = UDim2.new(0, 10, 0, 34)
-    line.BackgroundColor3 = Color3.fromRGB(100, 80, 200)
-    line.BackgroundTransparency = 0.5
-    line.BorderSizePixel = 0
-    line.Parent = panel
+    local icon = Library:CreateIcon("Key", UDim2.fromOffset(14, 14), Library.Theme.Accent)
+    icon.AnchorPoint = Vector2.new(1, 0.5)
+    icon.Position = UDim2.new(1, -8, 0.5, 0)
+    icon.Parent = header
     
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, -20, 0, 18)
-    statusLabel.Position = UDim2.new(0, 10, 0, 40)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Idle"
-    statusLabel.Font = Enum.Font.GothamMedium
-    statusLabel.TextSize = 11
-    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
-    statusLabel.Name = "StatusLabel"
-    statusLabel.Parent = panel
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 1, -28)
+    content.Position = UDim2.new(0, 0, 0, 28)
+    content.BackgroundTransparency = 1
+    content.Parent = frame.Instance
     
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.4, 0, 0, 20)
-    nameLabel.Position = UDim2.new(0, 10, 0, 62)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = "Partner:"
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 10
-    nameLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = panel
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = content
     
-    local nameBox = Instance.new("TextBox")
-    nameBox.Size = UDim2.new(0.55, 0, 0, 20)
-    nameBox.Position = UDim2.new(0.42, 0, 0, 62)
-    nameBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    nameBox.BackgroundTransparency = 0.5
-    nameBox.Text = CONFIG.PARTNER_NAME
-    nameBox.Font = Enum.Font.GothamMedium
-    nameBox.TextSize = 10
-    nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameBox.ClearTextOnFocus = false
-    nameBox.TextXAlignment = Enum.TextXAlignment.Center
-    nameBox.Parent = panel
-    Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 4)
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 6)
+    padding.PaddingBottom = UDim.new(0, 6)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = content
     
-    nameBox.FocusLost:Connect(function()
-        if nameBox.Text ~= "" then
-            CONFIG.PARTNER_NAME = nameBox.Text
-            mockPartner = createMockPartner()
-        end
-    end)
+    frame:MakeDraggable()
     
-    local function createBtn(text, y, color, hoverColor, onClick)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -20, 0, 30)
-        btn.Position = UDim2.new(0, 10, 0, y)
-        btn.BackgroundColor3 = color
-        btn.BackgroundTransparency = 0.2
-        btn.Text = text
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 11
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false
-        btn.Parent = panel
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    function list:Add(name, key, mode)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 0)
+        row.AutomaticSize = Enum.AutomaticSize.Y
+        row.BackgroundTransparency = 1
+        row.Parent = content
         
-        btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {
-                BackgroundTransparency = 0,
-                BackgroundColor3 = hoverColor or color
-            }):Play()
-        end)
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -60, 0, 16)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = name .. " [" .. (key or "None") .. "]"
+        lbl.TextColor3 = Library.Theme.TextDim
+        lbl.Font = Enum.Font.Gotham
+        lbl.TextSize = 11
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = row
         
-        btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {
-                BackgroundTransparency = 0.2,
-                BackgroundColor3 = color
-            }):Play()
-        end)
+        local status = Instance.new("Frame")
+        status.Size = UDim2.new(0, 8, 0, 8)
+        status.Position = UDim2.new(1, -8, 0.5, 0)
+        status.AnchorPoint = Vector2.new(1, 0.5)
+        status.BackgroundColor3 = Library.Theme.TextDark
+        status.BorderSizePixel = 0
+        status.Parent = row
+        Library:Corner(status, 4)
         
-        if onClick then
-            btn.MouseButton1Click:Connect(onClick)
+        local data = { row = row, lbl = lbl, status = status }
+        
+        function data:SetStatus(active)
+            status.BackgroundColor3 = active and Library.Theme.Success or Library.Theme.TextDark
         end
         
-        return btn
+        function data:Update(name, key, mode)
+            lbl.Text = name .. " [" .. (key or "None") .. "]"
+        end
+        
+        table.insert(items, data)
+        return data
     end
     
-    createBtn("Start Trade", 90, Color3.fromRGB(40, 160, 100), Color3.fromRGB(60, 200, 130), function()
-        if not mockState.active then
-            startMockTrade()
-            statusLabel.Text = "Trade active"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-        else
-            statusLabel.Text = "Already active"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
+    function list:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
     
-    createBtn("Add Random Item", 126, Color3.fromRGB(80, 60, 180), Color3.fromRGB(120, 80, 220), function()
-        if mockState.active and mockState.trade then
-            local item = getRandomItem()
-            addItemToTrade(item)
-            statusLabel.Text = "Added: " .. item.name
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-        else
-            statusLabel.Text = "Start trade first!"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
-    
-    createBtn("Add Godly/Chroma", 162, Color3.fromRGB(200, 150, 50), Color3.fromRGB(230, 180, 70), function()
-        if mockState.active and mockState.trade then
-            local godlies = {}
-            for _, item in ipairs(ItemDatabase) do
-                if item.rarity == "Godly" or item.rarity == "Chroma" then
-                    table.insert(godlies, item)
-                end
-            end
-            if #godlies > 0 then
-                local item = godlies[math.random(1, #godlies)]
-                addItemToTrade(item)
-                statusLabel.Text = "Added: " .. item.name
-                statusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-            end
-        else
-            statusLabel.Text = "Start trade first!"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
-    
-    createBtn("Partner Accept", 198, Color3.fromRGB(50, 130, 50), Color3.fromRGB(70, 170, 70), function()
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == "negotiation" then
-                mockState.trade.recipient_offer.negotiated = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                if mockState.trade.sender_offer.negotiated then
-                    mockState.trade.current_stage = "confirmation"
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                end
-                updateTradeUI()
-                statusLabel.Text = "Partner accepted"
-                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-            elseif mockState.trade.current_stage == "confirmation" then
-                mockState.trade.recipient_offer.confirmed = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                if mockState.trade.sender_offer.confirmed then
-                    mockState.trade.current_stage = "completed"
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                end
-                updateTradeUI()
-                statusLabel.Text = "Partner confirmed"
-                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
-            end
-        else
-            statusLabel.Text = "No active trade"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
-    
-    createBtn("Clear Trade", 234, Color3.fromRGB(180, 60, 60), Color3.fromRGB(220, 80, 80), function()
-        if mockState.active and mockState.trade then
-            mockState.trade.sender_offer.items = {}
-            mockState.trade.recipient_offer.items = {}
-            mockState.trade.sender_offer.negotiated = false
-            mockState.trade.recipient_offer.negotiated = false
-            mockState.trade.sender_offer.confirmed = false
-            mockState.trade.recipient_offer.confirmed = false
-            mockState.trade.current_stage = "negotiation"
-            mockState.trade.offer_version = mockState.trade.offer_version + 1
-            updateTradeUI()
-            statusLabel.Text = "Cleared"
-            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        else
-            statusLabel.Text = "No active trade"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
-    
-    createBtn("Close Trade", 270, Color3.fromRGB(150, 40, 40), Color3.fromRGB(200, 50, 50), function()
-        if mockState.active then
-            mockState.active = false
-            mockState.trade = nil
-            local gui = getTradeGUI()
-            if gui then
-                gui.Enabled = false
-                gui.Visible = false
-            end
-            statusLabel.Text = "Closed"
-            statusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
-        else
-            statusLabel.Text = "No active trade"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        end
-    end)
-    
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 25, 0, 25)
-    toggleBtn.Position = UDim2.new(1, -32, 0, 4)
-    toggleBtn.BackgroundTransparency = 1
-    toggleBtn.Text = "−"
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 18
-    toggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    toggleBtn.BorderSizePixel = 0
-    toggleBtn.Parent = panel
-    
-    local minimized = false
-    local fullSize = UDim2.new(0, 240, 0, 350)
-    local miniSize = UDim2.new(0, 240, 0, 36)
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        if minimized then
-            TweenService:Create(panel, TweenInfo.new(0.3), {Size = miniSize}):Play()
-            toggleBtn.Text = "+"
-        else
-            TweenService:Create(panel, TweenInfo.new(0.3), {Size = fullSize}):Play()
-            toggleBtn.Text = "−"
-        end
-    end)
-    
-    return panel
+    Library.KeybindList = list
+    return list
 end
 
--- ============================================
--- DRAGGABLE WINDOW
--- ============================================
-local function setupDragging(frame)
-    local dragging = false
-    local dragInput, dragStart, startPos
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: TOGGLE
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Toggle(data)
+    data = data or {}
+    local toggle = {
+        Name = data.Name or "Toggle",
+        Flag = data.Flag or data.Name or "Toggle",
+        Default = data.Default or false,
+        Callback = data.Callback or function() end,
+        Value = false,
+    }
     
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
+    local items = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 20),
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -44, 1, 0)
+    text.Position = UDim2.new(0, 0, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = toggle.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local pill = Instance.new("Frame")
+    pill.AnchorPoint = Vector2.new(1, 0.5)
+    pill.Position = UDim2.new(1, 0, 0.5, 0)
+    pill.Size = UDim2.new(0, 34, 0, 16)
+    pill.BackgroundColor3 = Library.Theme.Element
+    pill.BorderSizePixel = 0
+    pill.Parent = frame.Instance
+    Library:Corner(pill, 8)
+    
+    local knob = Instance.new("Frame")
+    knob.Position = UDim2.new(0, 2, 0.5, 0)
+    knob.AnchorPoint = Vector2.new(0, 0.5)
+    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.BackgroundColor3 = Library.Theme.Text
+    knob.BorderSizePixel = 0
+    knob.Parent = pill
+    Library:Corner(knob, 6)
+    
+    local hit = Instance.new("TextButton")
+    hit.Size = UDim2.new(1, 0, 1, 0)
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.AutoButtonColor = false
+    hit.Parent = frame.Instance
+    
+    function toggle:Set(value)
+        self.Value = value
+        Library.Flags[self.Flag] = value
+        Library:Tween(pill, { BackgroundColor3 = value and Library.Theme.Accent or Library.Theme.Element })
+        Library:Tween(knob, { Position = value and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 2, 0.5, 0) })
+        Library:Tween(text, { TextColor3 = value and Library.Theme.Text or Library.Theme.TextDim })
+        self.Callback(value)
+    end
+    
+    function toggle:SetText(text)
+        toggle.Name = text
+        text.Text = text
+    end
+    
+    function toggle:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    hit.MouseButton1Click:Connect(function()
+        toggle:Set(not toggle.Value)
     end)
     
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
+    toggle:Set(toggle.Default)
+    Library.ConfigFlags[toggle.Flag] = toggle.Set
+    
+    return toggle
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: BUTTON
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Button(data)
+    data = data or {}
+    local button = {
+        Name = data.Name or "Button",
+        Callback = data.Callback or function() end,
+    }
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 25),
+        BorderSizePixel = 0,
+    })
+    
+    local bg = Instance.new("TextButton")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Library.Theme.Element
+    bg.Text = ""
+    bg.AutoButtonColor = false
+    bg.Parent = frame.Instance
+    Library:Corner(bg, 4)
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -12, 1, 0)
+    text.Position = UDim2.new(0, 6, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = button.Name
+    text.TextColor3 = Library.Theme.Text
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = bg
+    
+    local arrow = Library:CreateIcon("ChevronRight", UDim2.fromOffset(12, 12), Library.Theme.TextDim)
+    arrow.AnchorPoint = Vector2.new(1, 0.5)
+    arrow.Position = UDim2.new(1, -6, 0.5, 0)
+    arrow.Parent = bg
+    
+    bg.MouseEnter:Connect(function()
+        Library:Tween(bg, { BackgroundColor3 = Library.Theme.Hover })
+    end)
+    bg.MouseLeave:Connect(function()
+        Library:Tween(bg, { BackgroundColor3 = Library.Theme.Element })
+    end)
+    bg.MouseButton1Click:Connect(function()
+        button.Callback()
+    end)
+    
+    function button:SetText(text)
+        button.Name = text
+        text.Text = text
+    end
+    
+    function button:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    return button
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: SLIDER
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Slider(data)
+    data = data or {}
+    local slider = {
+        Name = data.Name or "Slider",
+        Flag = data.Flag or data.Name or "Slider",
+        Min = data.Min or 0,
+        Max = data.Max or 100,
+        Default = data.Default or 50,
+        Decimals = data.Decimals or 0,
+        Suffix = data.Suffix or "",
+        Callback = data.Callback or function() end,
+        Value = 0,
+        Sliding = false,
+    }
+    
+    local items = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 35),
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -80, 0, 16)
+    text.BackgroundTransparency = 1
+    text.Text = slider.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local valueLbl = Instance.new("TextLabel")
+    valueLbl.AnchorPoint = Vector2.new(1, 0)
+    valueLbl.Position = UDim2.new(1, 0, 0, 0)
+    valueLbl.Size = UDim2.new(0, 60, 0, 16)
+    valueLbl.BackgroundTransparency = 1
+    valueLbl.Text = tostring(slider.Default) .. slider.Suffix
+    valueLbl.TextColor3 = Library.Theme.Accent
+    valueLbl.Font = Enum.Font.GothamBold
+    valueLbl.TextSize = 13
+    valueLbl.TextXAlignment = Enum.TextXAlignment.Right
+    valueLbl.Parent = frame.Instance
+    
+    local track = Instance.new("Frame")
+    track.AnchorPoint = Vector2.new(0, 1)
+    track.Position = UDim2.new(0, 0, 1, -2)
+    track.Size = UDim2.new(1, 0, 0, 4)
+    track.BackgroundColor3 = Library.Theme.Element
+    track.BorderSizePixel = 0
+    track.Parent = frame.Instance
+    Library:Corner(track, 2)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((slider.Default - slider.Min) / (slider.Max - slider.Min), 0, 1, 0)
+    fill.BackgroundColor3 = Library.Theme.Accent
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    Library:Corner(fill, 2)
+    
+    local knob = Instance.new("Frame")
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.new((slider.Default - slider.Min) / (slider.Max - slider.Min), 0, 0.5, 0)
+    knob.Size = UDim2.new(0, 10, 0, 10)
+    knob.BackgroundColor3 = Library.Theme.Text
+    knob.BorderSizePixel = 0
+    knob.Parent = track
+    Library:Corner(knob, 5)
+    
+    track.MouseEnter:Connect(function()
+        Library:Tween(track, { BackgroundColor3 = Library.Theme.Hover })
+    end)
+    track.MouseLeave:Connect(function()
+        Library:Tween(track, { BackgroundColor3 = Library.Theme.Element })
+    end)
+    
+    function slider:Set(value)
+        self.Value = Library:Clamp(value, self.Min, self.Max)
+        local percent = (self.Value - self.Min) / (self.Max - self.Min)
+        Library:Fade(fill, { Size = UDim2.new(percent, 0, 1, 0) })
+        Library:Fade(knob, { Position = UDim2.new(percent, 0, 0.5, 0) })
+        valueLbl.Text = tostring(Library:Round(self.Value, self.Decimals)) .. self.Suffix
+        Library.Flags[self.Flag] = self.Value
+        self.Callback(self.Value)
+    end
+    
+    function slider:SetText(text)
+        slider.Name = text
+        text.Text = text
+    end
+    
+    function slider:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            self.Sliding = true
+            local percent = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+            local value = self.Min + (self.Max - self.Min) * Library:Clamp(percent, 0, 1)
+            self:Set(value)
         end
+    end)
+    track.InputEnded:Connect(function()
+        self.Sliding = false
     end)
     
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
-                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        if self.Sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local percent = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+            local value = self.Min + (self.Max - self.Min) * Library:Clamp(percent, 0, 1)
+            self:Set(value)
         end
     end)
     
-    frame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
+    slider:Set(slider.Default)
+    Library.ConfigFlags[slider.Flag] = slider.Set
+    
+    return slider
 end
 
--- ============================================
--- INITIALIZATION
--- ============================================
-repeat task.wait() until game:IsLoaded()
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: DROPDOWN
+-- ═══════════════════════════════════════════════════════════════════════
 
-print("[MM2 Fake Trade] Initializing...")
+function Library:Dropdown(data)
+    data = data or {}
+    local dropdown = {
+        Name = data.Name or "Dropdown",
+        Flag = data.Flag or data.Name or "Dropdown",
+        Items = data.Items or {},
+        Default = data.Default or "",
+        Multi = data.Multi or false,
+        Callback = data.Callback or function() end,
+        Value = {},
+        Open = false,
+    }
+    
+    local items = {}
+    local options = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 38),
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -24, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = dropdown.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local selectBg = Instance.new("Frame")
+    selectBg.AnchorPoint = Vector2.new(1, 0)
+    selectBg.Position = UDim2.new(1, 0, 0, 0)
+    selectBg.Size = UDim2.new(0, 140, 1, 0)
+    selectBg.BackgroundColor3 = Library.Theme.Element
+    selectBg.BorderSizePixel = 0
+    selectBg.Parent = frame.Instance
+    Library:Corner(selectBg, 4)
+    
+    local selectText = Instance.new("TextLabel")
+    selectText.Size = UDim2.new(1, -20, 1, 0)
+    selectText.Position = UDim2.new(0, 6, 0, 0)
+    selectText.BackgroundTransparency = 1
+    selectText.Text = dropdown.Default or "Select..."
+    selectText.TextColor3 = Library.Theme.Text
+    selectText.Font = Enum.Font.Gotham
+    selectText.TextSize = 12
+    selectText.TextXAlignment = Enum.TextXAlignment.Left
+    selectText.Parent = selectBg
+    
+    local arrow = Library:CreateIcon("ChevronDown", UDim2.fromOffset(12, 12), Library.Theme.TextDim)
+    arrow.AnchorPoint = Vector2.new(1, 0.5)
+    arrow.Position = UDim2.new(1, -6, 0.5, 0)
+    arrow.Parent = selectBg
+    
+    local listFrame = Instance.new("ScrollingFrame")
+    listFrame.Size = UDim2.new(1, -2, 0, 100)
+    listFrame.Position = UDim2.new(0, 1, 0, 38)
+    listFrame.BackgroundColor3 = Library.Theme.Surface
+    listFrame.BorderSizePixel = 0
+    listFrame.Visible = false
+    listFrame.ScrollBarThickness = 2
+    listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    listFrame.Parent = frame.Instance
+    Library:Corner(listFrame, 4)
+    Library:Stroke(listFrame, Library.Theme.Border)
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 3)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Parent = listFrame
+    
+    local function updateSize()
+        local total = #options > 0 and math.min(#options * 25 + 6, 120) or 40
+        frame.Instance.Size = UDim2.new(1, 0, 0, dropdown.Open and 38 + total or 38)
+    end
+    
+    function dropdown:Add(option)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.BackgroundColor3 = Library.Theme.Surface
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        btn.Parent = listFrame
+        Library:Corner(btn, 3)
+        
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -16, 1, 0)
+        lbl.Position = UDim2.new(0, 6, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = option
+        lbl.TextColor3 = Library.Theme.TextDim
+        lbl.Font = Enum.Font.Gotham
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = btn
+        
+        local check = Library:CreateIcon("Check", UDim2.fromOffset(10, 10), Library.Theme.Accent)
+        check.AnchorPoint = Vector2.new(1, 0.5)
+        check.Position = UDim2.new(1, -6, 0.5, 0)
+        check.ImageTransparency = 1
+        check.Parent = btn
+        
+        btn.MouseEnter:Connect(function()
+            Library:Tween(btn, { BackgroundColor3 = Library.Theme.Hover })
+        end)
+        btn.MouseLeave:Connect(function()
+            Library:Tween(btn, { BackgroundColor3 = Library.Theme.Surface })
+        end)
+        btn.MouseButton1Click:Connect(function()
+            if dropdown.Multi then
+                local idx = table.find(dropdown.Value, option)
+                if idx then
+                    table.remove(dropdown.Value, idx)
+                    Library:Tween(check, { ImageTransparency = 1 })
+                else
+                    table.insert(dropdown.Value, option)
+                    Library:Tween(check, { ImageTransparency = 0 })
+                end
+                selectText.Text = #dropdown.Value > 0 and table.concat(dropdown.Value, ", ") or "Select..."
+            else
+                dropdown.Value = { option }
+                for _, opt in pairs(options) do
+                    opt.check.ImageTransparency = 1
+                end
+                Library:Tween(check, { ImageTransparency = 0 })
+                selectText.Text = option
+                dropdown:SetOpen(false)
+                dropdown.Callback(option)
+            end
+        end)
+        
+        local data = { btn = btn, lbl = lbl, check = check }
+        table.insert(options, data)
+        updateSize()
+        return data
+    end
+    
+    function dropdown:Set(value)
+        if type(value) == "table" then
+            dropdown.Value = value
+            for _, opt in pairs(options) do
+                opt.check.ImageTransparency = table.find(value, opt.lbl.Text) and 0 or 1
+            end
+            selectText.Text = #value > 0 and table.concat(value, ", ") or "Select..."
+        else
+            dropdown.Value = { value }
+            for _, opt in pairs(options) do
+                opt.check.ImageTransparency = opt.lbl.Text == value and 0 or 1
+            end
+            selectText.Text = value or "Select..."
+        end
+        dropdown.Callback(dropdown.Value)
+    end
+    
+    function dropdown:Refresh(items)
+        for _, opt in pairs(options) do
+            opt.btn:Destroy()
+        end
+        options = {}
+        for _, item in ipairs(items or {}) do
+            dropdown:Add(item)
+        end
+        updateSize()
+    end
+    
+    function dropdown:SetOpen(open)
+        dropdown.Open = open
+        listFrame.Visible = open
+        Library:Tween(arrow, { Rotation = open and 180 or 0 })
+        updateSize()
+    end
+    
+    function dropdown:SetText(text)
+        dropdown.Name = text
+        text.Text = text
+    end
+    
+    function dropdown:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    selectBg.MouseButton1Click:Connect(function()
+        dropdown:SetOpen(not dropdown.Open)
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if dropdown.Open and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            if not frame.Instance:IsDescendantOf(frame.Instance) then return end
+            local pos = Mouse.X
+            local abs = frame.Instance.AbsolutePosition.X
+            local size = frame.Instance.AbsoluteSize.X
+            if pos < abs or pos > abs + size then
+                dropdown:SetOpen(false)
+            end
+        end
+    end)
+    
+    for _, item in ipairs(dropdown.Items) do
+        dropdown:Add(item)
+    end
+    
+    if dropdown.Default then
+        dropdown:Set(dropdown.Default)
+    end
+    
+    Library.ConfigFlags[dropdown.Flag] = dropdown.Set
+    
+    return dropdown
+end
 
-task.wait(1)
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: KEYBIND
+-- ═══════════════════════════════════════════════════════════════════════
 
-local panel = createMenu()
-setupDragging(panel)
+local KeyMap = {
+    Backspace = "Bksp",
+    Return = "Enter",
+    LeftShift = "LShift",
+    RightShift = "RShift",
+    LeftControl = "LCtrl",
+    RightControl = "RCtrl",
+    LeftAlt = "LAlt",
+    RightAlt = "RAlt",
+    CapsLock = "Caps",
+    Insert = "Ins",
+    Delete = "Del",
+    Home = "Home",
+    End = "End",
+    PageUp = "PgUp",
+    PageDown = "PgDn",
+    Escape = "Esc",
+    Space = "Space",
+    Tab = "Tab",
+    Up = "↑",
+    Down = "↓",
+    Left = "←",
+    Right = "→",
+}
 
-print("[MM2 Fake Trade] Loaded! Menu is on the left side of the screen.")
+function Library:Keybind(data)
+    data = data or {}
+    local keybind = {
+        Name = data.Name or "Keybind",
+        Flag = data.Flag or data.Name or "Keybind",
+        Default = data.Default or Enum.KeyCode.E,
+        Mode = data.Mode or "Toggle",
+        Callback = data.Callback or function() end,
+        Key = "",
+        Value = "None",
+        Toggled = false,
+        Picking = false,
+    }
+    
+    local items = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 20),
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -80, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = keybind.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local keyBg = Instance.new("Frame")
+    keyBg.AnchorPoint = Vector2.new(1, 0.5)
+    keyBg.Position = UDim2.new(1, 0, 0.5, 0)
+    keyBg.Size = UDim2.new(0, 60, 0, 18)
+    keyBg.BackgroundColor3 = Library.Theme.Element
+    keyBg.BorderSizePixel = 0
+    keyBg.Parent = frame.Instance
+    Library:Corner(keyBg, 4)
+    
+    local keyText = Instance.new("TextLabel")
+    keyText.Size = UDim2.new(1, -8, 1, 0)
+    keyText.Position = UDim2.new(0, 4, 0, 0)
+    keyText.BackgroundTransparency = 1
+    keyText.Text = "None"
+    keyText.TextColor3 = Library.Theme.Text
+    keyText.Font = Enum.Font.Gotham
+    keyText.TextSize = 11
+    keyText.TextXAlignment = Enum.TextXAlignment.Center
+    keyText.Parent = keyBg
+    
+    local function getKeyName(key)
+        if typeof(key) == "EnumItem" then
+            return KeyMap[key.Name] or key.Name
+        end
+        return tostring(key)
+    end
+    
+    function keybind:Set(key)
+        if typeof(key) == "EnumItem" then
+            self.Key = key
+            self.Value = getKeyName(key)
+            keyText.Text = self.Value
+        elseif type(key) == "table" and key.Key then
+            self.Key = key.Key
+            self.Mode = key.Mode or self.Mode
+            self.Value = getKeyName(key.Key)
+            keyText.Text = self.Value
+        elseif type(key) == "string" then
+            self.Key = key
+            self.Value = key
+            keyText.Text = key
+        end
+        self.Picking = false
+        Library.Flags[self.Flag] = { Key = self.Key, Mode = self.Mode, Toggled = self.Toggled }
+        self.Callback(self.Toggled)
+    end
+    
+    function keybind:Press(active)
+        if self.Mode == "Toggle" then
+            self.Toggled = not self.Toggled
+        elseif self.Mode == "Hold" then
+            self.Toggled = active
+        elseif self.Mode == "Always" then
+            self.Toggled = true
+        end
+        Library.Flags[self.Flag] = { Key = self.Key, Mode = self.Mode, Toggled = self.Toggled }
+        self.Callback(self.Toggled)
+    end
+    
+    function keybind:SetText(text)
+        self.Name = text
+        text.Text = text
+    end
+    
+    function keybind:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    keyBg.MouseButton1Click:Connect(function()
+        if self.Picking then return end
+        self.Picking = true
+        keyText.Text = "..."
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                self:Set(input.KeyCode)
+                conn:Disconnect()
+            end
+        end)
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if self.Value == "None" or self.Picking then return
+        if input.KeyCode == self.Key then
+            if self.Mode == "Toggle" then self:Press()
+            elseif self.Mode == "Hold" then self:Press(true)
+            elseif self.Mode == "Always" then self:Press(true) end
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if self.Value == "None" then return
+        if input.KeyCode == self.Key and self.Mode == "Hold" then
+            self:Press(false)
+        end
+    end)
+    
+    if keybind.Default then
+        keybind:Set(keybind.Default)
+    end
+    
+    Library.ConfigFlags[keybind.Flag] = keybind.Set
+    
+    if Library.KeybindList then
+        local item = Library.KeybindList:Add(keybind.Name, keybind.Value, keybind.Mode)
+        keybind._listItem = item
+        local oldSet = keybind.Set
+        keybind.Set = function(self, key)
+            oldSet(self, key)
+            if item then item:Update(self.Name, self.Value, self.Mode) end
+        end
+    end
+    
+    return keybind
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: LABEL
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Label(data)
+    data = data or {}
+    local label = {
+        Name = data.Name or "Label",
+    }
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 20),
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = label.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    function label:SetText(text)
+        label.Name = text
+        text.Text = text
+    end
+    
+    function label:SetVisible(visible)
+        frame.Instance.Visible = visible
+    end
+    
+    return label
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: COLORPICKER
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Colorpicker(data)
+    data = data or {}
+    local colorpicker = {
+        Name = data.Name or "Colorpicker",
+        Flag = data.Flag or data.Name or "Colorpicker",
+        Default = data.Default or Color3.fromRGB(88, 160, 255),
+        Alpha = data.Alpha or 0,
+        Callback = data.Callback or function() end,
+        Color = Color3.fromRGB(88, 160, 255),
+        Hue = 0,
+        Saturation = 0,
+        Value = 0,
+        Open = false,
+    }
+    
+    local items = {}
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 20),
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -28, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = colorpicker.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.Gotham
+    text.TextSize = 13
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local swatch = Instance.new("Frame")
+    swatch.AnchorPoint = Vector2.new(1, 0.5)
+    swatch.Position = UDim2.new(1, 0, 0.5, 0)
+    swatch.Size = UDim2.new(0, 18, 0, 18)
+    swatch.BackgroundColor3 = colorpicker.Default
+    swatch.BorderSizePixel = 0
+    swatch.Parent = frame.Instance
+    Library:Corner(swatch, 4)
+    Library:Stroke(swatch, Library.Theme.Border)
+    
+    local function openPicker()
+        if colorpicker.Open then return end
+        colorpicker.Open = true
+        
+        local picker = Instance.new("Frame")
+        picker.Size = UDim2.new(0, 220, 0, 200)
+        picker.Position = UDim2.new(0, swatch.AbsolutePosition.X - 110, 0, swatch.AbsolutePosition.Y + 24)
+        picker.BackgroundColor3 = Library.Theme.Surface
+        picker.BorderSizePixel = 0
+        picker.ZIndex = 999
+        picker.Parent = Library.Holder.Instance
+        Library:Corner(picker, 8)
+        Library:Stroke(picker, Library.Theme.Border)
+        
+        local h, s, v = Color3.toHSV(colorpicker.Color)
+        
+        local palette = Instance.new("ImageButton")
+        palette.Size = UDim2.new(1, -20, 0, 100)
+        palette.Position = UDim2.new(0, 10, 0, 10)
+        palette.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        palette.BorderSizePixel = 0
+        palette.Image = "rbxassetid://4155801252"
+        palette.Parent = picker
+        Library:Corner(palette, 4)
+        
+        local dot = Instance.new("Frame")
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.Size = UDim2.new(0, 8, 0, 8)
+        dot.Position = UDim2.new(s, 0, 1 - v, 0)
+        dot.BackgroundColor3 = Color3.new(1, 1, 1)
+        dot.BorderSizePixel = 0
+        dot.Parent = palette
+        Library:Corner(dot, 4)
+        Library:Stroke(dot, Color3.new(0, 0, 0), 1, 0.3)
+        
+        local hueBar = Instance.new("Frame")
+        hueBar.Size = UDim2.new(1, -20, 0, 12)
+        hueBar.Position = UDim2.new(0, 10, 0, 118)
+        hueBar.BorderSizePixel = 0
+        hueBar.Parent = picker
+        Library:Corner(hueBar, 4)
+        
+        local hueGrad = Instance.new("UIGradient")
+        hueGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+        })
+        hueGrad.Parent = hueBar
+        
+        local hueDot = Instance.new("Frame")
+        hueDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        hueDot.Size = UDim2.new(0, 6, 1, 4)
+        hueDot.Position = UDim2.new(h, 0, 0.5, 0)
+        hueDot.BackgroundColor3 = Color3.new(1, 1, 1)
+        hueDot.BorderSizePixel = 0
+        hueDot.Parent = hueBar
+        Library:Corner(hueDot, 3)
+        Library:Stroke(hueDot, Color3.new(0, 0, 0), 1, 0.3)
+        
+        local alphaBar = Instance.new("Frame")
+        alphaBar.Size = UDim2.new(1, -20, 0, 10)
+        alphaBar.Position = UDim2.new(0, 10, 0, 136)
+        alphaBar.BackgroundColor3 = Color3.fromHSV(h, s, v)
+        alphaBar.BorderSizePixel = 0
+        alphaBar.Parent = picker
+        Library:Corner(alphaBar, 4)
+        Library:Stroke(alphaBar, Library.Theme.Border)
+        
+        local alphaDot = Instance.new("Frame")
+        alphaDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        alphaDot.Size = UDim2.new(0, 6, 1, 4)
+        alphaDot.Position = UDim2.new(1 - colorpicker.Alpha, 0, 0.5, 0)
+        alphaDot.BackgroundColor3 = Color3.new(1, 1, 1)
+        alphaDot.BorderSizePixel = 0
+        alphaDot.Parent = alphaBar
+        Library:Corner(alphaDot, 3)
+        Library:Stroke(alphaDot, Color3.new(0, 0, 0), 1, 0.3)
+        
+        local hexInput = Instance.new("TextBox")
+        hexInput.Size = UDim2.new(1, -20, 0, 18)
+        hexInput.Position = UDim2.new(0, 10, 0, 152)
+        hexInput.BackgroundColor3 = Library.Theme.Element
+        hexInput.Text = "#" .. colorpicker.Color:ToHex()
+        hexInput.TextColor3 = Library.Theme.Text
+        hexInput.Font = Enum.Font.Gotham
+        hexInput.TextSize = 12
+        hexInput.TextXAlignment = Enum.TextXAlignment.Center
+        hexInput.Parent = picker
+        Library:Corner(hexInput, 4)
+        
+        local cancelBtn = Instance.new("TextButton")
+        cancelBtn.Size = UDim2.new(0, 80, 0, 20)
+        cancelBtn.Position = UDim2.new(0, 10, 0, 175)
+        cancelBtn.BackgroundColor3 = Library.Theme.Element
+        cancelBtn.Text = "Cancel"
+        cancelBtn.TextColor3 = Library.Theme.Text
+        cancelBtn.Font = Enum.Font.Gotham
+        cancelBtn.TextSize = 12
+        cancelBtn.Parent = picker
+        Library:Corner(cancelBtn, 4)
+        
+        local confirmBtn = Instance.new("TextButton")
+        confirmBtn.Size = UDim2.new(0, 80, 0, 20)
+        confirmBtn.Position = UDim2.new(1, -90, 0, 175)
+        confirmBtn.BackgroundColor3 = Library.Theme.Accent
+        confirmBtn.Text = "Confirm"
+        confirmBtn.TextColor3 = Color3.new(1, 1, 1)
+        confirmBtn.Font = Enum.Font.GothamBold
+        confirmBtn.TextSize = 12
+        confirmBtn.Parent = picker
+        Library:Corner(confirmBtn, 4)
+        
+        local dragging = false
+        
+        function updateColor()
+            local col = Color3.fromHSV(h, s, v)
+            swatch.BackgroundColor3 = col
+            alphaBar.BackgroundColor3 = col
+            hexInput.Text = "#" .. col:ToHex()
+            colorpicker.Color = col
+            Library.Flags[colorpicker.Flag] = { Color = "#" .. col:ToHex(), HexValue = col:ToHex(), Alpha = colorpicker.Alpha }
+            colorpicker.Callback(col, colorpicker.Alpha)
+        end
+        
+        palette.MouseButton1Down:Connect(function()
+            dragging = true
+        end)
+        palette.MouseButton1Up:Connect(function()
+            dragging = false
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local x = (input.Position.X - palette.AbsolutePosition.X) / palette.AbsoluteSize.X
+                local y = (input.Position.Y - palette.AbsolutePosition.Y) / palette.AbsoluteSize.Y
+                s = Library:Clamp(x, 0, 1)
+                v = 1 - Library:Clamp(y, 0, 1)
+                dot.Position = UDim2.new(s, 0, 1 - v, 0)
+                palette.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                updateColor()
+            end
+        end)
+        
+        local hueDragging = false
+        hueBar.MouseButton1Down:Connect(function()
+            hueDragging = true
+        end)
+        hueBar.MouseButton1Up:Connect(function()
+            hueDragging = false
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if hueDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local x = (input.Position.X - hueBar.AbsolutePosition.X) / hueBar.AbsoluteSize.X
+                h = Library:Clamp(x, 0, 1)
+                hueDot.Position = UDim2.new(h, 0, 0.5, 0)
+                palette.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                updateColor()
+            end
+        end)
+        
+        local alphaDragging = false
+        alphaBar.MouseButton1Down:Connect(function()
+            alphaDragging = true
+        end)
+        alphaBar.MouseButton1Up:Connect(function()
+            alphaDragging = false
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if alphaDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local x = (input.Position.X - alphaBar.AbsolutePosition.X) / alphaBar.AbsoluteSize.X
+                colorpicker.Alpha = 1 - Library:Clamp(x, 0, 1)
+                alphaDot.Position = UDim2.new(1 - colorpicker.Alpha, 0, 0.5, 0)
+                updateColor()
+            end
+        end)
+        
+        hexInput.FocusLost:Connect(function(enter)
+            if enter then
+                local hex = hexInput.Text:gsub("#", "")
+                if #hex == 6 then
+                    local col = Color3.fromHex(hex)
+                    h, s, v = Color3.toHSV(col)
+                    dot.Position = UDim2.new(s, 0, 1 - v, 0)
+                    hueDot.Position = UDim2.new(h, 0, 0.5, 0)
+                    palette.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                    updateColor()
+                end
+            end
+        end)
+        
+        cancelBtn.MouseButton1Click:Connect(function()
+            colorpicker.Open = false
+            picker:Destroy()
+        end)
+        
+        confirmBtn.MouseButton1Click:Connect(function()
+            colorpicker.Open = false
+            picker:Destroy()
+        end)
+    end
+    
+    swatch.MouseButton1Click:Connect(openPicker)
+    
+    return colorpicker
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: SECTION
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Section(data)
+    data = data or {}
+    local section = {
+        Name = data.Name or "Section",
+        Side = data.Side or 1,
+    }
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 35),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BorderSizePixel = 0,
+    })
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -12, 0, 16)
+    text.Position = UDim2.new(0, 12, 0, 6)
+    text.BackgroundTransparency = 1
+    text.Text = section.Name
+    text.TextColor3 = Library.Theme.TextDim
+    text.Font = Enum.Font.GothamBold
+    text.TextSize = 12
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame.Instance
+    
+    local line = Instance.new("Frame")
+    line.Position = UDim2.new(0, 12, 0, 26)
+    line.Size = UDim2.new(1, -24, 0, 1)
+    line.BackgroundColor3 = Library.Theme.Border
+    line.BorderSizePixel = 0
+    line.Parent = frame.Instance
+    
+    local content = Instance.new("Frame")
+    content.Position = UDim2.new(0, 12, 0, 32)
+    content.Size = UDim2.new(1, -24, 0, 0)
+    content.BackgroundTransparency = 1
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.Parent = frame.Instance
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = content
+    
+    section._content = content
+    section._layout = layout
+    
+    function section:Toggle(data)
+        data.Parent = content
+        return Library:Toggle(data)
+    end
+    
+    function section:Button(data)
+        data.Parent = content
+        return Library:Button(data)
+    end
+    
+    function section:Slider(data)
+        data.Parent = content
+        return Library:Slider(data)
+    end
+    
+    function section:Dropdown(data)
+        data.Parent = content
+        return Library:Dropdown(data)
+    end
+    
+    function section:Keybind(data)
+        data.Parent = content
+        return Library:Keybind(data)
+    end
+    
+    function section:Label(data)
+        data.Parent = content
+        return Library:Label(data)
+    end
+    
+    function section:Colorpicker(data)
+        data.Parent = content
+        return Library:Colorpicker(data)
+    end
+    
+    return section
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- COMPONENT: PAGE
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Page(data)
+    data = data or {}
+    local page = {
+        Name = data.Name or "Page",
+        Icon = data.Icon or "Home",
+        Search = data.Search or false,
+    }
+    
+    local frame = Library:Create("Frame", {
+        Parent = data.Parent.Instance,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Visible = false,
+        BorderSizePixel = 0,
+    })
+    
+    local left = Instance.new("ScrollingFrame")
+    left.Size = UDim2.new(0.5, -6, 1, 0)
+    left.BackgroundTransparency = 1
+    left.BorderSizePixel = 0
+    left.ScrollBarThickness = 2
+    left.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    left.CanvasSize = UDim2.new(0, 0, 0, 0)
+    left.Parent = frame.Instance
+    
+    local leftLayout = Instance.new("UIListLayout")
+    leftLayout.Padding = UDim.new(0, 8)
+    leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    leftLayout.Parent = left
+    
+    local right = Instance.new("ScrollingFrame")
+    right.Size = UDim2.new(0.5, -6, 1, 0)
+    right.Position = UDim2.new(0.5, 6, 0, 0)
+    right.BackgroundTransparency = 1
+    right.BorderSizePixel = 0
+    right.ScrollBarThickness = 2
+    right.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    right.CanvasSize = UDim2.new(0, 0, 0, 0)
+    right.Parent = frame.Instance
+    
+    local rightLayout = Instance.new("UIListLayout")
+    rightLayout.Padding = UDim.new(0, 8)
+    rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    rightLayout.Parent = right
+    
+    local col = 1
+    local function getNextColumn()
+        col = col == 1 and 2 or 1
+        return col == 1 and left or right
+    end
+    
+    function page:Section(data)
+        data.Parent = getNextColumn()
+        return Library:Section(data)
+    end
+    
+    return page
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- MAIN WINDOW
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Window(data)
+    data = data or {}
+    local window = {
+        Name = data.Name or "Voltage Hub",
+        Subtitle = data.Subtitle or "Premium UI Library",
+        Size = data.Size or UDim2.new(0, 780, 0, 520),
+        MinSize = data.MinSize or Vector2.new(500, 350),
+        Keybind = data.Keybind or Enum.KeyCode.RightShift,
+        Icon = data.Icon or "Home",
+        Open = true,
+    }
+    
+    local main = Library:Create("Frame", {
+        Parent = Library.Holder.Instance,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = window.Size,
+        BackgroundColor3 = Library.Theme.Background,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+    })
+    Library:Corner(main, 10)
+    Library:Stroke(main, Library.Theme.Border)
+    
+    local topbar = Instance.new("Frame")
+    topbar.Size = UDim2.new(1, 0, 0, 36)
+    topbar.BackgroundColor3 = Library.Theme.Surface
+    topbar.BorderSizePixel = 0
+    topbar.Parent = main.Instance
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -100, 0, 16)
+    title.Position = UDim2.new(0, 48, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = window.Name
+    title.TextColor3 = Library.Theme.Text
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = topbar
+    
+    local subtitle = Instance.new("TextLabel")
+    subtitle.Size = UDim2.new(1, -100, 0, 12)
+    subtitle.Position = UDim2.new(0, 48, 0, 22)
+    subtitle.BackgroundTransparency = 1
+    subtitle.Text = window.Subtitle
+    subtitle.TextColor3 = Library.Theme.TextDim
+    subtitle.Font = Enum.Font.Gotham
+    subtitle.TextSize = 10
+    subtitle.TextXAlignment = Enum.TextXAlignment.Left
+    subtitle.Parent = topbar
+    
+    local logo = Library:CreateIcon(window.Icon, UDim2.fromOffset(24, 24), Library.Theme.Accent)
+    logo.AnchorPoint = Vector2.new(0, 0.5)
+    logo.Position = UDim2.new(0, 12, 0.5, 0)
+    logo.Parent = topbar
+    
+    local closeBtn = Instance.new("ImageButton")
+    closeBtn.Size = UDim2.new(0, 18, 0, 18)
+    closeBtn.Position = UDim2.new(1, -26, 0.5, -9)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Image = Library:GetIcon("Close")
+    closeBtn.ImageColor3 = Library.Theme.TextDim
+    closeBtn.Parent = topbar
+    closeBtn.MouseEnter:Connect(function()
+        Library:Tween(closeBtn, { ImageColor3 = Library.Theme.Text })
+    end)
+    closeBtn.MouseLeave:Connect(function()
+        Library:Tween(closeBtn, { ImageColor3 = Library.Theme.TextDim })
+    end)
+    
+    local minBtn = Instance.new("ImageButton")
+    minBtn.Size = UDim2.new(0, 16, 0, 16)
+    minBtn.Position = UDim2.new(1, -52, 0.5, -8)
+    minBtn.BackgroundTransparency = 1
+    minBtn.Image = Library:GetIcon("Minimize")
+    minBtn.ImageColor3 = Library.Theme.TextDim
+    minBtn.Parent = topbar
+    minBtn.MouseEnter:Connect(function()
+        Library:Tween(minBtn, { ImageColor3 = Library.Theme.Text })
+    end)
+    minBtn.MouseLeave:Connect(function()
+        Library:Tween(minBtn, { ImageColor3 = Library.Theme.TextDim })
+    end)
+    
+    local divider = Instance.new("Frame")
+    divider.Position = UDim2.new(0, 0, 1, 0)
+    divider.Size = UDim2.new(1, 0, 0, 1)
+    divider.BackgroundColor3 = Library.Theme.Border
+    divider.BorderSizePixel = 0
+    divider.Parent = topbar
+    
+    local sideBar = Instance.new("Frame")
+    sideBar.Size = UDim2.new(0, 45, 1, -36)
+    sideBar.Position = UDim2.new(0, 0, 0, 36)
+    sideBar.BackgroundColor3 = Library.Theme.Surface
+    sideBar.BorderSizePixel = 0
+    sideBar.Parent = main.Instance
+    
+    local sideDivider = Instance.new("Frame")
+    sideDivider.Position = UDim2.new(1, 0, 0, 0)
+    sideDivider.Size = UDim2.new(0, 1, 1, 0)
+    sideDivider.BackgroundColor3 = Library.Theme.Border
+    sideDivider.BorderSizePixel = 0
+    sideDivider.Parent = sideBar
+    
+    local tabList = Instance.new("Frame")
+    tabList.Size = UDim2.new(1, 0, 1, 0)
+    tabList.BackgroundTransparency = 1
+    tabList.Parent = sideBar
+    
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.Padding = UDim.new(0, 4)
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLayout.Parent = tabList
+    
+    local contentArea = Instance.new("Frame")
+    contentArea.Size = UDim2.new(1, -45, 1, -36)
+    contentArea.Position = UDim2.new(0, 45, 0, 36)
+    contentArea.BackgroundTransparency = 1
+    contentArea.Parent = main.Instance
+    
+    local pages = {}
+    local activePage = nil
+    
+    local function createTabButton(page)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 36)
+        btn.BackgroundTransparency = 1
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        btn.Parent = tabList
+        
+        local icon = Library:CreateIcon(page._icon or "Home", UDim2.fromOffset(20, 20), Library.Theme.TextDim)
+        icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+        icon.Parent = btn
+        
+        btn.MouseEnter:Connect(function()
+            if page ~= activePage then
+                Library:Tween(icon, { ImageColor3 = Library.Theme.Text })
+            end
+        end)
+        btn.MouseLeave:Connect(function()
+            if page ~= activePage then
+                Library:Tween(icon, { ImageColor3 = Library.Theme.TextDim })
+            end
+        end)
+        btn.MouseButton1Click:Connect(function()
+            for _, p in pairs(pages) do
+                p._frame.Instance.Visible = false
+                p._btn.ImageColor3 = Library.Theme.TextDim
+            end
+            page._frame.Instance.Visible = true
+            activePage = page
+            Library:Tween(page._btn, { ImageColor3 = Library.Theme.Accent })
+        end)
+        
+        page._btn = icon
+        return btn
+    end
+    
+    function window:Page(data)
+        data.Parent = contentArea
+        local page = Library:Page(data)
+        page._icon = data.Icon or "Home"
+        page._frame = page._frame or frame
+        page._btn = nil
+        table.insert(pages, page)
+        createTabButton(page)
+        if not activePage then
+            page._frame.Instance.Visible = true
+            activePage = page
+            Library:Tween(page._btn, { ImageColor3 = Library.Theme.Accent })
+        end
+        return page
+    end
+    
+    function window:SetOpen(open)
+        window.Open = open
+        main.Instance.Visible = open
+    end
+    
+    function window:Toggle()
+        window:SetOpen(not window.Open)
+    end
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        window:SetOpen(false)
+    end)
+    
+    minBtn.MouseButton1Click:Connect(function()
+        window:SetOpen(false)
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == window.Keybind then
+            window:Toggle()
+        end
+    end)
+    
+    -- Drag
+    local dragging, dragStart, startPos
+    topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Instance.Position
+        end
+    end)
+    topbar.InputEnded:Connect(function()
+        dragging = false
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            main.Instance.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    -- Resize
+    local resizeHandle = Instance.new("Frame")
+    resizeHandle.Size = UDim2.new(0, 12, 0, 12)
+    resizeHandle.Position = UDim2.new(1, -12, 1, -12)
+    resizeHandle.AnchorPoint = Vector2.new(1, 1)
+    resizeHandle.BackgroundTransparency = 1
+    resizeHandle.Parent = main.Instance
+    
+    local resizeIcon = Library:CreateIcon("ChevronRight", UDim2.fromOffset(8, 8), Library.Theme.TextDim)
+    resizeIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+    resizeIcon.Rotation = -45
+    resizeIcon.Parent = resizeHandle
+    
+    local resizing, resizeStart, resizeSize
+    resizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            resizeStart = input.Position
+            resizeSize = main.Instance.Size
+        end
+    end)
+    resizeHandle.InputEnded:Connect(function()
+        resizing = false
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - resizeStart
+            local newW = math.max(resizeSize.X.Offset + delta.X, window.MinSize.X)
+            local newH = math.max(resizeSize.Y.Offset + delta.Y, window.MinSize.Y)
+            main.Instance.Size = UDim2.new(0, newW, 0, newH)
+        end
+    end)
+    
+    window._main = main
+    window._pages = pages
+    
+    return window
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SETTINGS PAGE BUILDER
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:CreateSettingsPage(window)
+    local page = window:Page({ Name = "Settings", Icon = "Settings" })
+    
+    local configSection = page:Section({ Name = "Configs" })
+    
+    local configList = {}
+    local configName = ""
+    
+    configSection:Label({ Name = "Save / Load Configurations" })
+    
+    local configDropdown = configSection:Dropdown({
+        Name = "Configs",
+        Items = Library:GetConfigList(),
+        Callback = function(value)
+            configName = value
+        end
+    })
+    
+    configSection:Button({
+        Name = "Save Config",
+        Callback = function()
+            if configName and configName ~= "" then
+                Library:SaveConfig(configName)
+                configDropdown:Refresh(Library:GetConfigList())
+            end
+        end
+    })
+    
+    configSection:Button({
+        Name = "Load Config",
+        Callback = function()
+            if configName and configName ~= "" then
+                Library:LoadConfigFile(configName)
+            end
+        end
+    })
+    
+    configSection:Button({
+        Name = "Delete Config",
+        Callback = function()
+            if configName and configName ~= "" then
+                Library:DeleteConfig(configName)
+                configDropdown:Refresh(Library:GetConfigList())
+                configName = ""
+            end
+        end
+    })
+    
+    configSection:Button({
+        Name = "Refresh List",
+        Callback = function()
+            configDropdown:Refresh(Library:GetConfigList())
+        end
+    })
+    
+    configSection:Button({
+        Name = "Set Auto Load",
+        Callback = function()
+            if configName and configName ~= "" then
+                Library:SetAutoLoad(configName)
+                Library:Notify({ Title = "Config", Description = "Auto-load set: " .. configName, Type = "success" })
+            end
+        end
+    })
+    
+    configSection:Button({
+        Name = "Clear Auto Load",
+        Callback = function()
+            Library:ClearAutoLoad()
+            Library:Notify({ Title = "Config", Description = "Auto-load cleared", Type = "info" })
+        end
+    })
+    
+    local themeSection = page:Section({ Name = "Themes" })
+    
+    local themeDropdown = themeSection:Dropdown({
+        Name = "Theme Preset",
+        Items = { "Dark", "Crimson", "Midnight", "Forest", "Neon" },
+        Default = "Dark",
+        Callback = function(value)
+            Library:ApplyTheme(value)
+        end
+    })
+    
+    local accentPicker = themeSection:Colorpicker({
+        Name = "Accent Color",
+        Default = Library.Theme.Accent,
+        Callback = function(color)
+            Library:Theme.Accent = color
+            Library:RefreshTheme("Accent", color)
+        end
+    })
+    
+    local uiSection = page:Section({ Name = "UI Settings" })
+    
+    uiSection:Keybind({
+        Name = "Menu Keybind",
+        Default = Enum.KeyCode.RightShift,
+        Callback = function()
+            window.Keybind = Library.Flags["MenuKeybind"] and Library.Flags["MenuKeybind"].Key or Enum.KeyCode.RightShift
+        end,
+        Flag = "MenuKeybind"
+    })
+    
+    local watermarkToggle = uiSection:Toggle({
+        Name = "Show Watermark",
+        Default = true,
+        Callback = function(value)
+            if Library.Watermark then
+                Library.Watermark:SetVisible(value)
+            end
+        end
+    })
+    
+    local keylistToggle = uiSection:Toggle({
+        Name = "Show Keybind List",
+        Default = false,
+        Callback = function(value)
+            if Library.KeybindList then
+                Library.KeybindList:SetVisible(value)
+            end
+        end
+    })
+    
+    return page
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- WATERMARK
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:CreateWatermark(text)
+    local frame = Library:Create("Frame", {
+        Parent = Library.Holder.Instance,
+        BackgroundColor3 = Library.Theme.Surface,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 20, 1, -20),
+        AnchorPoint = Vector2.new(0, 1),
+        Size = UDim2.new(0, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.XY,
+        ZIndex = 999,
+    })
+    Library:Corner(frame, 6)
+    Library:Stroke(frame, Library.Theme.Border)
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 1, 0)
+    content.BackgroundTransparency = 1
+    content.Parent = frame.Instance
+    
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.Padding = UDim.new(0, 6)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Parent = content
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 4)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = content
+    
+    local icon = Library:CreateIcon("Home", UDim2.fromOffset(14, 14), Library.Theme.Accent)
+    icon.Parent = content
+    
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Text = text or "Voltage Hub"
+    label.TextColor3 = Library.Theme.TextDim
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 11
+    label.AutomaticSize = Enum.AutomaticSize.XY
+    label.Parent = content
+    
+    local fps = Instance.new("TextLabel")
+    fps.BackgroundTransparency = 1
+    fps.Text = "FPS: 0"
+    fps.TextColor3 = Library.Theme.TextDark
+    fps.Font = Enum.Font.Gotham
+    fps.TextSize = 10
+    fps.AutomaticSize = Enum.AutomaticSize.XY
+    fps.Parent = content
+    
+    local function updateWatermark()
+        local ping = math.floor(Players.LocalPlayer and Players.LocalPlayer:GetNetworkPing() or 0)
+        label.Text = text .. "  •  " .. ping .. "ms"
+    end
+    
+    local counter = 0
+    local lastTime = tick()
+    local currentFps = 0
+    
+    RunService.Heartbeat:Connect(function()
+        counter = counter + 1
+        if tick() - lastTime >= 1 then
+            currentFps = counter
+            counter = 0
+            lastTime = tick()
+            fps.Text = "FPS: " .. currentFps
+            updateWatermark()
+        end
+    end)
+    
+    local watermark = {
+        _frame = frame,
+        _label = label,
+        SetVisible = function(self, visible)
+            frame.Instance.Visible = visible
+        end,
+        SetText = function(self, text)
+            label.Text = text
+        end,
+        Update = updateWatermark,
+    }
+    
+    Library.Watermark = watermark
+    return watermark
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- UNLOAD
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Library:Unload()
+    for _, conn in pairs(self.Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    for _, thread in pairs(self.Threads) do
+        pcall(function() coroutine.close(thread) end)
+    end
+    if self.Holder then
+        pcall(function() self.Holder.Instance:Destroy() end)
+    end
+    if self.UnusedHolder then
+        pcall(function() self.UnusedHolder.Instance:Destroy() end)
+    end
+    self = nil
+    getgenv().Library = nil
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- EXAMPLE USAGE
+-- ═══════════════════════════════════════════════════════════════════════
+
+local function createExampleUI()
+    local window = Library:Window({
+        Name = "Voltage Hub",
+        Subtitle = "Premium UI Library v2.5",
+        Keybind = Enum.KeyCode.RightShift,
+    })
+    
+    local keylist = Library:KeybindList()
+    keylist:SetVisible(false)
+    
+    local watermark = Library:CreateWatermark("Voltage Hub")
+    
+    local combat = window:Page({ Name = "Combat", Icon = "Combat" })
+    local visuals = window:Page({ Name = "Visuals", Icon = "Visuals" })
+    local misc = window:Page({ Name = "Misc", Icon = "Speed" })
+    
+    local combatLeft = combat:Section({ Name = "Aimbot" })
+    local combatRight = combat:Section({ Name = "Triggerbot" })
+    local visualLeft = visuals:Section({ Name = "ESP" })
+    local visualRight = visuals:Section({ Name = "Chams" })
+    local miscLeft = misc:Section({ Name = "Movement" })
+    local miscRight = misc:Section({ Name = "Misc" })
+    
+    -- Combat
+    combatLeft:Toggle({ Name = "Aimbot Enabled", Flag = "Aimbot", Default = false })
+    combatLeft:Slider({ Name = "Aimbot FOV", Flag = "AimbotFOV", Min = 30, Max = 360, Default = 90, Suffix = "°" })
+    combatLeft:Dropdown({ Name = "Aimbot Part", Items = { "Head", "Torso", "HumanoidRootPart" }, Default = "Head" })
+    
+    combatRight:Toggle({ Name = "Triggerbot", Flag = "Triggerbot", Default = false })
+    combatRight:Slider({ Name = "Trigger Delay", Flag = "TriggerDelay", Min = 0, Max = 500, Default = 50, Suffix = "ms" })
+    
+    -- Visuals
+    visualLeft:Toggle({ Name = "ESP Enabled", Flag = "ESP", Default = false })
+    visualLeft:Toggle({ Name = "Box ESP", Flag = "BoxESP", Default = true })
+    visualLeft:Toggle({ Name = "Skeleton ESP", Flag = "SkeletonESP", Default = false })
+    
+    visualRight:Toggle({ Name = "Chams Enabled", Flag = "Chams", Default = false })
+    visualRight:Colorpicker({ Name = "Chams Color", Flag = "ChamsColor" })
+    
+    -- Misc
+    miscLeft:Toggle({ Name = "Speed Hack", Flag = "SpeedHack", Default = false })
+    miscLeft:Slider({ Name = "Speed Multiplier", Flag = "SpeedMultiplier", Min = 1, Max = 5, Default = 2, Decimals = 1, Suffix = "x" })
+    miscLeft:Toggle({ Name = "Fly Hack", Flag = "FlyHack", Default = false })
+    
+    miscRight:Toggle({ Name = "No Clip", Flag = "NoClip", Default = false })
+    miscRight:Toggle({ Name = "Inf Jump", Flag = "InfJump", Default = false })
+    miscRight:Button({ Name = "Bhop", Callback = function()
+        Library:Notify({ Title = "Bhop", Description = "Bhop toggled!", Type = "success" })
+    end })
+    
+    -- Settings Page
+    Library:CreateSettingsPage(window)
+    
+    -- Auto load config
+    Library:CheckAutoLoad()
+    
+    return window
+end
+
+-- Create the UI
+local window = createExampleUI()
+
+-- Return Library
+return Library
