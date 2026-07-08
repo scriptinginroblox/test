@@ -2,12 +2,14 @@
 -- СПАВНЕР ПИТОМЦЕВ В ИНВЕНТАРЬ
 -- 10-15 петов из списка a50f с разными зельями
 -- Общая стоимость ≈ 1000
+-- С УВЕДОМЛЕНИЯМИ
 -- ============================================
 
 local Players = game:GetService('Players')
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local HttpService = game:GetService('HttpService')
+local StarterGui = game:GetService('StarterGui')
 
 pcall(function()
     setthreadidentity(2)
@@ -18,10 +20,30 @@ local function waitForChild(parent, name, timeout)
 end
 
 -- ============================================
+-- ОТПРАВКА УВЕДОМЛЕНИЯ
+-- ============================================
+local function sendNotification(title, text, duration)
+    duration = duration or 3
+    pcall(function()
+        StarterGui:SetCore('SendNotification', {
+            Title = title or 'Спавнер',
+            Text = text or '',
+            Duration = duration,
+        })
+    end)
+    print('[NOTIFICATION] ' .. title .. ' - ' .. text)
+end
+
+-- ============================================
 -- ЗАГРУЗКА МОДУЛЕЙ
 -- ============================================
+sendNotification('Спавнер', 'Загрузка модулей...', 2)
+
 local Fsys = waitForChild(ReplicatedStorage, "Fsys", 15)
-if not Fsys then warn("[SPAWNER] Fsys not found.") return end
+if not Fsys then 
+    sendNotification('Ошибка', 'Fsys не найден!', 5)
+    return 
+end
 
 local Fsys2 = require(Fsys)
 local load = Fsys2.load
@@ -34,7 +56,7 @@ local AnimationManager = load("AnimationManager")
 local newPetRigs = load("new:PetRigs")
 
 if not ClientData or not KindDB or not InventoryDB then
-    warn("[SPAWNER] Failed to load modules.")
+    sendNotification('Ошибка', 'Не удалось загрузить модули!', 5)
     return
 end
 
@@ -79,16 +101,27 @@ local potionTypes = {
     { mega_neon = false, neon = false, flyable = true, rideable = true }, -- FR
 }
 
+local potionNames = {
+    'MFR',
+    'NFR',
+    'FR',
+}
+
 -- ============================================
 -- ПОЛУЧЕНИЕ ЦЕНЫ ПИТОМЦА (с winadopt.me)
 -- ============================================
 local PetValues = {}
 
+sendNotification('Спавнер', 'Загрузка цен с winadopt.me...', 2)
+
 local function fetchPetValues()
     local success, html = pcall(function()
         return game:HttpGet("https://winadopt.me/elve-values.php")
     end)
-    if not success or not html then return end
+    if not success or not html then 
+        sendNotification('Предупреждение', 'Не удалось загрузить цены, используем fallback', 3)
+        return 
+    end
     
     for row in html:gmatch("<tr>(.-)</tr>") do
         local cols = {}
@@ -189,6 +222,7 @@ end
 -- ============================================
 local function spawnPets()
     local count = math.random(10, 15)
+    sendNotification('Спавнер', 'Спавн ' .. count .. ' питомцев...', 2)
     print('🔄 Спавн ' .. count .. ' питомцев...')
     
     local spawnedCount = 0
@@ -201,19 +235,21 @@ local function spawnPets()
         -- Выбираем рандомного питомца
         local kind = petList[math.random(1, #petList)]
         -- Выбираем рандомные зелья
-        local props = potionTypes[math.random(1, #potionTypes)]
+        local potionIndex = math.random(1, #potionTypes)
+        local props = potionTypes[potionIndex]
+        local potionName = potionNames[potionIndex]
         
         -- Получаем имя и цену
         local name = getPetDisplayName(kind)
         local value = getPetValueByName(name, props)
         
-        -- Если цена 0 или слишком большая, пропускаем
-        if value == 0 then
-            -- пробуем с другими зельями
-            for _, altProps in ipairs(potionTypes) do
+        -- Если цена 0 или слишком большая, пробуем другие зелья
+        if value == 0 or value > 300 then
+            for i, altProps in ipairs(potionTypes) do
                 local altValue = getPetValueByName(name, altProps)
-                if altValue > 0 and altValue < 200 then
+                if altValue > 0 and altValue <= 200 then
                     props = altProps
+                    potionName = potionNames[i]
                     value = altValue
                     break
                 end
@@ -222,7 +258,6 @@ local function spawnPets()
         
         -- Если все равно 0 или слишком дорого, пропускаем
         if value == 0 or value > 300 then
-            -- пробуем другой пет
             goto continue
         end
         
@@ -240,10 +275,16 @@ local function spawnPets()
                 props = props,
                 value = value,
                 unique = result.unique,
+                potion = potionName,
             })
             
             local tag = props.mega_neon and 'MFR' or (props.neon and 'NFR' or 'FR')
             print('  ✅ ' .. tag .. ' ' .. name .. ' (value: ' .. string.format('%.2f', value) .. ')')
+            
+            -- Уведомление каждые 3 пета
+            if spawnedCount % 3 == 0 then
+                sendNotification('Спавнер', 'Заспавнено ' .. spawnedCount .. ' из ' .. count .. ' петов', 1.5)
+            end
         end
         
         ::continue::
@@ -255,6 +296,32 @@ local function spawnPets()
     print('  Всего петов: ' .. spawnedCount)
     print('  Общая стоимость: ' .. string.format('%.2f', totalValue))
     print('========================================')
+    
+    -- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
+    local formattedValue = string.format('%.1f', totalValue)
+    sendNotification(
+        '✅ Спавн завершен!', 
+        spawnedCount .. ' петов | Стоимость: ' .. formattedValue,
+        5
+    )
+    
+    -- УВЕДОМЛЕНИЕ С ЛУЧШИМ ПЕТОМ
+    local bestPet = nil
+    local bestValue = 0
+    for _, pet in ipairs(spawnedPets) do
+        if pet.value > bestValue then
+            bestValue = pet.value
+            bestPet = pet
+        end
+    end
+    
+    if bestPet then
+        sendNotification(
+            '🏆 Самый дорогой пет',
+            bestPet.potion .. ' ' .. bestPet.name .. ' | ' .. string.format('%.2f', bestPet.value),
+            4
+        )
+    end
     
     return spawnedPets, totalValue
 end
@@ -270,6 +337,8 @@ print('  Общая стоимость ≈ 1000')
 print('========================================')
 print('')
 
+sendNotification('Спавнер', 'Начинаем спавн питомцев...', 2)
+
 task.wait(2)
 
 local pets, value = spawnPets()
@@ -277,3 +346,11 @@ local pets, value = spawnPets()
 print('')
 print('✅ Спавн завершен!')
 print('📊 Проверь инвентарь в Adopt Me')
+
+-- УВЕДОМЛЕНИЕ О ПРОВЕРКЕ ИНВЕНТАРЯ
+task.wait(1)
+sendNotification(
+    '📊 Проверь инвентарь',
+    'Питомцы добавлены! Перезайди в игру если не видны.',
+    4
+)
