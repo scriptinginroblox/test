@@ -1,6 +1,7 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (С MFR COW + КОПИРОВАНИЕ ИГРОКА С СЕРВЕРА)
 -- БОТ КОПИРУЕТ РАНДОМНОГО ИГРОКА (НИК, СКИН, ДИСПЛЕЙ)
+-- ЕСТЬ АНИМАЦИЯ, НЕТ НАДПИСИ "ДРУГ"
 -- ============================================
 
 local Services = {
@@ -116,49 +117,6 @@ local TradeHistoryApp = Apps.TradeHistoryApp
 local PlayerProfileApp = Apps.PlayerProfileApp
 
 local NegotiationFrame = Players.LocalPlayer.PlayerGui.TradeApp.Frame.NegotiationFrame
-
-local function FriendHighlight(FriendValue)
-    NegotiationFrame.FriendHighlight.Visible = FriendValue
-    NegotiationFrame.FriendBorder.Visible = FriendValue
-    local PartnerFrame = NegotiationFrame.Header.PartnerFrame
-    NegotiationFrame.Header.PartnerFrame.NameLabel.FriendLabel.Visible = FriendValue
-    local ColorThemeManagerColor = ColorThemeManager.lookup(FriendValue and 'background' or 'saturated')
-    NegotiationFrame.Header.PartnerFrame.ProfileIcon.ImageColor3 = ColorThemeManagerColor
-    NegotiationFrame.Header.PartnerFrame.NameLabel.TextColor3 = ColorThemeManagerColor
-    NegotiationFrame.Header.PartnerFrame.Icon.Visible = FriendValue
-    NegotiationFrame.Header.PartnerFrame.Icon.Image = 'rbxassetid://84667805159408'
-end
-
-local downloader = load('DownloadClient')
-local petModels = {}
-
-local function getPetModel(kind)
-    if petModels[kind] then return petModels[kind]:Clone() end
-    local success, streamed = pcall(function()
-        local promise = downloader.promise_download_copy('Pets', kind)
-        if promise then return promise:expect() end
-        return nil
-    end)
-    if success and streamed then
-        petModels[kind] = streamed
-        return streamed:Clone()
-    else
-        warn('Failed to download pet model for:', kind)
-        return nil
-    end
-end
-
-if not TradeApp then return end
-
--- ==================== PET VALUE SYSTEM ====================
-local petDisplayNames = {}
-for category, items in pairs(InventoryDB) do
-    if category == "pets" then
-        for id, petinfo in pairs(items) do
-            petDisplayNames[id] = petinfo.name
-        end
-    end
-end
 
 local CONFIG = {
     PARTNER_NAME = 'NomiKu0',
@@ -712,7 +670,7 @@ local function hookTradeFunctions()
                 self.local_trade_state = newState
                 if mockState.trade then mockState.trade.subscriber_count = CONFIG.SPECTATOR_COUNT end
                 if self._on_local_trade_state_changed then self:_on_local_trade_state_changed(newState, newState) end
-                if self.refresh_all then self:refresh_all() FriendHighlight(true) end
+                if self.refresh_all then self:refresh_all() end
             else
                 mockState.trade = nil
                 mockState.active = false
@@ -1005,7 +963,7 @@ local function startMockTradeDirectly()
         task.wait(0.05)
         
         pcall(function() UIManager.set_app_visibility('TradeApp', true) end)
-        pcall(function() FriendHighlight(true) end)
+        -- FriendHighlight УБРАЛИ
         
         pcall(function()
             if TradeApp._show_intro_message then
@@ -1017,7 +975,6 @@ local function startMockTradeDirectly()
         pcall(function() 
             if TradeApp.refresh_all then 
                 TradeApp:refresh_all() 
-                FriendHighlight(true) 
             end 
         end)
         
@@ -1432,7 +1389,7 @@ local function sendTradeToPlayer(player)
 end
 
 -- ============================================
--- СОЗДАНИЕ ФЕЙКОВОГО ИГРОКА (С КОПИРОВАНИЕМ СКИНА)
+-- СОЗДАНИЕ ФЕЙКОВОГО ИГРОКА (С КОПИРОВАНИЕМ СКИНА + АНИМАЦИЯ)
 -- ============================================
 local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_id, pros_fake_pet, pet_flags)
     local maxRetries, retryCount = 3, 0
@@ -1476,8 +1433,14 @@ local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_i
         humanoid.HealthDisplayDistance = 0
         character.Parent = folder_fake
 
-        -- ПРОПУСКАЕМ СОЗДАНИЕ ПИТОМЦА - ОН БУДЕТ ДОБАВЛЕН В ТРЕЙДЕ
-        -- if pros_fake_pet ~= nil then ... end
+        -- ============================================
+        -- ДОБАВЛЯЕМ АНИМАЦИЮ (как в твоем скрипте)
+        -- ============================================
+        local Animation = Instance.new('Animation')
+        Animation.AnimationId = 'http://www.roblox.com/asset/?id=507766666'
+        local track = character.Humanoid.Animator:LoadAnimation(Animation)
+        track.Looped = true
+        track:Play()
 
         pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
 
