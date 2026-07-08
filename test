@@ -1,6 +1,6 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
--- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM ЧЕРЕЗ 10 СЕКУНД
+-- БОТ ЖДЕТ 10 СЕКУНД → НАЖИМАЕТ CONFIRM ПЕРВЫЙ
 -- ПОТОМ ТЫ
 -- ============================================
 
@@ -647,7 +647,7 @@ local function partnerAutoAction()
             end
         end
     elseif mockState.trade.current_stage == 'confirmation' then
-        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)  -- 10 СЕКУНД
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
@@ -843,16 +843,22 @@ local function hookTradeFunctions()
     end
 
     -- ============================================
-    -- БОТ ПЕРВЫЙ НАЖИМАЕТ CONFIRM (ЧЕРЕЗ 10 СЕКУНД)
+    -- БОТ ЖДЕТ 10 СЕКУНД → НАЖИМАЕТ CONFIRM ПЕРВЫЙ
     -- ПОТОМ ТЫ
     -- ============================================
     TradeApp._on_confirm_pressed = function(self)
         if mockState.active and mockState.trade then
             if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
             
-            -- БОТ НАЖИМАЕТ CONFIRM (через 10 секунд)
-            task.wait(10.0)
-            makePartnerAccept()
+            -- БОТ НАЖИМАЕТ CONFIRM (через 10 секунд, ПЕРВЫЙ)
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
+                task.spawn(partnerAutoAction)
+            end
+            
+            -- ЖДЕМ ПОКА БОТ НАЖМЕТ CONFIRM
+            while not mockState.trade.recipient_offer.confirmed do
+                task.wait(0.1)
+            end
             
             -- ТЫ НАЖИМАЕШЬ CONFIRM (ПОСЛЕ БОТА)
             mockState.trade.sender_offer.confirmed = true
@@ -994,7 +1000,7 @@ local function startMockTradeDirectly()
             end
         end
         
-        -- БОТ НАЖИМАЕТ ACCEPT (через 10 секунд после добавления MFR Cow)
+        -- БОТ НАЖИМАЕТ ACCEPT ЧЕРЕЗ 10 СЕКУНД
         task.wait(10.0)
         makePartnerAccept()
         print('✅ Partner accepted the trade!')
@@ -1563,7 +1569,7 @@ print('  FAKE PLAYER SCRIPT')
 print('  Name: NomiKu0')
 print('  MFR Cow added after 5 seconds')
 print('  Bot accepts after 10 seconds')
-print('  Bot confirms FIRST after 10 seconds')
+print('  Bot CONFIRMS FIRST after 10 seconds')
 print('========================================')
 print('')
 print('📌 HOW TO USE:')
@@ -1573,10 +1579,9 @@ print('3. Trade opens')
 print('4. After 5 seconds MFR Cow appears')
 print('5. You click ACCEPT')
 print('6. Bot auto-accepts (after 10s)')
-print('7. CONFIRM screen opens')
-print('8. BOT confirms FIRST (after 10s)')
-print('9. YOU confirm (after bot)')
-print('10. Trade complete! 🎉')
+print('7. Bot waits 10 seconds and CONFIRMS FIRST')
+print('8. YOU confirm (after bot)')
+print('9. Trade complete! 🎉')
 print('')
 
 -- Спавн фейк игрока NomiKu0
