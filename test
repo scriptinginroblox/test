@@ -1,4 +1,4 @@
--- Pet Spawner Core - спавн рандомных петов на сумму ~1000
+-- Pet Spawner Core - спавн конкретных петов с повторными попытками загрузки цен
 
 local _LocalPlayer = game:GetService('Players').LocalPlayer
 local _HttpService = game:GetService('HttpService')
@@ -489,124 +489,128 @@ local function main()
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ПОЛУЧАЕМ ЦЕНЫ ПИТОМЦЕВ
+    -- ТВОЙ СПИСОК ПИТОМЦЕВ
     -- ═══════════════════════════════════════════════════════════════
     
     task.wait(1)
     
+    local petNames = {
+        "african_wild_dog",
+        "albino_monkey",
+        "arctic_reindeer",
+        "balloon_unicorn",
+        "bat_dragon",
+        "blazing_lion",
+        "candyfloss_chick",
+        "crow",
+        "frost_dragon",
+        "giraffe",
+        "goat",
+        "hare",
+        "hedgehog",
+        "owl",
+        "parrot",
+        "peppermint_penguin",
+        "shadow_dragon",
+        "sheeeeep",
+        "strawberry_shortcake_bat_dragon",
+    }
+    
+    -- ═══════════════════════════════════════════════════════════════
+    -- ЗАГРУЗКА ЦЕН С ПОВТОРНЫМИ ПОПЫТКАМИ (до 10 раз)
+    -- ═══════════════════════════════════════════════════════════════
+    
     local PetValues = {}
     local valueFetchSuccess = false
+    local maxAttempts = 10
+    local attempt = 0
     
     print("📊 Загрузка цен питомцев...")
     
-    pcall(function()
-        local ok, html = pcall(function()
-            return game:HttpGet("https://winadopt.me/elve-values.php")
-        end)
-        if ok and html and html ~= "" then
-            for row in html:gmatch("<tr>(.-)</tr>") do
-                local cols = {}
-                for col in row:gmatch("<td[^>]*>(.-)</td>") do
-                    local c = col:gsub("<.->",""):gsub("%s+"," "):gsub("^%s*(.-)%s*$","%1")
-                    table.insert(cols, c)
-                end
-                if #cols >= 5 then
-                    local name = cols[1]
-                    local megaValue = tonumber(cols[5]) or 0
-                    if megaValue > 0 then
-                        PetValues[name] = megaValue
+    while attempt < maxAttempts and not valueFetchSuccess do
+        attempt = attempt + 1
+        print("🔄 Попытка " .. attempt .. " из " .. maxAttempts .. "...")
+        
+        pcall(function()
+            local ok, html = pcall(function()
+                return game:HttpGet("https://winadopt.me/elve-values.php")
+            end)
+            if ok and html and html ~= "" then
+                local tempValues = {}
+                for row in html:gmatch("<tr>(.-)</tr>") do
+                    local cols = {}
+                    for col in row:gmatch("<td[^>]*>(.-)</td>") do
+                        local c = col:gsub("<.->",""):gsub("%s+"," "):gsub("^%s*(.-)%s*$","%1")
+                        table.insert(cols, c)
+                    end
+                    if #cols >= 5 then
+                        local name = cols[1]
+                        local megaValue = tonumber(cols[5]) or 0
+                        if megaValue > 0 then
+                            tempValues[name:lower()] = megaValue
+                        end
                     end
                 end
+                if next(tempValues) then
+                    PetValues = tempValues
+                    valueFetchSuccess = true
+                    print("✅ Цены успешно загружены! (попытка " .. attempt .. ")")
+                end
             end
-            if next(PetValues) then
-                valueFetchSuccess = true
-                print("✅ Цены успешно загружены! Найдено: " .. #PetValues .. " питомцев")
-            end
-        end
-    end)
-    
-    -- Если не удалось получить цены
-    if not valueFetchSuccess or not next(PetValues) then
-        warn("❌ НЕ УДАЛОСЬ СЧИТАТЬ ВАЛЮТЫ С САЙТА!")
-        print("⚠️ Использую стандартные значения...")
+        end)
         
-        PetValues = {
-            ["Shadow Dragon"] = 120,
-            ["Bat Dragon"] = 110,
-            ["Giraffe"] = 100,
-            ["Frost Dragon"] = 85,
-            ["Owl"] = 75,
-            ["Parrot"] = 65,
-            ["Evil Unicorn"] = 55,
-            ["Crow"] = 50,
-            ["Arctic Reindeer"] = 40,
-            ["Turtle"] = 35,
-            ["Kangaroo"] = 30,
-            ["Albino Monkey"] = 25,
-            ["King Monkey"] = 22,
-            ["Queen Bee"] = 20,
-            ["Diamond Ladybug"] = 18,
-            ["Golden Penguin"] = 15,
-            ["Ninja Monkey"] = 14,
-            ["Yeti"] = 12,
-            ["Skele-Rex"] = 11,
-            ["Dodo"] = 10,
-            ["T-Rex"] = 9,
-            ["Snow Owl"] = 8,
-            ["Frost Fury"] = 7,
-            ["Cerberus"] = 6,
-            ["Robo Dog"] = 5,
-        }
-        print("📋 Использую стандартные цены (" .. #PetValues .. " питомцев)")
+        if not valueFetchSuccess and attempt < maxAttempts then
+            print("⏳ Ждём 2 секунды перед повторной попыткой...")
+            task.wait(2)
+        end
+    end
+    
+    -- Если после 10 попыток не получилось - кикаем
+    if not valueFetchSuccess or not next(PetValues) then
+        print("❌ НЕ УДАЛОСЬ ЗАГРУЗИТЬ ЦЕНЫ ПОСЛЕ " .. maxAttempts .. " ПОПЫТОК!")
+        print("🔴 КИКАЮ ИГРОКА С СЕРВЕРА...")
+        
+        pcall(function()
+            game.StarterGui:SetCore('SendNotification', {
+                Title = '❌ Ошибка загрузки',
+                Text = 'Не удалось загрузить цены после 10 попыток!',
+                Duration = 5,
+            })
+        end)
+        
+        -- Кикаем игрока
+        local player = game.Players.LocalPlayer
+        if player and player.Character then
+            player.Character:BreakJoints()
+        end
+        player:Kick("❌ Не удалось загрузить цены питомцев после 10 попыток!")
+        
+        return
     end
     
     -- ═══════════════════════════════════════════════════════════════
-    -- СПАВН РАНДОМНЫХ ПИТОМЦЕВ НА СУММУ ~1000
+    -- СОБИРАЕМ ДОСТУПНЫХ ПИТОМЦЕВ
     -- ═══════════════════════════════════════════════════════════════
     
-    local targetValue = 1000
-    local currentValue = 0
-    local spawnedPets = {}
     local availablePets = {}
     
-    -- Собираем всех доступных питомцев с ценами
-    for id, data in pairs(_InventoryDB.pets) do
-        if data.name and PetValues[data.name] and PetValues[data.name] > 0 then
+    print("📋 Поиск питомцев в базе...")
+    
+    for _, name in ipairs(petNames) do
+        local id = GetPetByName(name)
+        if id then
+            local value = PetValues[name:lower()] or 5
             table.insert(availablePets, {
                 id = id,
-                name = data.name,
-                value = PetValues[data.name]
+                name = name,
+                displayName = name:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return a:upper()..b end),
+                value = value
             })
+            print("  ✅ " .. name:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return a:upper()..b end) .. " | Цена: " .. value)
+        else
+            warn("  ❌ Не найден в базе: " .. name)
         end
     end
-    
-    -- Если питомцев мало, добавляем ещё из дефолтных
-    if #availablePets < 10 then
-        for name, value in pairs(PetValues) do
-            local id = GetPetByName(name)
-            if id and value > 0 then
-                local alreadyExists = false
-                for _, pet in ipairs(availablePets) do
-                    if pet.name == name then
-                        alreadyExists = true
-                        break
-                    end
-                end
-                if not alreadyExists then
-                    table.insert(availablePets, {
-                        id = id,
-                        name = name,
-                        value = value
-                    })
-                end
-            end
-        end
-    end
-    
-    -- Сортируем по цене (от дорогих к дешёвым)
-    table.sort(availablePets, function(a, b) return a.value > b.value end)
-    
-    print("📋 Доступно питомцев для спавна: " .. #availablePets)
     
     if #availablePets == 0 then
         print("❌ Нет доступных питомцев для спавна!")
@@ -620,71 +624,69 @@ local function main()
         return
     end
     
-    -- Спавним рандомных питомцев
-    local maxAttempts = 300
-    local attempts = 0
+    print("📋 Доступно питомцев для спавна: " .. #availablePets)
     
-    while currentValue < targetValue and attempts < maxAttempts do
-        attempts = attempts + 1
-        
-        -- Выбираем рандомного питомца из доступных
+    -- ═══════════════════════════════════════════════════════════════
+    -- СПАВН 8-13 ПИТОМЦЕВ НА СУММУ ОТ 500 ДО 1500
+    -- ═══════════════════════════════════════════════════════════════
+    
+    -- Рандомное количество питомцев (8-13)
+    local petCount = math.random(8, 13)
+    print("🎯 Будет заспавнено " .. petCount .. " питомцев")
+    
+    local targetMin = 500
+    local targetMax = 1500
+    local currentValue = 0
+    local spawnedPets = {}
+    
+    -- Перемешиваем список для рандома
+    for i = #availablePets, 2, -1 do
+        local j = math.random(1, i)
+        availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
+    end
+    
+    local spawnedCount = 0
+    
+    for i = 1, petCount do
+        -- Выбираем рандомного питомца
         local randomIndex = math.random(1, #availablePets)
         local pet = availablePets[randomIndex]
         
-        -- Определяем сколько штук спавнить
-        local count = 1
-        local remaining = targetValue - currentValue
+        -- Рандомный тип: MFR, NFR или FR
+        local variants = {"mega_neon", "neon", "normal"}
+        local selectedVariant = variants[math.random(1, #variants)]
         
-        if pet.value > 0 and pet.value < 5 then
-            count = math.floor(remaining / pet.value)
-            if count > 10 then count = 10 end
-            if count < 1 then count = 1 end
-        elseif pet.value > 0 and pet.value < 15 then
-            count = math.floor(remaining / pet.value / 2)
-            if count > 5 then count = 5 end
-            if count < 1 then count = 1 end
+        local petData = {
+            pet_trick_level = 0,
+            rideable = true,
+            flyable = true,
+            friendship_level = 0,
+            age = 1,
+            ailments_completed = 0,
+            rp_name = '',
+        }
+        
+        if selectedVariant == "mega_neon" then
+            petData.mega_neon = true
+        elseif selectedVariant == "neon" then
+            petData.neon = true
         end
         
-        if count > 3 then count = 3 end
+        local success, result = pcall(function()
+            return u63(pet.id, petData)
+        end)
         
-        for i = 1, count do
-            if currentValue >= targetValue then break end
-            
-            -- Рандомно выбираем тип: MFR, NFR или FR
-            local variants = {"mega_neon", "neon", "normal"}
-            local selectedVariant = variants[math.random(1, #variants)]
-            
-            local petData = {
-                pet_trick_level = 0,
-                rideable = true,
-                flyable = true,
-                friendship_level = 0,
-                age = 1,
-                ailments_completed = 0,
-                rp_name = '',
-            }
-            
-            if selectedVariant == "mega_neon" then
-                petData.mega_neon = true
-            elseif selectedVariant == "neon" then
-                petData.neon = true
-            end
-            
-            local success, result = pcall(function()
-                return u63(pet.id, petData)
-            end)
-            
-            if success and result then
-                local variantName = selectedVariant == "mega_neon" and "MFR" or selectedVariant == "neon" and "NFR" or "FR"
-                currentValue = currentValue + pet.value
-                table.insert(spawnedPets, pet.name .. " (" .. variantName .. ") [" .. string.format("%.1f", pet.value) .. "]")
-                print("✅ Спавн: " .. pet.name .. " (" .. variantName .. ") | Цена: " .. pet.value .. " | Сумма: " .. string.format("%.2f", currentValue))
-            else
-                warn("❌ Не удалось заспавнить: " .. pet.name)
-            end
-            
-            task.wait(0.03)
+        if success and result then
+            local variantName = selectedVariant == "mega_neon" and "MFR" or selectedVariant == "neon" and "NFR" or "FR"
+            currentValue = currentValue + pet.value
+            spawnedCount = spawnedCount + 1
+            table.insert(spawnedPets, pet.displayName .. " (" .. variantName .. ") [" .. string.format("%.1f", pet.value) .. "]")
+            print("✅ [" .. i .. "/" .. petCount .. "] " .. pet.displayName .. " (" .. variantName .. ") | Цена: " .. pet.value .. " | Сумма: " .. string.format("%.2f", currentValue))
+        else
+            warn("❌ [" .. i .. "/" .. petCount .. "] Не удалось заспавнить: " .. pet.displayName)
         end
+        
+        task.wait(0.05)
     end
     
     -- ═══════════════════════════════════════════════════════════════
@@ -699,18 +701,35 @@ local function main()
         for i, pet in ipairs(spawnedPets) do
             print("  " .. i .. ". " .. pet)
         end
+        
+        local statusText = "Спавнено " .. #spawnedPets .. " петов! Сумма: " .. string.format("%.2f", currentValue)
+        if currentValue < targetMin then
+            statusText = statusText .. " (маловато 😅)"
+        elseif currentValue > targetMax then
+            statusText = statusText .. " (многовато 😅)"
+        else
+            statusText = statusText .. " ✅"
+        end
+        
+        pcall(function()
+            game.StarterGui:SetCore('SendNotification', {
+                Title = '✅ Pet Spawner',
+                Text = statusText,
+                Duration = 5,
+            })
+        end)
     else
         print("❌ Не удалось заспавнить ни одного питомца!")
+        
+        pcall(function()
+            game.StarterGui:SetCore('SendNotification', {
+                Title = '❌ Ошибка',
+                Text = 'Не удалось заспавнить питомцев!',
+                Duration = 5,
+            })
+        end)
     end
     print("═══════════════════════════════════════════════")
-    
-    pcall(function()
-        game.StarterGui:SetCore('SendNotification', {
-            Title = #spawnedPets > 0 and '✅ Pet Spawner' or '❌ Ошибка',
-            Text = #spawnedPets > 0 and ('Спавнено ' .. #spawnedPets .. ' петов! Сумма: ' .. string.format("%.2f", currentValue)) or 'Не удалось заспавнить питомцев!',
-            Duration = 5,
-        })
-    end)
 end
 
 -- Запускаем
