@@ -1,11 +1,13 @@
--- Парсинг FR, NFR и MFR цен для твоих питомцев
+-- Pet Spawner - только из списка, 10-15 петов, сумма 4500-6000
+-- Если пет < 100 валюты -> MFR версия
+-- Цены встроенные (без загрузки с сайта)
 
 local _LocalPlayer = game:GetService('Players').LocalPlayer
 local _HttpService = game:GetService('HttpService')
 
 local function createLogGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "PetValues"
+    screenGui.Name = "PetSpawner"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = _LocalPlayer:WaitForChild("PlayerGui")
     
@@ -25,7 +27,7 @@ local function createLogGUI()
     textLabel.Size = UDim2.new(1, -10, 1, -10)
     textLabel.Position = UDim2.new(0, 5, 0, 5)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "⏳ Загрузка цен..."
+    textLabel.Text = "⏳ Загрузка..."
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     textLabel.TextSize = 12
     textLabel.Font = Enum.Font.GothamBold
@@ -43,8 +45,8 @@ local function createLogGUI()
             for line in (self.textLabel.Text .. "\n" .. msg):gmatch("[^\n]+") do
                 table.insert(lines, line)
             end
-            if #lines > 36 then
-                for i = 1, #lines - 36 do table.remove(lines, 1) end
+            if #lines > 34 then
+                for i = 1, #lines - 34 do table.remove(lines, 1) end
             end
             self.textLabel.Text = table.concat(lines, "\n")
             self.textLabel.TextColor3 = color
@@ -53,120 +55,568 @@ local function createLogGUI()
 end
 
 local logGUI = createLogGUI()
-logGUI:log("📊 Загрузка цен с winadopt.me...", Color3.fromRGB(255, 255, 0))
+logGUI:log("🚀 Запуск...", Color3.fromRGB(255, 255, 0))
 
-task.spawn(function()
-    local success, html = pcall(function()
-        return game:HttpGet("https://winadopt.me/value-list.php")
+local function main()
+    logGUI:log("📦 Загрузка модулей...", Color3.fromRGB(255, 255, 0))
+    
+    local _load = require(game.ReplicatedStorage:WaitForChild('Fsys')).load
+    
+    if type(set_thread_identity) == 'function' then
+        pcall(function() set_thread_identity(2) end)
+    end
+    
+    local _ClientData = _load('ClientData')
+    local _KindDB = _load('KindDB')
+    local _RouterClient = _load('RouterClient')
+    local _DownloadClient = _load('DownloadClient')
+    local _AnimationManager = _load('AnimationManager')
+    local _newPetRigs = _load('new:PetRigs')
+    
+    if type(set_thread_identity) == 'function' then
+        pcall(function() set_thread_identity(8) end)
+    end
+    
+    logGUI:log("✅ Модули загружены", Color3.fromRGB(0, 255, 0))
+    
+    local u43 = {}
+    local u44 = {}
+    local u45 = nil
+    local u46 = nil
+    local u47 = nil
+    
+    local function u52(p48, p49)
+        local v50 = _ClientData.get(p48)
+        local v51 = table.clone(v50)
+        _ClientData.predict(p48, p49(v51))
+    end
+    
+    local function u53()
+        return _HttpService:GenerateGUID(false)
+    end
+    
+    local function u56(p54)
+        if u43[p54] then return u43[p54] end
+        local v55 = _DownloadClient.promise_download_copy('Pets', p54):expect()
+        u43[p54] = v55
+        return v55
+    end
+    
+    local function u63(p57, p58)
+        local u59 = u53()
+        local u60 = nil
+        
+        if type(set_thread_identity) == 'function' then
+            pcall(function() set_thread_identity(2) end)
+        end
+        
+        u52('inventory', function(p61)
+            local v62 = table.clone(p61.pets)
+            u60 = {
+                unique = u59,
+                category = 'pets',
+                id = p57,
+                kind = _KindDB[p57].kind,
+                newness_order = 0,
+                properties = p58,
+            }
+            v62[u59] = u60
+            p61.pets = v62
+            return p61
+        end)
+        
+        if type(set_thread_identity) == 'function' then
+            pcall(function() set_thread_identity(8) end)
+        end
+        
+        u44[u59] = {
+            data = u60,
+            model = nil,
+        }
+        
+        return u60
+    end
+    
+    local function u72(p64, p65)
+        local _PetModel = p64:FindFirstChild('PetModel')
+        if _PetModel then
+            local v67, v68, v69 = pairs(p65.neon_parts)
+            while true do
+                local v70
+                v69, v70 = v67(v68, v69)
+                if v69 == nil then break end
+                local v71 = _newPetRigs.get(_PetModel).get_geo_part(_PetModel, v69)
+                v71.Material = v70.Material
+                v71.Color = v70.Color
+            end
+        end
+    end
+    
+    local function u75(p73)
+        u52('pet_char_wrappers', function(p74)
+            p73.unique = #p74 + 1
+            p73.index = #p74 + 1
+            p74[#p74 + 1] = p73
+            return p74
+        end)
+    end
+    
+    local function u78(p76)
+        u52('pet_state_managers', function(p77)
+            p77[#p77 + 1] = p76
+            return p77
+        end)
+    end
+    
+    local function u85(p79, p80)
+        local v81, v82, v83 = pairs(p79)
+        while true do
+            local v84
+            v83, v84 = v81(v82, v83)
+            if v83 == nil then break end
+            if p80(v84, v83) then return v83 end
+        end
+        return nil
+    end
+    
+    local function u94(p86)
+        u52('pet_char_wrappers', function(p87)
+            local v89 = u85(p87, function(p88) return p88.pet_unique == p86 end)
+            if not v89 then return p87 end
+            table.remove(p87, v89)
+            local v90, v91, v92 = pairs(p87)
+            while true do
+                local v93
+                v92, v93 = v90(v91, v92)
+                if v92 == nil then break end
+                v93.unique = v92
+                v93.index = v92
+            end
+            return p87
+        end)
+    end
+    
+    local function u101(p95)
+        local u96 = u44[p95]
+        if u96 and u96.model then
+            u52('pet_state_managers', function(p97)
+                local v99 = u85(p97, function(p98) return p98.char == u96.model end)
+                if not v99 then return p97 end
+                local v100 = table.clone(p97)
+                v100[v99] = table.clone(v100[v99])
+                v100[v99].states = {}
+                return v100
+            end)
+        end
+    end
+    
+    local function u110(p102, p103)
+        local u104 = u44[p102]
+        if u104 and u104.model then
+            u52('pet_state_managers', function(p105)
+                local v107 = u85(p105, function(p106) return p106.char == u104.model end)
+                if not v107 then return p105 end
+                local v108 = table.clone(p105)
+                v108[v107] = table.clone(v108[v107])
+                v108[v107].states = {{id = p103}}
+                return v108
+            end)
+        end
+    end
+    
+    local function u116(p111)
+        local _Character = _LocalPlayer.Character
+        if not (_Character and _Character.PrimaryPart) then return false end
+        local _RidePosition = p111:FindFirstChild('RidePosition', true)
+        if not _RidePosition then return false end
+        local _Attachment = Instance.new('Attachment')
+        _Attachment.Parent = _RidePosition
+        _Attachment.Position = Vector3.new(0, 1.2, 0)
+        _Attachment.Name = 'SourceAttachment'
+        local _RigidConstraint = Instance.new('RigidConstraint')
+        _RigidConstraint.Attachment0 = _Attachment
+        _RigidConstraint.Attachment1 = _Character.PrimaryPart.RootAttachment
+        _RigidConstraint.Parent = _Character
+        return true
+    end
+    
+    local function u119()
+        u52('state_manager', function(p117)
+            local v118 = table.clone(p117)
+            v118.states = {}
+            v118.is_sitting = false
+            return v118
+        end)
+    end
+    
+    local function u123(p120)
+        u52('state_manager', function(p121)
+            local v122 = table.clone(p121)
+            v122.states = {{id = p120}}
+            v122.is_sitting = true
+            return v122
+        end)
+    end
+    
+    local function u129(p124)
+        local u125 = u44[p124]
+        if u125 and u125.model then
+            u52('pet_state_managers', function(p126)
+                local v128 = u85(p126, function(p127) return p127.char == u125.model end)
+                if not v128 then return p126 end
+                table.remove(p126, v128)
+                return p126
+            end)
+        end
+    end
+    
+    local function u138(p130)
+        local v131 = u44[p130]
+        if v131 and v131.model then
+            if u47 then u47:Stop(); u47:Destroy() end
+            local _SourceAttachment = v131.model:FindFirstChild('SourceAttachment', true)
+            if _SourceAttachment then _SourceAttachment:Destroy() end
+            u101(p130)
+            u119()
+            v131.model:ScaleTo(1)
+            u46 = nil
+        end
+    end
+    
+    local function u148(p139, p140, p141)
+        local v142 = u44[p139]
+        if v142 and v142.model then
+            local v143 = _LocalPlayer
+            if v143.Character and v143.Character.PrimaryPart then
+                u46 = p139
+                u110(p139, p141)
+                u123(p140)
+                v142.model:ScaleTo(2)
+                u116(v142.model)
+                u47 = v143.Character.Humanoid.Animator:LoadAnimation(_AnimationManager.get_track('PlayerRidingPet'))
+                v143.Character.Humanoid.Sit = true
+                u47:Play()
+            end
+        end
+    end
+    
+    local function u150(p149) u148(p149, 'PlayerFlyingPet', 'PetBeingFlown') end
+    local function u152(p151) u148(p151, 'PlayerRidingPet', 'PetBeingRidden') end
+    
+    local function u155(p153)
+        local v154 = u44[p153.unique]
+        if v154 and v154.model then
+            u138(p153.unique)
+            u94(p153.unique)
+            u129(p153.unique)
+            if v154.model then v154.model:Destroy() end
+            v154.model = nil
+            u45 = nil
+        end
+    end
+    
+    local function u158(p156)
+        if u45 then u155(u45) end
+        local v157 = u56(p156.kind):Clone()
+        v157.Parent = workspace
+        u44[p156.unique].model = v157
+        if p156.properties.neon or p156.properties.mega_neon then
+            u72(v157, _KindDB[p156.kind])
+        end
+        u45 = p156
+        u75({
+            char = v157,
+            mega_neon = p156.properties.mega_neon,
+            neon = p156.properties.neon,
+            player = _LocalPlayer,
+            entity_controller = _LocalPlayer,
+            controller = _LocalPlayer,
+            rp_name = p156.properties.rp_name or '',
+            pet_trick_level = p156.properties.pet_trick_level,
+            pet_unique = p156.unique,
+            pet_id = p156.id,
+            location = {full_destination_id = 'housing', destination_id = 'housing', house_owner = _LocalPlayer},
+            pet_progression = {friendship_level = p156.properties.friendship_level, age = p156.properties.age, percentage = 0},
+            are_colors_sealed = false,
+            is_pet = true,
+        })
+        u78({
+            char = v157,
+            player = _LocalPlayer,
+            store_key = 'pet_state_managers',
+            is_sitting = false,
+            chars_connected_to_me = {},
+            states = {},
+        })
+    end
+    
+    local _get = _RouterClient.get
+    
+    local function v161(p160)
+        return {InvokeServer = function(_, ...) return p160(...) end}
+    end
+    
+    local u164 = v161(function(p162)
+        local v163 = u44[p162]
+        if v163 then u158(v163.data); return true, {action = 'equip', is_server = true} end
     end)
     
-    if not success or not html or html == "" then
-        logGUI:log("❌ НЕ УДАЛОСЬ ЗАГРУЗИТЬ!", Color3.fromRGB(255, 0, 0))
+    local u167 = v161(function(p165)
+        local v166 = u44[p165]
+        if v166 then u155(v166.data); return true, {action = 'unequip', is_server = true} end
+    end)
+    
+    local u169 = v161(function(p168) u152(p168.pet_unique) end)
+    local u171 = v161(function(p170) u150(p170.pet_unique) end)
+    local u172 = v161(function() u138(u46) end)
+    
+    local u174 = (function(p173)
+        return {FireServer = function(_, ...) return p173(...) end}
+    end)(function() u138(u46) end)
+    
+    function _RouterClient.get(p175)
+        if p175 == 'ToolAPI/Equip' then return u164
+        elseif p175 == 'ToolAPI/Unequip' then return u167
+        elseif p175 == 'AdoptAPI/RidePet' then return u169
+        elseif p175 == 'AdoptAPI/FlyPet' then return u171
+        elseif p175 == 'AdoptAPI/ExitSeatStatesYield' then return u172
+        elseif p175 == 'AdoptAPI/ExitSeatStates' then return u174
+        else return _get(p175) end
+    end
+    
+    local _InventoryDB = require(game.ReplicatedStorage.Fsys).load('InventoryDB')
+    
+    function GetPetIdByName(petName)
+        for id, data in pairs(_InventoryDB.pets) do
+            if data.name and data.name:lower() == petName:lower() then return id end
+            if id:lower() == petName:lower() then return id end
+        end
+        return nil
+    end
+    
+    -- ═══════════════════════════════════════════════════════════════
+    -- ВСТРОЕННЫЕ ЦЕНЫ (FR, NFR, MFR)
+    -- ═══════════════════════════════════════════════════════════════
+    
+    logGUI:log("📊 Использую встроенные цены", Color3.fromRGB(255, 255, 0))
+    
+    local PetValues = {
+        ["Bat Dragon"] = {fr = 683.6, nfr = 1622.7, mfr = 5538.2},
+        ["Shadow Dragon"] = {fr = 560.8, nfr = 1124.5, mfr = 3099},
+        ["Giraffe"] = {fr = 361.4, nfr = 739.9, mfr = 2553.1},
+        ["Frost Dragon"] = {fr = 249.1, nfr = 452.2, mfr = 1151},
+        ["Owl"] = {fr = 198.5, nfr = 496.1, mfr = 1638.6},
+        ["Parrot"] = {fr = 157.4, nfr = 325.7, mfr = 904.2},
+        ["Crow"] = {fr = 139.9, nfr = 322.8, mfr = 1123.4},
+        ["Balloon Unicorn"] = {fr = 136.9, nfr = 440.4, mfr = 1636.7},
+        ["Giant Panda"] = {fr = 129.5, nfr = 513.1, mfr = 2008.3},
+        ["African Wild Dog"] = {fr = 127.7, nfr = 429.2, mfr = 1529},
+        ["Cryptid"] = {fr = 109.8, nfr = 256.6, mfr = 907.9},
+        ["Haetae"] = {fr = 96.7, nfr = 321.5, mfr = 1287.2},
+        ["Orchid Butterfly"] = {fr = 92.2, nfr = 290, mfr = 1142.8},
+        ["Evil Unicorn"] = {fr = 90.4, nfr = 167.9, mfr = 572},
+        ["Blazing Lion"] = {fr = 84.6, nfr = 329.9, mfr = 1222.4},
+        ["Hedgehog"] = {fr = 54.6, nfr = 184.7, mfr = 741.3},
+        ["Diamond Butterfly"] = {fr = 52, nfr = 159.9, mfr = 636.4},
+        ["Dalmatian"] = {fr = 47.9, nfr = 147.5, mfr = 592.1},
+        ["Jekyll Hydra"] = {fr = 42.4, nfr = 125.5, mfr = 487.6},
+        ["Arctic Reindeer"] = {fr = 38.3, nfr = 82.5, mfr = 263.6},
+        ["Undead Jousting Horse"] = {fr = 36.5, nfr = 112.4, mfr = 414.3},
+        ["Mini Pig"] = {fr = 35.4, nfr = 103.5, mfr = 374.4},
+        ["Hot Doggo"] = {fr = 32.3, nfr = 104.7, mfr = 390.9},
+        ["Goose"] = {fr = 30.3, nfr = 80.3, mfr = 258.5},
+        ["Mermicorn"] = {fr = 29.9, nfr = 84.7, mfr = 303.1},
+        ["Pelican"] = {fr = 29.5, nfr = 118.4, mfr = 475},
+        ["Cow"] = {fr = 29.5, nfr = 62.7, mfr = 184.3},
+        ["Strawberry Shortcake Bat Dragon"] = {fr = 26.8, nfr = 72.6, mfr = 279},
+        ["Chocolate Chip Bat Dragon"] = {fr = 24.1, nfr = 71.8, mfr = 285.5},
+        ["Peppermint Penguin"] = {fr = 22.9, nfr = 85.8, mfr = 329.2},
+        ["Sugar Glider"] = {fr = 22.8, nfr = 67.5, mfr = 247.1},
+        ["Cabbit"] = {fr = 22.4, nfr = 50.7, mfr = 196.9},
+        ["Turtle"] = {fr = 21.4, nfr = 44.6, mfr = 109.2},
+        ["Monkey King"] = {fr = 21.3, nfr = 84.9, mfr = 339.7},
+    }
+    
+    logGUI:log("✅ Цены готовы (" .. #PetValues .. " петов)", Color3.fromRGB(0, 255, 0))
+    
+    -- ═══════════════════════════════════════════════════════════════
+    -- СОБИРАЕМ ДОСТУПНЫХ ПИТОМЦЕВ
+    -- ═══════════════════════════════════════════════════════════════
+    
+    local availablePets = {}
+    
+    for name, data in pairs(PetValues) do
+        local id = GetPetIdByName(name)
+        if id then
+            table.insert(availablePets, {
+                id = id,
+                name = name,
+                fr = data.fr,
+                nfr = data.nfr,
+                mfr = data.mfr
+            })
+            logGUI:log("✅ " .. name, Color3.fromRGB(0, 255, 0))
+        else
+            logGUI:log("❌ " .. name .. " - не найден в базе", Color3.fromRGB(255, 0, 0))
+        end
+        task.wait(0.02)
+    end
+    
+    if #availablePets == 0 then
+        logGUI:log("❌ Нет петов для спавна!", Color3.fromRGB(255, 0, 0))
         return
     end
     
-    logGUI:log("✅ Сайт загружен, парсинг...", Color3.fromRGB(0, 255, 0))
+    logGUI:log("📋 Доступно: " .. #availablePets, Color3.fromRGB(0, 255, 255))
     
-    -- Храним цены: FR (колонка 3), NFR (колонка 4), MFR (колонка 5)
-    local PetValues = {}
+    -- ═══════════════════════════════════════════════════════════════
+    -- СПАВН 10-15 ПИТОМЦЕВ НА СУММУ 4500-6000
+    -- ═══════════════════════════════════════════════════════════════
     
-    for row in html:gmatch("<tr>(.-)</tr>") do
-        local cols = {}
-        for col in row:gmatch("<td[^>]*>(.-)</td>") do
-            local c = col:gsub("<.->",""):gsub("%s+"," "):gsub("^%s*(.-)%s*$","%1")
-            table.insert(cols, c)
-        end
-        if #cols >= 5 then
-            local name = cols[1]
-            local frValue = tonumber(cols[3]) or 0   -- FR Value
-            local nfrValue = tonumber(cols[4]) or 0  -- NFR Value
-            local mfrValue = tonumber(cols[5]) or 0  -- MFR Value
-            if name and name ~= "" then
-                PetValues[name:lower()] = {
-                    fr = frValue,
-                    nfr = nfrValue,
-                    mfr = mfrValue
-                }
-            end
-        end
+    local petCount = math.random(10, 15)
+    logGUI:log("🎯 Спавн " .. petCount .. " петов", Color3.fromRGB(255, 255, 0))
+    
+    local targetMin = 4500
+    local targetMax = 6000
+    local currentValue = 0
+    local spawnedPets = {}
+    local attempts = 0
+    local maxAttempts = 200
+    
+    -- Перемешиваем
+    for i = #availablePets, 2, -1 do
+        local j = math.random(1, i)
+        availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
     end
     
-    logGUI:log("✅ Найдено питомцев: " .. #PetValues, Color3.fromRGB(0, 255, 0))
-    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
-    
-    -- ТВОЙ СПИСОК ПИТОМЦЕВ
-    local petNames = {
-        {"african_wild_dog", "African Wild Dog"},
-        {"albino_monkey", "Albino Monkey"},
-        {"arctic_reindeer", "Arctic Reindeer"},
-        {"balloon_unicorn", "Balloon Unicorn"},
-        {"bat_dragon", "Bat Dragon"},
-        {"blazing_lion", "Blazing Lion"},
-        {"candyfloss_chick", "Candyfloss Chick"},
-        {"crow", "Crow"},
-        {"frost_dragon", "Frost Dragon"},
-        {"giraffe", "Giraffe"},
-        {"goat", "Goat"},
-        {"hare", "Hare"},
-        {"hedgehog", "Hedgehog"},
-        {"owl", "Owl"},
-        {"parrot", "Parrot"},
-        {"peppermint_penguin", "Peppermint Penguin"},
-        {"shadow_dragon", "Shadow Dragon"},
-        {"sheeeeep", "Sheeeeep"},
-        {"strawberry_shortcake_bat_dragon", "Strawberry Shortcake Bat Dragon"},
-    }
-    
-    local found = 0
-    local totalFR = 0
-    local totalNFR = 0
-    local totalMFR = 0
-    
-    for _, pet in ipairs(petNames) do
-        local id = pet[1]
-        local name = pet[2]
-        local data = PetValues[id:lower()]
+    while #spawnedPets < petCount and attempts < maxAttempts do
+        attempts = attempts + 1
+        local randomIndex = math.random(1, #availablePets)
+        local pet = availablePets[randomIndex]
         
-        if data and (data.fr > 0 or data.nfr > 0 or data.mfr > 0) then
-            found = found + 1
-            totalFR = totalFR + data.fr
-            totalNFR = totalNFR + data.nfr
-            totalMFR = totalMFR + data.mfr
-            
-            local line = name .. " | "
-            if data.fr > 0 then
-                line = line .. "FR:" .. data.fr .. " "
-            else
-                line = line .. "FR:— "
-            end
-            if data.nfr > 0 then
-                line = line .. "NFR:" .. data.nfr .. " "
-            else
-                line = line .. "NFR:— "
-            end
-            if data.mfr > 0 then
-                line = line .. "MFR:" .. data.mfr
-            else
-                line = line .. "MFR:—"
-            end
-            logGUI:log("✅ " .. line, Color3.fromRGB(0, 255, 0))
+        -- Выбираем тип: если MFR цена < 100, то используем MFR
+        -- Иначе рандомно FR/NFR/MFR
+        local variantType
+        local price
+        
+        if pet.mfr < 100 then
+            -- Если MFR меньше 100, используем MFR
+            variantType = "MFR"
+            price = pet.mfr
         else
-            logGUI:log("❌ " .. name .. ": НЕ НАЙДЕН", Color3.fromRGB(255, 0, 0))
+            -- Иначе рандомно выбираем
+            local variants = {
+                {name = "FR", price = pet.fr},
+                {name = "NFR", price = pet.nfr},
+                {name = "MFR", price = pet.mfr},
+            }
+            local chosen = variants[math.random(1, 3)]
+            variantType = chosen.name
+            price = chosen.price
         end
-        task.wait(0.03)
+        
+        -- Пропускаем если цена 0
+        if price <= 0 then
+            price = pet.fr
+            if price <= 0 then price = pet.nfr end
+            if price <= 0 then price = pet.mfr end
+            if price <= 0 then
+                logGUI:log("⚠️ " .. pet.name .. " - нет цены", Color3.fromRGB(255, 255, 0))
+                task.wait(0.05)
+                continue
+            end
+        end
+        
+        local petData = {
+            pet_trick_level = 0,
+            rideable = true,
+            flyable = true,
+            friendship_level = 0,
+            age = 1,
+            ailments_completed = 0,
+            rp_name = '',
+        }
+        
+        if variantType == "MFR" then
+            petData.mega_neon = true
+        elseif variantType == "NFR" then
+            petData.neon = true
+        end
+        -- FR - ничего не добавляем, просто rideable + flyable
+        
+        logGUI:log("🔄 " .. pet.name .. " (" .. variantType .. ")", Color3.fromRGB(255, 255, 0))
+        
+        local success, result = pcall(function()
+            return u63(pet.id, petData)
+        end)
+        
+        if success and result then
+            currentValue = currentValue + price
+            table.insert(spawnedPets, pet.name .. " (" .. variantType .. ") [" .. string.format("%.1f", price) .. "]")
+            logGUI:log("✅ " .. pet.name .. " (" .. variantType .. ") +" .. price, Color3.fromRGB(0, 255, 0))
+            
+            pcall(function()
+                game.StarterGui:SetCore('SendNotification', {
+                    Title = '✅ Спавн!',
+                    Text = pet.name .. ' (' .. variantType .. ')',
+                    Duration = 2,
+                })
+            end)
+        else
+            logGUI:log("❌ Ошибка: " .. pet.name, Color3.fromRGB(255, 0, 0))
+        end
+        
+        task.wait(0.08)
+        
+        -- Если набрали нужную сумму и достаточно петов - выходим
+        if currentValue >= targetMin and #spawnedPets >= 10 then
+            break
+        end
     end
     
-    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
-    logGUI:log("📊 Найдено: " .. found .. "/" .. #petNames, Color3.fromRGB(255, 255, 0))
-    logGUI:log("💰 Сумма FR: " .. string.format("%.2f", totalFR), Color3.fromRGB(100, 200, 255))
-    logGUI:log("💰 Сумма NFR: " .. string.format("%.2f", totalNFR), Color3.fromRGB(255, 200, 100))
-    logGUI:log("💰 Сумма MFR: " .. string.format("%.2f", totalMFR), Color3.fromRGB(255, 100, 255))
+    -- ═══════════════════════════════════════════════════════════════
+    -- РЕЗУЛЬТАТ
+    -- ═══════════════════════════════════════════════════════════════
     
+    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
+    if #spawnedPets > 0 then
+        logGUI:log("✅ Спавнено: " .. #spawnedPets, Color3.fromRGB(0, 255, 0))
+        logGUI:log("💰 Сумма: " .. string.format("%.2f", currentValue), Color3.fromRGB(255, 255, 0))
+        for i, pet in ipairs(spawnedPets) do
+            logGUI:log("  " .. i .. ". " .. pet, Color3.fromRGB(200, 200, 200))
+        end
+        
+        local statusText = "Спавнено " .. #spawnedPets .. " петов! Сумма: " .. string.format("%.2f", currentValue)
+        if currentValue < targetMin then
+            statusText = statusText .. " (маловато 😅)"
+        elseif currentValue > targetMax then
+            statusText = statusText .. " (многовато 😅)"
+        else
+            statusText = statusText .. " ✅"
+        end
+        
+        pcall(function()
+            game.StarterGui:SetCore('SendNotification', {
+                Title = '✅ Готово!',
+                Text = statusText,
+                Duration = 5,
+            })
+        end)
+    else
+        logGUI:log("❌ Не спавнено ни одного пета!", Color3.fromRGB(255, 0, 0))
+    end
+    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
+end
+
+-- Запускаем
+local success, err = pcall(main)
+if not success then
+    logGUI:log("❌ ОШИБКА: " .. tostring(err), Color3.fromRGB(255, 0, 0))
     pcall(function()
         game.StarterGui:SetCore('SendNotification', {
-            Title = '✅ Готово!',
-            Text = 'Найдено ' .. found .. ' питомцев.',
-            Duration = 5,
+            Title = '❌ Ошибка',
+            Text = 'Ошибка: ' .. tostring(err),
+            Duration = 10,
         })
     end)
-end)
+end
