@@ -1,6 +1,7 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
 -- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM ЧЕРЕЗ 3 СЕКУНДЫ
+-- ПОТОМ ТЫ
 -- ============================================
 
 local Services = {
@@ -578,6 +579,50 @@ end
 
 local showBlockedTradeRequests
 
+local function makePartnerAccept()
+    if mockState.active and mockState.trade then
+        if mockState.trade.current_stage == 'negotiation' then
+            if not mockState.trade.recipient_offer.negotiated then
+                mockState.trade.recipient_offer.negotiated = true
+                if mockState.trade.sender_offer.negotiated then
+                    mockState.trade.current_stage = 'confirmation'
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    TradeApp:_overwrite_local_trade_state(mockState.trade)
+                    if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                else
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    TradeApp:_overwrite_local_trade_state(mockState.trade)
+                end
+            end
+        elseif mockState.trade.current_stage == 'confirmation' then
+            if not mockState.trade.recipient_offer.confirmed then
+                mockState.trade.recipient_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+                if mockState.trade.sender_offer.confirmed and not mockState.tradeCompleting then
+                    mockState.tradeCompleting = true
+                    if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
+                    task.wait(3)
+                    local historyRecord = createTradeHistoryRecord(mockState.trade)
+                    appendToTradeHistory(historyRecord)
+                    mockState.active = false
+                    mockState.trade = nil
+                    mockState.tradeCompleting = false
+                    mockState.scamWarningShown = true
+                    mockState.canShowTradeRequest = true
+                    mockState.tradeRequestBlocked = false
+                    UIManager.set_app_visibility('TradeApp', false)
+                    task.wait(0.1)
+                    showBlockedTradeRequests()
+                    if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
+                    if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
+                end
+            end
+        end
+    end
+end
+
 local function partnerAutoAction()
     if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
     mockState.partnerActionPending = true
@@ -602,7 +647,7 @@ local function partnerAutoAction()
             end
         end
     elseif mockState.trade.current_stage == 'confirmation' then
-        task.wait(CONFIG.AUTO_CONFIRM_DELAY)  -- 3 СЕКУНДЫ
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
@@ -806,9 +851,8 @@ local function hookTradeFunctions()
             if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
             
             -- БОТ ПЕРВЫЙ НАЖИМАЕТ CONFIRM (через 3 секунды)
-            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
-                task.spawn(partnerAutoAction)
-            end
+            task.wait(3.0)
+            makePartnerAccept()
             
             -- ТЫ НАЖИМАЕШЬ CONFIRM (ПОСЛЕ БОТА)
             mockState.trade.sender_offer.confirmed = true
