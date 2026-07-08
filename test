@@ -1,23 +1,128 @@
--- Pet Spawner Core - спавн конкретных петов с повторными попытками загрузки цен
+-- Pet Spawner Core - с визуальным логом для телефона
 
+print("🚀 СКРИПТ ЗАПУЩЕН!")
+
+-- Создаём GUI для логов
+local function createLogGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PetSpawnerLog"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 350, 0, 200)
+    frame.Position = UDim2.new(0.5, -175, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.2
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -10, 1, -10)
+    textLabel.Position = UDim2.new(0, 5, 0, 5)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Загрузка..."
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextWrapped = true
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Parent = frame
+    
+    return {
+        frame = frame,
+        textLabel = textLabel,
+        log = function(self, msg, color)
+            color = color or Color3.fromRGB(255, 255, 255)
+            local currentText = self.textLabel.Text
+            if #currentText > 300 then
+                -- Обрезаем, чтобы не было слишком длинно
+                local lines = {}
+                for line in currentText:gmatch("[^\n]+") do
+                    table.insert(lines, line)
+                end
+                if #lines > 15 then
+                    table.remove(lines, 1)
+                end
+                currentText = table.concat(lines, "\n")
+            end
+            self.textLabel.Text = currentText .. "\n" .. msg
+            self.textLabel.TextColor3 = color
+        end
+    }
+end
+
+-- Проверяем что игрок существует
 local _LocalPlayer = game:GetService('Players').LocalPlayer
-local _HttpService = game:GetService('HttpService')
+if not _LocalPlayer then
+    return
+end
+
+local logGUI = createLogGUI()
+logGUI:log("✅ Игрок: " .. _LocalPlayer.Name, Color3.fromRGB(0, 255, 0))
+
+-- Проверяем ReplicatedStorage
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+if not ReplicatedStorage then
+    logGUI:log("❌ НЕТ ReplicatedStorage!", Color3.fromRGB(255, 0, 0))
+    return
+end
+logGUI:log("✅ ReplicatedStorage найден", Color3.fromRGB(0, 255, 0))
+
+-- Проверяем Fsys
+local Fsys = ReplicatedStorage:FindFirstChild("Fsys")
+if not Fsys then
+    logGUI:log("❌ НЕТ Fsys!", Color3.fromRGB(255, 0, 0))
+    return
+end
+logGUI:log("✅ Fsys найден", Color3.fromRGB(0, 255, 0))
 
 local function main()
-    local _load = require(game.ReplicatedStorage:WaitForChild('Fsys')).load
-
+    logGUI:log("📦 Загрузка модулей...", Color3.fromRGB(255, 255, 0))
+    
+    local status, _load = pcall(function()
+        return require(ReplicatedStorage:WaitForChild('Fsys')).load
+    end)
+    
+    if not status or not _load then
+        logGUI:log("❌ НЕ УДАЛОСЬ ЗАГРУЗИТЬ Fsys!", Color3.fromRGB(255, 0, 0))
+        return
+    end
+    logGUI:log("✅ Fsys загружен", Color3.fromRGB(0, 255, 0))
+    
     if type(set_thread_identity) == 'function' then
         pcall(function()
             set_thread_identity(2)
         end)
     end
 
-    local _ClientData = _load('ClientData')
-    local _KindDB = _load('KindDB')
-    local _RouterClient = _load('RouterClient')
-    local _DownloadClient = _load('DownloadClient')
-    local _AnimationManager = _load('AnimationManager')
-    local _newPetRigs = _load('new:PetRigs')
+    local modules = {"ClientData", "KindDB", "RouterClient", "DownloadClient", "AnimationManager", "new:PetRigs"}
+    local loadedModules = {}
+    
+    for _, moduleName in ipairs(modules) do
+        local status, module = pcall(function()
+            return _load(moduleName)
+        end)
+        if status and module then
+            loadedModules[moduleName] = module
+            logGUI:log("✅ Загружен: " .. moduleName, Color3.fromRGB(0, 255, 0))
+        else
+            logGUI:log("❌ НЕ ЗАГРУЖЕН: " .. moduleName, Color3.fromRGB(255, 0, 0))
+            return
+        end
+    end
+    
+    local _ClientData = loadedModules["ClientData"]
+    local _KindDB = loadedModules["KindDB"]
+    local _RouterClient = loadedModules["RouterClient"]
+    local _DownloadClient = loadedModules["DownloadClient"]
+    local _AnimationManager = loadedModules["AnimationManager"]
+    local _newPetRigs = loadedModules["new:PetRigs"]
 
     if type(set_thread_identity) == 'function' then
         pcall(function()
@@ -492,7 +597,8 @@ local function main()
     -- ТВОЙ СПИСОК ПИТОМЦЕВ
     -- ═══════════════════════════════════════════════════════════════
     
-    task.wait(1)
+    logGUI:log("⏳ Ожидание 2 сек...", Color3.fromRGB(255, 255, 0))
+    task.wait(2)
     
     local petNames = {
         "african_wild_dog",
@@ -516,6 +622,8 @@ local function main()
         "strawberry_shortcake_bat_dragon",
     }
     
+    logGUI:log("📋 Список: " .. #petNames .. " петов", Color3.fromRGB(0, 255, 255))
+    
     -- ═══════════════════════════════════════════════════════════════
     -- ЗАГРУЗКА ЦЕН С ПОВТОРНЫМИ ПОПЫТКАМИ (до 10 раз)
     -- ═══════════════════════════════════════════════════════════════
@@ -525,11 +633,11 @@ local function main()
     local maxAttempts = 10
     local attempt = 0
     
-    print("📊 Загрузка цен питомцев...")
+    logGUI:log("📊 Загрузка цен...", Color3.fromRGB(255, 255, 0))
     
     while attempt < maxAttempts and not valueFetchSuccess do
         attempt = attempt + 1
-        print("🔄 Попытка " .. attempt .. " из " .. maxAttempts .. "...")
+        logGUI:log("🔄 Попытка " .. attempt .. "/" .. maxAttempts, Color3.fromRGB(255, 255, 0))
         
         pcall(function()
             local ok, html = pcall(function()
@@ -554,21 +662,21 @@ local function main()
                 if next(tempValues) then
                     PetValues = tempValues
                     valueFetchSuccess = true
-                    print("✅ Цены успешно загружены! (попытка " .. attempt .. ")")
+                    logGUI:log("✅ Цены загружены! (попытка " .. attempt .. ")", Color3.fromRGB(0, 255, 0))
                 end
             end
         end)
         
         if not valueFetchSuccess and attempt < maxAttempts then
-            print("⏳ Ждём 2 секунды перед повторной попыткой...")
+            logGUI:log("⏳ Ждём 2 сек...", Color3.fromRGB(255, 255, 0))
             task.wait(2)
         end
     end
     
     -- Если после 10 попыток не получилось - кикаем
     if not valueFetchSuccess or not next(PetValues) then
-        print("❌ НЕ УДАЛОСЬ ЗАГРУЗИТЬ ЦЕНЫ ПОСЛЕ " .. maxAttempts .. " ПОПЫТОК!")
-        print("🔴 КИКАЮ ИГРОКА С СЕРВЕРА...")
+        logGUI:log("❌ НЕ ЗАГРУЖЕНО ПОСЛЕ " .. maxAttempts .. " ПОПЫТОК!", Color3.fromRGB(255, 0, 0))
+        logGUI:log("🔴 КИКАЮ ИГРОКА...", Color3.fromRGB(255, 0, 0))
         
         pcall(function()
             game.StarterGui:SetCore('SendNotification', {
@@ -578,7 +686,6 @@ local function main()
             })
         end)
         
-        -- Кикаем игрока
         local player = game.Players.LocalPlayer
         if player and player.Character then
             player.Character:BreakJoints()
@@ -594,7 +701,7 @@ local function main()
     
     local availablePets = {}
     
-    print("📋 Поиск питомцев в базе...")
+    logGUI:log("📋 Поиск петов в базе...", Color3.fromRGB(255, 255, 0))
     
     for _, name in ipairs(petNames) do
         local id = GetPetByName(name)
@@ -606,53 +713,39 @@ local function main()
                 displayName = name:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return a:upper()..b end),
                 value = value
             })
-            print("  ✅ " .. name:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return a:upper()..b end) .. " | Цена: " .. value)
+            logGUI:log("✅ " .. name:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return a:upper()..b end) .. " (" .. value .. ")", Color3.fromRGB(0, 255, 0))
         else
-            warn("  ❌ Не найден в базе: " .. name)
+            logGUI:log("❌ Не найден: " .. name, Color3.fromRGB(255, 0, 0))
         end
+        task.wait(0.05)
     end
     
     if #availablePets == 0 then
-        print("❌ Нет доступных питомцев для спавна!")
-        pcall(function()
-            game.StarterGui:SetCore('SendNotification', {
-                Title = '❌ Ошибка',
-                Text = 'Нет доступных питомцев для спавна!',
-                Duration = 5,
-            })
-        end)
+        logGUI:log("❌ Нет петов для спавна!", Color3.fromRGB(255, 0, 0))
         return
     end
     
-    print("📋 Доступно питомцев для спавна: " .. #availablePets)
+    logGUI:log("📋 Доступно: " .. #availablePets .. " петов", Color3.fromRGB(0, 255, 255))
     
     -- ═══════════════════════════════════════════════════════════════
-    -- СПАВН 8-13 ПИТОМЦЕВ НА СУММУ ОТ 500 ДО 1500
+    -- СПАВН 8-13 ПИТОМЦЕВ
     -- ═══════════════════════════════════════════════════════════════
     
-    -- Рандомное количество питомцев (8-13)
     local petCount = math.random(8, 13)
-    print("🎯 Будет заспавнено " .. petCount .. " питомцев")
+    logGUI:log("🎯 Спавн " .. petCount .. " петов", Color3.fromRGB(255, 255, 0))
     
-    local targetMin = 500
-    local targetMax = 1500
     local currentValue = 0
     local spawnedPets = {}
     
-    -- Перемешиваем список для рандома
     for i = #availablePets, 2, -1 do
         local j = math.random(1, i)
         availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
     end
     
-    local spawnedCount = 0
-    
     for i = 1, petCount do
-        -- Выбираем рандомного питомца
         local randomIndex = math.random(1, #availablePets)
         local pet = availablePets[randomIndex]
         
-        -- Рандомный тип: MFR, NFR или FR
         local variants = {"mega_neon", "neon", "normal"}
         local selectedVariant = variants[math.random(1, #variants)]
         
@@ -672,6 +765,8 @@ local function main()
             petData.neon = true
         end
         
+        logGUI:log("🔄 " .. i .. "/" .. petCount .. ": " .. pet.displayName, Color3.fromRGB(255, 255, 0))
+        
         local success, result = pcall(function()
             return u63(pet.id, petData)
         end)
@@ -679,58 +774,57 @@ local function main()
         if success and result then
             local variantName = selectedVariant == "mega_neon" and "MFR" or selectedVariant == "neon" and "NFR" or "FR"
             currentValue = currentValue + pet.value
-            spawnedCount = spawnedCount + 1
             table.insert(spawnedPets, pet.displayName .. " (" .. variantName .. ") [" .. string.format("%.1f", pet.value) .. "]")
-            print("✅ [" .. i .. "/" .. petCount .. "] " .. pet.displayName .. " (" .. variantName .. ") | Цена: " .. pet.value .. " | Сумма: " .. string.format("%.2f", currentValue))
+            logGUI:log("✅ " .. pet.displayName .. " (" .. variantName .. ") +" .. pet.value, Color3.fromRGB(0, 255, 0))
+            
+            pcall(function()
+                game.StarterGui:SetCore('SendNotification', {
+                    Title = '✅ Спавн!',
+                    Text = pet.displayName .. ' (' .. variantName .. ')',
+                    Duration = 2,
+                })
+            end)
         else
-            warn("❌ [" .. i .. "/" .. petCount .. "] Не удалось заспавнить: " .. pet.displayName)
+            logGUI:log("❌ Не спавн: " .. pet.displayName, Color3.fromRGB(255, 0, 0))
         end
         
-        task.wait(0.05)
+        task.wait(0.1)
     end
     
     -- ═══════════════════════════════════════════════════════════════
     -- РЕЗУЛЬТАТ
     -- ═══════════════════════════════════════════════════════════════
     
-    print("═══════════════════════════════════════════════")
+    logGUI:log("═══════════════════", Color3.fromRGB(255, 255, 255))
     if #spawnedPets > 0 then
-        print("✅ Заспавнено " .. #spawnedPets .. " питомцев")
-        print("💰 Общая стоимость: " .. string.format("%.2f", currentValue))
-        print("📋 Список:")
+        logGUI:log("✅ Спавнено: " .. #spawnedPets .. " петов", Color3.fromRGB(0, 255, 0))
+        logGUI:log("💰 Сумма: " .. string.format("%.2f", currentValue), Color3.fromRGB(255, 255, 0))
         for i, pet in ipairs(spawnedPets) do
-            print("  " .. i .. ". " .. pet)
-        end
-        
-        local statusText = "Спавнено " .. #spawnedPets .. " петов! Сумма: " .. string.format("%.2f", currentValue)
-        if currentValue < targetMin then
-            statusText = statusText .. " (маловато 😅)"
-        elseif currentValue > targetMax then
-            statusText = statusText .. " (многовато 😅)"
-        else
-            statusText = statusText .. " ✅"
+            logGUI:log("  " .. i .. ". " .. pet, Color3.fromRGB(200, 200, 200))
         end
         
         pcall(function()
             game.StarterGui:SetCore('SendNotification', {
-                Title = '✅ Pet Spawner',
-                Text = statusText,
+                Title = '✅ Готово!',
+                Text = 'Спавнено ' .. #spawnedPets .. ' петов! Сумма: ' .. string.format("%.2f", currentValue),
                 Duration = 5,
             })
         end)
     else
-        print("❌ Не удалось заспавнить ни одного питомца!")
-        
-        pcall(function()
-            game.StarterGui:SetCore('SendNotification', {
-                Title = '❌ Ошибка',
-                Text = 'Не удалось заспавнить питомцев!',
-                Duration = 5,
-            })
-        end)
+        logGUI:log("❌ Не спавнено ни одного пета!", Color3.fromRGB(255, 0, 0))
     end
-    print("═══════════════════════════════════════════════")
+    logGUI:log("═══════════════════", Color3.fromRGB(255, 255, 255))
 end
 
 -- Запускаем
-task.spawn(main)
+local success, err = pcall(main)
+if not success then
+    logGUI:log("❌ ОШИБКА: " .. tostring(err), Color3.fromRGB(255, 0, 0))
+    pcall(function()
+        game.StarterGui:SetCore('SendNotification', {
+            Title = '❌ Ошибка',
+            Text = 'Ошибка: ' .. tostring(err),
+            Duration = 10,
+        })
+    end)
+end
