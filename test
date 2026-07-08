@@ -1,6 +1,5 @@
 -- ============================================
--- ТВОЙ СКРИПТ (без GUI)
--- Кликаешь на фейк игрока -> Trade -> мок-трейд
+-- ТВОЙ СКРИПТ (ПОЛНОСТЬЮ)
 -- ============================================
 
 local Services = {
@@ -163,7 +162,7 @@ for category, items in pairs(InventoryDB) do
 end
 
 -- ============================================
--- CONFIGURATION (из твоего скрипта)
+-- CONFIGURATION (полностью из твоего скрипта)
 -- ============================================
 local CONFIG = {
     PARTNER_NAME = 'NomiKu0',
@@ -171,11 +170,25 @@ local CONFIG = {
     AUTO_ACCEPT_DELAY = 0.2,
     AUTO_CONFIRM_DELAY = 0.3,
     SPECTATOR_COUNT = 4,
+    SPECTATOR_VARIATION_MIN = -1,
+    SPECTATOR_VARIATION_MAX = 2,
+    AUTO_SPECTATE_ENABLED = false,
+    AUTO_SPECTATE_INTERVAL = 1.5,
     AUTO_PARTNER = true,
     NEGOTIATION_LOCK = 5,
     CONFIRMATION_LOCK_PER_ITEM = 3,
+    SHOW_TRADE_REQUEST = true,
+    TRADE_REQUEST_DELAY = 0,
     ADD_PET_REQUEST_DELAY = 0.5,
+    SPAWN_FAKE_PLAYER_WITH_RANDOM_PET = false,
     FAKE_PLAYER_ACCEPT_TRADE_REQUEST = 2,
+    CHAT_MESSAGES = {
+        'Tysm ! 💗💗', 'Thank you', 'Trusted TY ❤️',
+    },
+    AUTO_CHAT_DELAY = 2,
+    VERIFIED_FRIENDS = {},
+    SHOW_VERIFIED_FRIEND = false,
+    FRIEND_PARTNER = true,
     REMOVE_PARTNER_PETS_ON_CONFIRM = false,
 }
 
@@ -332,7 +345,7 @@ local function storeOriginalFunctions()
         '_get_current_trade_stage', '_on_accept_pressed', '_on_confirm_pressed',
         '_on_unaccept_pressed', '_decline_trade', '_add_item_to_my_offer',
         '_remove_item_from_my_offer', '_lock_trade_for_appropriate_time', '_get_lock_time',
-        'refresh_all', '_evaluate_trade_fairness',
+        'refresh_all', '_evaluate_trade_fairness', '_show_scam_victim_warning', '_show_scam_perpetrator_warning',
     }
     for _, funcName in ipairs(funcs) do
         if TradeApp[funcName] then
@@ -502,6 +515,9 @@ local function hookTradeFunctions()
         end
     end
 
+    -- ============================================
+    -- ЭТО ГЛАВНОЕ - _on_accept_pressed ИЗ ТВОЕГО СКРИПТА
+    -- ============================================
     TradeApp._on_accept_pressed = function(self)
         if mockState.active and mockState.trade then
             if mockState.trade.sender_offer.negotiated then
@@ -521,19 +537,28 @@ local function hookTradeFunctions()
                     self:_overwrite_local_trade_state(mockState.trade)
                 end
             end
-            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.negotiated and mockState.trade.sender_offer.negotiated then task.spawn(partnerAutoAction) end
+            -- ЗАПУСКАЕМ partnerAutoAction ДЛЯ АВТО-ПРИНЯТИЯ
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.negotiated and mockState.trade.sender_offer.negotiated then 
+                task.spawn(partnerAutoAction) 
+            end
         else
             return mockState.originalFunctions._on_accept_pressed(self)
         end
     end
 
+    -- ============================================
+    -- _on_confirm_pressed ИЗ ТВОЕГО СКРИПТА
+    -- ============================================
     TradeApp._on_confirm_pressed = function(self)
         if mockState.active and mockState.trade then
             if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
             mockState.trade.sender_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
             self:_overwrite_local_trade_state(mockState.trade)
-            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then task.spawn(partnerAutoAction) end
+            -- ЗАПУСКАЕМ partnerAutoAction ДЛЯ АВТО-КОНФИРМА
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then 
+                task.spawn(partnerAutoAction) 
+            end
         else
             return mockState.originalFunctions._on_confirm_pressed(self)
         end
@@ -593,6 +618,9 @@ end
 
 hookTradeFunctions()
 
+-- ============================================
+-- partnerAutoAction ИЗ ТВОЕГО СКРИПТА (ПОЛНОСТЬЮ)
+-- ============================================
 local function partnerAutoAction()
     if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
     mockState.partnerActionPending = true
@@ -602,7 +630,7 @@ local function partnerAutoAction()
     end
 
     if mockState.trade.current_stage == 'negotiation' then
-        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)  -- 0.2 секунды
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.negotiated = true
             if mockState.trade.sender_offer.negotiated then
@@ -617,7 +645,7 @@ local function partnerAutoAction()
             end
         end
     elseif mockState.trade.current_stage == 'confirmation' then
-        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)  -- 0.3 секунды
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
@@ -654,7 +682,7 @@ local function removePartnerPetsVisually()
 end
 
 -- ============================================
--- ЗАПУСК ТРЕЙДА (из твоего скрипта)
+-- ЗАПУСК ТРЕЙДА
 -- ============================================
 local function startMockTradeDirectly()
     if mockState.active then return end
@@ -690,7 +718,7 @@ local function startMockTradeDirectly()
         
         print('✅ Trade started with ' .. CONFIG.PARTNER_NAME)
         
-        -- ДОБАВЛЯЕМ MFR COW через 2 секунды
+        -- Добавляем MFR Cow через 2 секунды
         task.wait(2.0)
         local success = addPetToPartnerOffer('Cow', { M = true, N = true, F = true, R = true })
         if success then
@@ -704,9 +732,6 @@ local function startMockTradeDirectly()
                 end
             end
         end
-        
-        task.wait(0.5)
-        partnerAutoAction()
     end)
 end
 
@@ -797,9 +822,9 @@ print('2. CLICK on him -> Select "Trade"')
 print('3. Wait 2 seconds')
 print('4. Trade opens! MFR Cow added automatically')
 print('5. You click ACCEPT')
-print('6. He auto-accepts')
-print('7. He auto-confirms first')
-print('8. You click CONFIRM')
+print('6. He auto-accepts (0.2s delay)')
+print('7. You click CONFIRM')
+print('8. He auto-confirms (0.3s delay)')
 print('9. Trade complete! 🎉')
 print('')
 
