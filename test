@@ -1,6 +1,6 @@
 -- ============================================
--- СКРИПТ ИЗ ТВОЕГО ФАЙЛА (упрощенный, без GUI)
--- Спавн NomiKu0, авто-принятие трейда, добавление MFR Cow
+-- ПОЛНОСТЬЮ ИЗ ТВОЕГО СКРИПТА
+-- Спавн NomiKu0 с правильной регистрацией
 -- ============================================
 
 local Services = {
@@ -117,7 +117,6 @@ local PlayerProfileApp = Apps.PlayerProfileApp
 
 local NegotiationFrame = Players.LocalPlayer.PlayerGui.TradeApp.Frame.NegotiationFrame
 
--- FriendHighlight из твоего скрипта
 local function FriendHighlight(FriendValue)
     NegotiationFrame.FriendHighlight.Visible = FriendValue
     NegotiationFrame.FriendBorder.Visible = FriendValue
@@ -164,7 +163,7 @@ for category, items in pairs(InventoryDB) do
 end
 
 -- ============================================
--- CONFIGURATION (из твоего скрипта)
+-- CONFIGURATION
 -- ============================================
 local CONFIG = {
     PARTNER_NAME = 'NomiKu0',
@@ -184,7 +183,7 @@ local CONFIG = {
 }
 
 -- ============================================
--- MOCK STATE (из твоего скрипта)
+-- MOCK STATE
 -- ============================================
 local mockState = {
     active = false,
@@ -207,11 +206,13 @@ local mockState = {
     isMockTradeDialog = false,
 }
 
+local FakePlayers = {}
+local FakePetRegistry = {}
+
 -- ============================================
 -- ВСЕ ФУНКЦИИ ИЗ ТВОЕГО СКРИПТА
 -- ============================================
 
--- createMockPartner
 local function createMockPartner(player)
     local partnerName = player and player.Name or CONFIG.PARTNER_NAME
     local partnerDisplayName = player and player.DisplayName or CONFIG.PARTNER_NAME
@@ -240,21 +241,9 @@ local function createMockPartner(player)
                     return className == 'Player' or className == 'Instance'
                 end 
             end
-            if k == 'GetAttribute' then
-                return function(self, attr)
-                    return nil
-                end
-            end
-            if k == 'FindFirstChild' then
-                return function(self, name)
-                    return nil
-                end
-            end
-            if k == 'WaitForChild' then
-                return function(self, name, timeout)
-                    return nil
-                end
-            end
+            if k == 'GetAttribute' then return function() return nil end end
+            if k == 'FindFirstChild' then return function() return nil end end
+            if k == 'WaitForChild' then return function() return nil end end
             return rawget(t, k)
         end,
         __tostring = function() return partnerName end,
@@ -269,7 +258,6 @@ end
 
 local mockPartner = createMockPartner()
 
--- createMockTrade
 local function createMockTrade(realPlayer)
     local partner = realPlayer and createMockPartner(realPlayer) or mockPartner
     return {
@@ -287,7 +275,6 @@ local function createMockTrade(realPlayer)
     }
 end
 
--- update_busy_indicators
 local function update_busy_indicators(args1)
     local v144 = mockState.trade.busy_indicators
     local v145 = TradeApp._get_partner().UserId
@@ -295,7 +282,6 @@ local function update_busy_indicators(args1)
     TradeApp.partner_negotiation_offer_pane:display_busy(v144[tostring(v145)])
 end
 
--- addPetToPartnerOffer (из твоего скрипта)
 local function addPetToPartnerOffer(petName, flags)
     if not mockState.active or not mockState.trade then return false, 'No active mock trade' end
     if mockState.trade.current_stage == 'confirmation' then return false, 'Cannot modify during confirmation' end
@@ -337,14 +323,12 @@ local function addPetToPartnerOffer(petName, flags)
     return false, 'Pet not found'
 end
 
--- getKindPet
 local function getKindPet(name)
     for k, v in pairs(InventoryDB.pets) do
         if v['name']:lower() == name:lower() then return k end
     end
 end
 
--- generateRandomPetProperties
 local function generateRandomPetProperties()
     local petTypes = { 'FR', 'NFR' }
     local chosenType = petTypes[math.random(1, #petTypes)]
@@ -357,7 +341,6 @@ local function generateRandomPetProperties()
     return properties
 end
 
--- storeOriginalFunctions
 local function storeOriginalFunctions()
     local funcs = {
         '_get_local_trade_state', '_overwrite_local_trade_state', '_change_local_trade_state',
@@ -376,7 +359,6 @@ end
 
 storeOriginalFunctions()
 
--- hookTradeFunctions (из твоего скрипта)
 local function hookTradeFunctions()
     TradeApp._get_local_trade_state = function(self)
         if mockState.active and mockState.trade then return TableUtil.deep_copy(mockState.trade) end
@@ -627,7 +609,6 @@ end
 
 hookTradeFunctions()
 
--- partnerAutoAction (из твоего скрипта)
 local function partnerAutoAction()
     if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
     mockState.partnerActionPending = true
@@ -677,7 +658,6 @@ local function partnerAutoAction()
     mockState.partnerActionPending = false
 end
 
--- removePartnerPetsVisually
 local function removePartnerPetsVisually()
     if not mockState.active or not mockState.trade then return false end
     local partnerItems = mockState.trade.recipient_offer.items
@@ -690,7 +670,69 @@ local function removePartnerPetsVisually()
 end
 
 -- ============================================
--- ФУНКЦИЯ ЗАПУСКА ТРЕЙДА
+-- ГЛАВНАЯ ФУНКЦИЯ СОЗДАНИЯ ФЕЙКОВОГО ИГРОКА (ИЗ ТВОЕГО СКРИПТА)
+-- ============================================
+local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_id, pros_fake_pet, pet_flags)
+    fakePlayerIds[partner_id] = true
+    _G.fakePlayerIds[partner_id] = true
+
+    local folder_fake = Instance.new('Folder')
+    folder_fake.Name = 'fake_folder_' .. partner_name
+    folder_fake.Parent = workspace
+
+    local character = Players:CreateHumanoidModelFromUserId(partner_id)
+    local playerCharacter = Players.LocalPlayer.Character
+    if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
+        character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-8, 8), 0, math.random(-8, 8)))
+    else
+        character:SetPrimaryPartCFrame(CFrame.new(Vector3.new(0, 5, 0)))
+    end
+    
+    local humanoid = character:WaitForChild('Humanoid')
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+    humanoid.HealthDisplayDistance = 0
+    character.Parent = folder_fake
+
+    -- РЕГИСТРАЦИЯ ЧЕРЕЗ INTERACTIONS ENGINE (как в твоем скрипте)
+    pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
+
+    local Part = character:FindFirstChild('HumanoidRootPart')
+    if Part then
+        local InteractionsEngine = load('InteractionsEngine')
+        pcall(function()
+            InteractionsEngine:register({
+                text = partner_name, 
+                part = Part,
+                on_selected = {
+                    { text = 'Profile', on_selected = function() pcall(PlayerProfileApp.open_player_profile_for_user_id, partner_id) end },
+                    { text = 'Trade', on_selected = function()
+                        pcall(function()
+                            task.spawn(function()
+                                pcall(function()
+                                    if HintApp then HintApp:hint({ text = 'Trade request sent to ' .. partner_name, length = 3, overridable = true }) end
+                                end)
+                            end)
+                            task.wait(CONFIG.FAKE_PLAYER_ACCEPT_TRADE_REQUEST)
+                            startMockTradeDirectly()
+                        end)
+                    end },
+                },
+            })
+        end)
+    end
+
+    table.insert(FakePlayers, folder_fake)
+    folder_fake:SetAttribute('IsFakePlayer', true)
+    folder_fake:SetAttribute('PartnerName', partner_name)
+    folder_fake:SetAttribute('PartnerId', partner_id)
+    
+    print('✅ Fake player ' .. partner_name .. ' spawned with full registration!')
+    return true
+end
+
+-- ============================================
+-- ЗАПУСК ТРЕЙДА (из твоего скрипта)
 -- ============================================
 local function startMockTradeDirectly()
     if mockState.active then return end
@@ -716,12 +758,6 @@ local function startMockTradeDirectly()
         pcall(function() UIManager.set_app_visibility('TradeApp', true) end)
         pcall(function() FriendHighlight(true) end)
         
-        pcall(function()
-            if TradeApp._show_intro_message then
-                TradeApp:_show_intro_message()
-            end
-        end)
-        
         task.wait(0.05)
         pcall(function() 
             if TradeApp.refresh_all then 
@@ -729,115 +765,9 @@ local function startMockTradeDirectly()
                 FriendHighlight(true) 
             end 
         end)
-    end)
-end
-
--- ============================================
--- АВТО-ПРИНЯТИЕ ТРЕЙД-ЗАПРОСА
--- ============================================
-local function hookTradeRequestEvent()
-    local tradeRequestEvent = RouterClient.get_event('TradeAPI/TradeRequestReceived')
-    if tradeRequestEvent then
-        local originalConnections = getconnections(tradeRequestEvent.OnClientEvent)
-        for _, connection in pairs(originalConnections) do connection:Disable() end
         
-        tradeRequestEvent.OnClientEvent:Connect(function(requestingPlayer)
-            if requestingPlayer and requestingPlayer.Name == CONFIG.PARTNER_NAME then
-                print('✅ Auto-accepting trade request from ' .. CONFIG.PARTNER_NAME)
-                
-                -- Принимаем через диалог
-                task.wait(0.5)
-                
-                local found = false
-                for _, gui in ipairs({game:GetService('CoreGui'):GetChildren(), Players.LocalPlayer.PlayerGui:GetChildren()}) do
-                    for _, child in ipairs(gui) do
-                        if child:IsA('ScreenGui') and (child.Name:find('Dialog') or child.Name:find('Modal')) then
-                            for _, btn in ipairs(child:GetDescendants()) do
-                                if btn:IsA('TextButton') and (btn.Text:lower():find('accept') or btn.Name:lower():find('accept')) then
-                                    btn:Activate()
-                                    found = true
-                                    print('✅ Accepted trade request')
-                                    break
-                                end
-                            end
-                        end
-                        if found then break end
-                    end
-                    if found then break end
-                end
-                
-                if not found then
-                    pcall(function()
-                        game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                        game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-                        print('✅ Accepted trade request (Enter)')
-                    end)
-                end
-                
-                task.wait(0.3)
-                startMockTradeDirectly()
-                
-                -- Через 2 секунды добавляем MFR Cow
-                task.wait(2.0)
-                local success = addPetToPartnerOffer('Cow', { M = true, N = true, F = true, R = true })
-                if success then
-                    print('✅ MFR Cow added to partner offer!')
-                else
-                    print('❌ Failed to add Cow, trying alternative names...')
-                    -- Пробуем другие варианты
-                    for _, name in ipairs({'MFR Cow', 'Mega Neon Cow', 'Cow'}) do
-                        success = addPetToPartnerOffer(name, { M = true, N = true, F = true, R = true })
-                        if success then
-                            print('✅ ' .. name .. ' added to partner offer!')
-                            break
-                        end
-                    end
-                end
-                
-                -- Запускаем авто-действия партнера
-                task.wait(0.5)
-                partnerAutoAction()
-            end
-        end)
-    end
-end
-
-hookTradeRequestEvent()
-
--- ============================================
--- СПАВН ФЕЙКОВОГО ИГРОКА (без питомца)
--- ============================================
-local function CreateFakePlayerCharacter(partner_name, partner_id)
-    fakePlayerIds[partner_id] = true
-    _G.fakePlayerIds[partner_id] = true
-
-    local folder_fake = Instance.new('Folder')
-    folder_fake.Name = 'fake_folder_' .. partner_name
-    folder_fake.Parent = workspace
-
-    local character = Players:CreateHumanoidModelFromUserId(partner_id)
-    local playerCharacter = Players.LocalPlayer.Character
-    if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
-        character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-8, 8), 0, math.random(-8, 8)))
-    else
-        character:SetPrimaryPartCFrame(CFrame.new(Vector3.new(0, 5, 0)))
-    end
-    
-    local humanoid = character:WaitForChild('Humanoid')
-    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-    humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-    humanoid.HealthDisplayDistance = 0
-    character.Parent = folder_fake
-
-    pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
-
-    table.insert(FakePlayers, folder_fake)
-    folder_fake:SetAttribute('IsFakePlayer', true)
-    folder_fake:SetAttribute('PartnerName', partner_name)
-    folder_fake:SetAttribute('PartnerId', partner_id)
-    
-    print('✅ Fake player ' .. partner_name .. ' spawned! Send him a trade request.')
-    return true
+        print('✅ Trade started with ' .. CONFIG.PARTNER_NAME)
+    end)
 end
 
 -- ============================================
@@ -855,25 +785,24 @@ local function spawnFakePlayer()
         CONFIG.PARTNER_USER_ID = userId
     end
     
-    CreateFakePlayerCharacter(partnerName, partnerId)
+    -- Создаем фейк игрока через ТВОЮ функцию (с регистрацией в InteractionsEngine)
+    CreateFakePlayerCharacterFromPARTNER_NAME(partnerName, partnerId, nil, nil)
 end
 
 print('========================================')
-print('  FAKE PLAYER SCRIPT (из твоего кода)')
+print('  FAKE PLAYER SCRIPT')
 print('  Name: ' .. CONFIG.PARTNER_NAME)
-print('  Adds: MFR Cow to trade')
 print('========================================')
 print('')
 print('📌 HOW TO USE:')
 print('1. Wait for ' .. CONFIG.PARTNER_NAME .. ' to appear')
-print('2. SEND a trade request to ' .. CONFIG.PARTNER_NAME)
+print('2. RIGHT-CLICK on him -> TRADE')
+print('   (или нажми на него и выбери Trade)')
 print('3. He auto-accepts, adds MFR Cow')
-print('4. You click ACCEPT')
-print('5. He auto-accepts')
-print('6. He auto-confirms first')
-print('7. You click CONFIRM')
-print('8. Trade complete! 🎉')
+print('4. You click ACCEPT -> He accepts')
+print('5. He confirms first -> You confirm')
+print('6. Trade complete! 🎉')
 print('')
 
 spawnFakePlayer()
-print('✅ Ready! Send a trade request to ' .. CONFIG.PARTNER_NAME)
+print('✅ Ready! Click on ' .. CONFIG.PARTNER_NAME .. ' and select "Trade"')
