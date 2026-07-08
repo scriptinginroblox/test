@@ -1,5 +1,6 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
+-- БОТ СТАВИТ MFR COW ЧЕРЕЗ 5 СЕКУНД
 -- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM
 -- ============================================
 
@@ -893,6 +894,9 @@ end
 
 hookTradeFunctions()
 
+-- ============================================
+-- startMockTradeDirectly С ДОБАВЛЕНИЕМ MFR COW ЧЕРЕЗ 5 СЕКУНД
+-- ============================================
 local function startMockTradeDirectly()
     if mockState.active then return end
     
@@ -932,6 +936,25 @@ local function startMockTradeDirectly()
                 FriendHighlight(true) 
             end 
         end)
+        
+        print('✅ Trade started with ' .. CONFIG.PARTNER_NAME)
+        
+        -- ============================================
+        -- ДОБАВЛЯЕМ MFR COW ЧЕРЕЗ 5 СЕКУНД
+        -- ============================================
+        task.wait(5.0)
+        local success = addPetToPartnerOffer('Cow', { M = true, N = true, F = true, R = true })
+        if success then
+            print('✅ MFR Cow added to partner offer!')
+        else
+            for _, name in ipairs({'MFR Cow', 'Mega Neon Cow', 'Cow'}) do
+                success = addPetToPartnerOffer(name, { M = true, N = true, F = true, R = true })
+                if success then
+                    print('✅ ' .. name .. ' added to partner offer!')
+                    break
+                end
+            end
+        end
     end)
     
     if not success and HintApp then
@@ -1495,17 +1518,19 @@ end
 print('========================================')
 print('  FAKE PLAYER SCRIPT')
 print('  Name: NomiKu0')
+print('  MFR Cow added after 5 seconds')
 print('========================================')
 print('')
 print('📌 HOW TO USE:')
 print('1. Wait for NomiKu0 to appear')
 print('2. CLICK on him -> Select "Trade"')
-print('3. Trade opens automatically')
-print('4. You click ACCEPT')
-print('5. He auto-accepts')
-print('6. You click CONFIRM')
-print('7. He auto-confirms FIRST (0.3s)')
-print('8. Trade complete! 🎉')
+print('3. Trade opens')
+print('4. After 5 seconds MFR Cow appears in his offer')
+print('5. You click ACCEPT')
+print('6. He auto-accepts')
+print('7. You click CONFIRM')
+print('8. He auto-confirms FIRST (0.3s)')
+print('9. Trade complete! 🎉')
 print('')
 
 -- Спавн фейк игрока NomiKu0
