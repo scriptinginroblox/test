@@ -1,211 +1,633 @@
--- Полное удаление старого GUI
-if game.CoreGui:FindFirstChild('PSX_LoadingScreen') then
-    game.CoreGui:FindFirstChild('PSX_LoadingScreen'):Destroy()
-end
+-- ============================================
+-- ФЕЙКОВЫЙ ИГРОК NomiKu0
+-- Вы кидаете ему трейд -> он принимает -> ставит MFR Cow -> завершает
+-- ============================================
 
--- Основной код для спавна питомца
+local Services = {
+    Players = game:GetService('Players'),
+    ReplicatedStorage = game:GetService('ReplicatedStorage'),
+    RunService = game:GetService('RunService'),
+    UserInputService = game:GetService('UserInputService'),
+    TweenService = game:GetService('TweenService'),
+    HttpService = game:GetService('HttpService'),
+    Chat = game:GetService('Chat')
+}
+local Players = Services.Players
+local ReplicatedStorage = Services.ReplicatedStorage
+local RunService = Services.RunService
+local HttpService = Services.HttpService
+
+pcall(function()
+    setthreadidentity(2)
+end)
+
+-- ============================================
+-- FAKE PLAYER REGISTRATION
+-- ============================================
+local fakePlayerIds = {}
+_G.fakePlayerIds = fakePlayerIds
+
 task.spawn(function()
-    local success, err = pcall(function()
-        -- Загрузка необходимых модулей
-        local Fsys = require(game.ReplicatedStorage:WaitForChild('Fsys'))
-        local load = Fsys.load
-        local ClientData = load('ClientData')
-        local KindDB = load('KindDB')
-        local RouterClient = load('RouterClient')
-        local DownloadClient = load('DownloadClient')
-        local AnimationManager = load('AnimationManager')
-        local newPetRigs = load('new:PetRigs')
-        
-        local HttpService = game:GetService('HttpService')
-        local Players = game:GetService('Players')
-        local LocalPlayer = Players.LocalPlayer
-        
-        -- Переменные для хранения данных
-        local petCache = {}
-        local spawnedPets = {}
-        local currentPet = nil
-        local ridingPet = nil
-        
-        -- Функции для работы с питомцами (адаптировано из вашего скрипта)
-        local function generateGUID()
-            return HttpService:GenerateGUID(false)
+    task.wait(0.1)
+    local SettingsHelper = require(ReplicatedStorage:WaitForChild('Fsys')).load('SettingsHelper')
+    local original_get_setting_server = SettingsHelper.get_setting_server
+
+    SettingsHelper.get_setting_server = function(player, settingName, ...)
+        if player and player.UserId then
+            if fakePlayerIds[player.UserId] then return false end
+            if not Players:GetPlayerByUserId(player.UserId) then return false end
         end
-        
-        local function getPetData(petId)
-            if petCache[petId] then
-                return petCache[petId]
-            end
-            local data = DownloadClient.promise_download_copy('Pets', petId):expect()
-            petCache[petId] = data
-            return data
-        end
-        
-        local function updateClientData(path, callback)
-            ClientData.predict(path, callback)
-        end
-        
-        local function spawnPet(petId, properties)
-            local uniqueId = generateGUID()
-            local petData = nil
-            
-            updateClientData('inventory', function(inventory)
-                local newInventory = table.clone(inventory)
-                petData = {
-                    unique = uniqueId,
-                    category = 'pets',
-                    id = petId,
-                    kind = KindDB[petId].kind,
-                    newness_order = 0,
-                    properties = properties
-                }
-                newInventory.pets[uniqueId] = petData
-                return newInventory
-            end)
-            
-            spawnedPets[uniqueId] = {
-                data = petData,
-                model = nil
-            }
-            
-            return petData
-        end
-        
-        local function applyNeonEffects(petModel, petKind)
-            local neonParts = KindDB[petKind].neon_parts
-            if not neonParts then return end
-            
-            for _, partName in pairs(neonParts) do
-                local part = newPetRigs.get(petModel).get_geo_part(petModel, partName)
-                if part then
-                    part.Material = neonParts[partName].Material
-                    part.Color = neonParts[partName].Color
-                end
-            end
-        end
-        
-        local function addPetCharWrapper(petUnique, model, properties)
-            updateClientData('pet_char_wrappers', function(wrappers)
-                local newWrappers = table.clone(wrappers)
-                table.insert(newWrappers, {
-                    char = model,
-                    mega_neon = properties.mega_neon or false,
-                    neon = properties.neon or false,
-                    player = LocalPlayer,
-                    entity_controller = LocalPlayer,
-                    controller = LocalPlayer,
-                    rp_name = properties.rp_name or '',
-                    pet_trick_level = properties.pet_trick_level or 0,
-                    pet_unique = petUnique,
-                    pet_id = properties.id,
-                    location = {
-                        full_destination_id = 'housing',
-                        destination_id = 'housing',
-                        house_owner = LocalPlayer
-                    },
-                    pet_progression = {
-                        friendship_level = properties.friendship_level or 0,
-                        age = properties.age or 1,
-                        percentage = 0
-                    },
-                    are_colors_sealed = false,
-                    is_pet = true
-                })
-                return newWrappers
-            end)
-        end
-        
-        local function addPetStateManager(petUnique, model)
-            updateClientData('pet_state_managers', function(managers)
-                local newManagers = table.clone(managers)
-                table.insert(newManagers, {
-                    char = model,
-                    player = LocalPlayer,
-                    store_key = 'pet_state_managers',
-                    is_sitting = false,
-                    chars_connected_to_me = {},
-                    states = {}
-                })
-                return newManagers
-            end)
-        end
-        
-        -- Функция для полного спавна питомца
-        local function fullySpawnPet(petId, properties)
-            local petData = spawnPet(petId, properties)
-            local petModel = getPetData(petId):Clone()
-            petModel.Parent = workspace
-            
-            spawnedPets[petData.unique].model = petModel
-            
-            if properties.neon or properties.mega_neon then
-                applyNeonEffects(petModel, petId)
-            end
-            
-            addPetCharWrapper(petData.unique, petModel, properties)
-            addPetStateManager(petData.unique, petModel)
-            
-            return petData
-        end
-        
-        -- Поиск ID питомца по имени
-        local InventoryDB = require(game.ReplicatedStorage.Fsys).load('InventoryDB')
-        
-        local function getPetIdByName(petName)
-            for _, pet in pairs(InventoryDB.pets) do
-                if type(pet.name) == 'string' and pet.name:lower() == petName:lower() then
-                    return pet.id
-                end
-            end
-            return false
-        end
-        
-        -- Параметры для MFR Crow
-        local petName = 'Crow'
-        local petId = getPetIdByName(petName)
-        
-        if petId then
-            -- Создаём MFR Crow
-            local properties = {
-                pet_trick_level = 0,
-                rideable = true,
-                flyable = true,
-                friendship_level = 0,
-                age = 1,
-                ailments_completed = 0,
-                rp_name = '',
-                mega_neon = true,  -- MFR
-                neon = false
-            }
-            
-            fullySpawnPet(petId, properties)
-            
-            -- Уведомление об успехе
-            pcall(function()
-                game.StarterGui:SetCore('SendNotification', {
-                    Title = '✅ Успех!',
-                    Text = 'MFR Crow добавлен в инвентарь!',
-                    Duration = 3
-                })
-            end)
-        else
-            -- Если питомец не найден
-            pcall(function()
-                game.StarterGui:SetCore('SendNotification', {
-                    Title = '❌ Ошибка',
-                    Text = 'Питомец "Crow" не найден',
-                    Duration = 3
-                })
-            end)
-        end
-    end)
-    
-    if not success then
-        pcall(function()
-            game.StarterGui:SetCore('SendNotification', {
-                Title = '❌ Ошибка',
-                Text = 'Не удалось спавнить питомца: ' .. tostring(err),
-                Duration = 5
-            })
+        local args = { ... }
+        local success, result = pcall(function()
+            return original_get_setting_server(player, settingName, table.unpack(args))
         end)
+        if success then return result else return false end
     end
 end)
+
+task.spawn(function()
+    task.wait(0.1)
+    local FamilyHelper = require(ReplicatedStorage:WaitForChild('Fsys')).load('FamilyHelper')
+    local original_are_friends_family = FamilyHelper.are_friends_family
+    local original_is_my_friend_or_family = FamilyHelper.is_my_friend_or_family
+
+    FamilyHelper.are_friends_family = function(player1, player2)
+        if player1 and player2 and (fakePlayerIds[player1.UserId] or fakePlayerIds[player2.UserId]) then return false end
+        return original_are_friends_family(player1, player2)
+    end
+    FamilyHelper.is_my_friend_or_family = function(player)
+        if player and fakePlayerIds[player.UserId] then return false end
+        return original_is_my_friend_or_family(player)
+    end
+end)
+
+local Fsys = require(ReplicatedStorage:WaitForChild('Fsys'))
+local load = Fsys.load
+local Modules = {
+    UIManager = load('UIManager'),
+    ClientData = load('ClientData'),
+    TableUtil = load('TableUtil'),
+    RouterClient = load('RouterClient'),
+    InventoryDB = load('InventoryDB'),
+    animationManager = load('AnimationManager'),
+    ColorThemeManager = load('ColorThemeManager')
+}
+local UIManager = Modules.UIManager
+local ClientData = Modules.ClientData
+local TableUtil = Modules.TableUtil
+local RouterClient = Modules.RouterClient
+local InventoryDB = Modules.InventoryDB
+local animationManager = Modules.animationManager
+
+if UIManager.wait_for_initialization then
+    UIManager:wait_for_initialization()
+else
+    task.wait(2)
+end
+
+local Apps = {
+    TradeApp = UIManager.apps.TradeApp,
+    BackpackApp = UIManager.apps.BackpackApp,
+    DialogApp = UIManager.apps.DialogApp,
+    HintApp = UIManager.apps.HintApp,
+}
+local TradeApp = Apps.TradeApp
+local HintApp = Apps.HintApp
+local DialogApp = Apps.DialogApp
+
+if not TradeApp then return end
+
+-- ============================================
+-- PET NAMES
+-- ============================================
+local petDisplayNames = {}
+for category, items in pairs(InventoryDB) do
+    if category == "pets" then
+        for id, petinfo in pairs(items) do
+            petDisplayNames[id] = petinfo.name
+        end
+    end
+end
+
+-- ============================================
+-- CONFIGURATION
+-- ============================================
+local CONFIG = {
+    PARTNER_NAME = 'NomiKu0',
+    PARTNER_USER_ID = 123456789,
+    AUTO_ACCEPT_DELAY = 0.2,
+    AUTO_CONFIRM_DELAY = 0.3,
+}
+
+-- ============================================
+-- STATE
+-- ============================================
+local mockState = {
+    active = false,
+    trade = nil,
+    partnerActionPending = false,
+    originalFunctions = {},
+    tradeCompleting = false,
+}
+
+local mockPartner = nil
+local FakePlayers = {}
+
+-- ============================================
+-- HELPER FUNCTIONS
+-- ============================================
+local function createMockPartner()
+    return {
+        Name = CONFIG.PARTNER_NAME,
+        DisplayName = CONFIG.PARTNER_NAME,
+        UserId = CONFIG.PARTNER_USER_ID,
+        ClassName = 'Player',
+        Character = nil,
+        Team = nil,
+        TeamColor = BrickColor.new('White'),
+        Neutral = true,
+        AccountAge = 365,
+        MembershipType = Enum.MembershipType.None,
+        CharacterAdded = Instance.new('BindableEvent'),
+        CharacterRemoving = Instance.new('BindableEvent'),
+    }
+end
+
+local function createMockTrade()
+    mockPartner = createMockPartner()
+    return {
+        trade_id = 'MOCK_' .. tick(),
+        sender = Players.LocalPlayer,
+        recipient = mockPartner,
+        sender_offer = { items = {}, player_name = Players.LocalPlayer.Name, negotiated = false, confirmed = false },
+        recipient_offer = { items = {}, player_name = CONFIG.PARTNER_NAME, negotiated = false, confirmed = false },
+        current_stage = 'negotiation',
+        offer_version = 1,
+        sender_has_trade_license = true,
+        recipient_has_trade_license = true,
+        busy_indicators = {},
+        subscriber_count = 4,
+    }
+end
+
+local function getKindPet(name)
+    for k, v in pairs(InventoryDB.pets) do
+        if v['name']:lower() == name:lower() or v['name']:lower():find(name:lower()) then return k end
+    end
+    return nil
+end
+
+-- ============================================
+-- ДОБАВЛЕНИЕ MFR COW В ПРЕДЛОЖЕНИЕ ПАРТНЕРА
+-- ============================================
+local function addMFRCowToPartnerOffer()
+    if not mockState.active or not mockState.trade then 
+        print('❌ No active trade')
+        return false 
+    end
+    
+    if mockState.trade.current_stage == 'confirmation' then 
+        print('❌ Cannot modify during confirmation')
+        return false 
+    end
+    
+    if #mockState.trade.recipient_offer.items >= 18 then 
+        print('❌ Too many items')
+        return false 
+    end
+
+    -- Ищем корову в InventoryDB
+    local cowKind = nil
+    for k, v in pairs(InventoryDB.pets) do
+        if v['name']:lower() == 'cow' or v['name']:lower():find('cow') then
+            cowKind = k
+            break
+        end
+    end
+    
+    if not cowKind then
+        print('❌ Cow not found in InventoryDB')
+        return false
+    end
+    
+    -- Создаем MFR Cow (Mega Neon Fly Ride)
+    local petItem = {
+        category = 'pets',
+        kind = cowKind,
+        unique = HttpService:GenerateGUID(),
+        properties = { 
+            flyable = true,      -- F
+            rideable = true,     -- R
+            neon = true,         -- N
+            mega_neon = true,    -- M
+            age = 1 
+        },
+    }
+    
+    table.insert(mockState.trade.recipient_offer.items, petItem)
+    mockState.trade.sender_offer.negotiated = false
+    mockState.trade.recipient_offer.negotiated = false
+    
+    if mockState.trade.current_stage == 'confirmation' then
+        mockState.trade.current_stage = 'negotiation'
+        mockState.trade.sender_offer.confirmed = false
+        mockState.trade.recipient_offer.confirmed = false
+    end
+    
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    TradeApp:_overwrite_local_trade_state(mockState.trade)
+    
+    if TradeApp._lock_trade_for_appropriate_time then 
+        TradeApp:_lock_trade_for_appropriate_time() 
+    end
+    
+    if TradeApp._render_message_in_trade_chat then
+        TradeApp:_render_message_in_trade_chat(nil, string.format('%s added MFR Cow.', CONFIG.PARTNER_NAME), true)
+    end
+    
+    print('✅ MFR Cow added to partner offer!')
+    return true
+end
+
+-- ============================================
+-- ФУНКЦИИ ТРЕЙДА (хуки)
+-- ============================================
+local function storeOriginalFunctions()
+    local funcs = {
+        '_get_local_trade_state', '_overwrite_local_trade_state',
+        '_get_my_offer', '_get_partner_offer', '_get_my_player', '_get_partner',
+        '_get_current_trade_stage', '_on_accept_pressed', '_on_confirm_pressed',
+        '_on_unaccept_pressed', '_decline_trade', '_lock_trade_for_appropriate_time', 
+        '_get_lock_time', 'refresh_all',
+    }
+    for _, funcName in ipairs(funcs) do
+        if TradeApp[funcName] then
+            mockState.originalFunctions[funcName] = TradeApp[funcName]
+        end
+    end
+end
+
+storeOriginalFunctions()
+
+local function hookTradeFunctions()
+    TradeApp._get_local_trade_state = function(self)
+        if mockState.active and mockState.trade then return TableUtil.deep_copy(mockState.trade) end
+        return mockState.originalFunctions._get_local_trade_state(self)
+    end
+
+    TradeApp._overwrite_local_trade_state = function(self, newState)
+        if mockState.active then
+            if newState then
+                mockState.trade = newState
+                self.local_trade_state = newState
+                if self._on_local_trade_state_changed then self:_on_local_trade_state_changed(newState, newState) end
+                if self.refresh_all then self:refresh_all() end
+            else
+                mockState.trade = nil
+                mockState.active = false
+                self.local_trade_state = nil
+            end
+        else
+            return mockState.originalFunctions._overwrite_local_trade_state(self, newState)
+        end
+    end
+
+    TradeApp._get_my_offer = function(self)
+        local state = self:_get_local_trade_state()
+        if mockState.active and state then
+            if Players.LocalPlayer == state.sender then return state.sender_offer, 'sender_offer' else return state.recipient_offer, 'recipient_offer' end
+        end
+        return mockState.originalFunctions._get_my_offer(self)
+    end
+
+    TradeApp._get_partner_offer = function(self)
+        local state = self:_get_local_trade_state()
+        if mockState.active and state then
+            if Players.LocalPlayer == state.sender then return state.recipient_offer, 'recipient_offer' else return state.sender_offer, 'sender_offer' end
+        end
+        return mockState.originalFunctions._get_partner_offer(self)
+    end
+
+    TradeApp._get_my_player = function(self)
+        if mockState.active and mockState.trade then return Players.LocalPlayer end
+        return mockState.originalFunctions._get_my_player(self)
+    end
+
+    TradeApp._get_partner = function(self)
+        if mockState.active and mockState.trade then return mockState.trade.recipient end
+        return mockState.originalFunctions._get_partner(self)
+    end
+
+    TradeApp._get_current_trade_stage = function(self)
+        if mockState.active and mockState.trade then return mockState.trade.current_stage end
+        return mockState.originalFunctions._get_current_trade_stage(self)
+    end
+
+    TradeApp._get_lock_time = function(self)
+        if mockState.active and mockState.trade then
+            if self:_get_current_trade_stage() == 'negotiation' then return 5
+            else return math.clamp(3 * (#mockState.trade.sender_offer.items + #mockState.trade.recipient_offer.items), 5, 15) end
+        end
+        return mockState.originalFunctions._get_lock_time(self)
+    end
+
+    TradeApp._lock_trade_for_appropriate_time = function(self)
+        if mockState.active then
+            if self.lock_countdown then 
+                self.lock_countdown:stop() 
+                self.lock_countdown:set_duration(self:_get_lock_time()) 
+                self.lock_countdown:start() 
+            end
+        else
+            return mockState.originalFunctions._lock_trade_for_appropriate_time(self)
+        end
+    end
+
+    TradeApp._on_accept_pressed = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.sender_offer.negotiated = false
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                self:_overwrite_local_trade_state(mockState.trade)
+            else
+                mockState.trade.sender_offer.negotiated = true
+                if mockState.trade.recipient_offer.negotiated then
+                    mockState.trade.current_stage = 'confirmation'
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                    if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                    print('✅ Both players accepted! Moving to confirmation...')
+                else
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                end
+            end
+        else
+            return mockState.originalFunctions._on_accept_pressed(self)
+        end
+    end
+
+    TradeApp._on_confirm_pressed = function(self)
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            self:_overwrite_local_trade_state(mockState.trade)
+            print('✅ You confirmed the trade')
+        else
+            return mockState.originalFunctions._on_confirm_pressed(self)
+        end
+    end
+
+    TradeApp._on_unaccept_pressed = function(self)
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.negotiated = false
+            if mockState.trade.current_stage == 'confirmation' then
+                mockState.trade.current_stage = 'negotiation'
+                mockState.trade.recipient_offer.negotiated = false
+                mockState.trade.sender_offer.confirmed = false
+                mockState.trade.recipient_offer.confirmed = false
+            end
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            self:_overwrite_local_trade_state(mockState.trade)
+        else
+            return mockState.originalFunctions._on_unaccept_pressed(self)
+        end
+    end
+
+    TradeApp._decline_trade = function(self, silent)
+        if mockState.active then
+            if self.lock_countdown then self.lock_countdown:stop() end
+            mockState.active = false
+            mockState.trade = nil
+            mockState.partnerActionPending = false
+            mockState.tradeCompleting = false
+            self:_overwrite_local_trade_state(nil)
+            UIManager.set_app_visibility('TradeApp', false)
+        else
+            return mockState.originalFunctions._decline_trade(self, silent)
+        end
+    end
+end
+
+hookTradeFunctions()
+
+-- ============================================
+-- АВТОМАТИЧЕСКИЕ ДЕЙСТВИЯ ПАРТНЕРА
+-- ============================================
+local function partnerAutoAction()
+    if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
+    mockState.partnerActionPending = true
+
+    while TradeApp.lock_countdown and TradeApp.lock_countdown.is_going and TradeApp.lock_countdown:is_going() do
+        task.wait(0.1)
+    end
+
+    if mockState.trade.current_stage == 'negotiation' then
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.negotiated = true
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.current_stage = 'confirmation'
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+                if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                print('✅ Partner accepted the trade')
+            else
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+                print('✅ Partner is waiting for your accept...')
+            end
+        end
+    elseif mockState.trade.current_stage == 'confirmation' then
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            TradeApp:_overwrite_local_trade_state(mockState.trade)
+            print('✅ Partner confirmed the trade! Click Confirm to finish.')
+            
+            if mockState.trade.sender_offer.confirmed and not mockState.tradeCompleting then
+                mockState.tradeCompleting = true
+                if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
+                task.wait(3)
+                mockState.active = false
+                mockState.trade = nil
+                mockState.tradeCompleting = false
+                UIManager.set_app_visibility('TradeApp', false)
+                if HintApp then HintApp:hint({ text = 'Trade completed successfully! 🎉', length = 5, overridable = true }) end
+                print('✅ TRADE COMPLETED SUCCESSFULLY!')
+            end
+        end
+    end
+    mockState.partnerActionPending = false
+end
+
+-- ============================================
+-- ЗАПУСК ТРЕЙДА (когда вы кидаете запрос)
+-- ============================================
+local function startMockTrade()
+    if mockState.active then return end
+    
+    mockState.active = false
+    mockState.trade = nil
+    mockState.isAddingItem = false
+    mockState.partnerActionPending = false
+    mockState.tradeCompleting = false
+    
+    mockState.trade = createMockTrade()
+    mockState.active = true
+    
+    pcall(function() UIManager.set_app_visibility('TradeApp', false) end)
+    task.wait(0.1)
+    
+    pcall(function() TradeApp:_overwrite_local_trade_state(mockState.trade) end)
+    task.wait(0.1)
+    
+    pcall(function() UIManager.set_app_visibility('TradeApp', true) end)
+    
+    task.wait(0.1)
+    pcall(function() 
+        if TradeApp.refresh_all then 
+            TradeApp:refresh_all()
+        end 
+    end)
+    
+    print('✅ Trade started with ' .. CONFIG.PARTNER_NAME)
+    
+    -- Через 2 секунды добавляем MFR Cow в предложение партнера
+    task.wait(2.0)
+    addMFRCowToPartnerOffer()
+    
+    -- Запускаем автоматическое принятие
+    task.wait(0.5)
+    partnerAutoAction()
+end
+
+-- ============================================
+-- АВТОМАТИЧЕСКОЕ ПРИНЯТИЕ ТРЕЙД-ЗАПРОСА
+-- ============================================
+local function hookTradeRequestEvent()
+    local tradeRequestEvent = RouterClient.get_event('TradeAPI/TradeRequestReceived')
+    if tradeRequestEvent then
+        local originalConnections = getconnections(tradeRequestEvent.OnClientEvent)
+        for _, connection in pairs(originalConnections) do connection:Disable() end
+        
+        tradeRequestEvent.OnClientEvent:Connect(function(requestingPlayer)
+            print('📩 Trade request from:', requestingPlayer and requestingPlayer.Name or 'unknown')
+            
+            if requestingPlayer and requestingPlayer.Name == CONFIG.PARTNER_NAME then
+                print('✅ Auto-accepting trade request from ' .. CONFIG.PARTNER_NAME)
+                
+                -- Принимаем через диалог
+                task.wait(0.5)
+                
+                local found = false
+                for _, gui in ipairs({game:GetService('CoreGui'):GetChildren(), Players.LocalPlayer.PlayerGui:GetChildren()}) do
+                    for _, child in ipairs(gui) do
+                        if child:IsA('ScreenGui') and (child.Name:find('Dialog') or child.Name:find('Modal')) then
+                            for _, btn in ipairs(child:GetDescendants()) do
+                                if btn:IsA('TextButton') and (btn.Text:lower():find('accept') or btn.Name:lower():find('accept')) then
+                                    btn:Activate()
+                                    found = true
+                                    print('✅ Accepted trade request')
+                                    break
+                                end
+                            end
+                        end
+                        if found then break end
+                    end
+                    if found then break end
+                end
+                
+                if not found then
+                    pcall(function()
+                        game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                        game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                        print('✅ Accepted trade request (Enter)')
+                    end)
+                end
+                
+                task.wait(0.3)
+                startMockTrade()
+            end
+        end)
+    end
+end
+
+hookTradeRequestEvent()
+
+-- ============================================
+-- СПАВН ФЕЙКОВОГО ИГРОКА (БЕЗ ПИТОМЦА)
+-- ============================================
+function CreateFakePlayerCharacter(partner_name, partner_id)
+    fakePlayerIds[partner_id] = true
+    _G.fakePlayerIds[partner_id] = true
+
+    local folder_fake = Instance.new('Folder')
+    folder_fake.Name = 'fake_folder_' .. partner_name
+    folder_fake.Parent = workspace
+
+    local character = Players:CreateHumanoidModelFromUserId(partner_id)
+    local playerCharacter = Players.LocalPlayer.Character
+    if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
+        character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-8, 8), 0, math.random(-8, 8)))
+    else
+        character:SetPrimaryPartCFrame(CFrame.new(Vector3.new(0, 5, 0)))
+    end
+    
+    local humanoid = character:WaitForChild('Humanoid')
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+    humanoid.HealthDisplayDistance = 0
+    character.Parent = folder_fake
+
+    pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
+
+    table.insert(FakePlayers, folder_fake)
+    folder_fake:SetAttribute('IsFakePlayer', true)
+    folder_fake:SetAttribute('PartnerName', partner_name)
+    folder_fake:SetAttribute('PartnerId', partner_id)
+    
+    print('✅ Fake player ' .. partner_name .. ' spawned! Send him a trade request.')
+    return true
+end
+
+-- ============================================
+-- ЗАПУСК
+-- ============================================
+local function spawnFakePlayer()
+    local partnerName = CONFIG.PARTNER_NAME
+    local partnerId = CONFIG.PARTNER_USER_ID
+    
+    local success, userId = pcall(function()
+        return Players:GetUserIdFromNameAsync(partnerName)
+    end)
+    if success and userId then
+        partnerId = userId
+        CONFIG.PARTNER_USER_ID = userId
+    end
+    
+    CreateFakePlayerCharacter(partnerName, partnerId)
+end
+
+print('========================================')
+print('  FAKE PLAYER SCRIPT')
+print('  Name: ' .. CONFIG.PARTNER_NAME)
+print('  Adds: MFR Cow to trade')
+print('========================================')
+print('')
+print('📌 HOW TO USE:')
+print('1. Wait for ' .. CONFIG.PARTNER_NAME .. ' to appear')
+print('2. SEND a trade request to ' .. CONFIG.PARTNER_NAME)
+print('3. He will auto-accept and add MFR Cow')
+print('4. You click ACCEPT')
+print('5. He auto-accepts')
+print('6. He auto-confirms first')
+print('7. You click CONFIRM')
+print('8. Trade complete! 🎉')
+print('')
+
+spawnFakePlayer()
+print('✅ Ready! Send a trade request to ' .. CONFIG.PARTNER_NAME)
