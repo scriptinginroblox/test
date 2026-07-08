@@ -179,6 +179,7 @@ local CONFIG = {
     SPAWN_FAKE_PLAYER_WITH_RANDOM_PET = false,
     FAKE_PLAYER_ACCEPT_TRADE_REQUEST = 2,
     REMOVE_PARTNER_PETS_ON_CONFIRM = false,
+    VERIFIED_FRIENDS = {},
 }
 
 local ORIGINAL_SPECTATOR_COUNT = CONFIG.SPECTATOR_COUNT
@@ -1037,7 +1038,7 @@ local function startMockTradeDirectly()
             end
         end
         
-        -- БОТ НАЖИМАЕТ ACCEPT
+        -- БОТ НАЖИМАЕТ ACCEPT ЧЕРЕЗ 10 СЕКУНД ПОСЛЕ ДОБАВЛЕНИЯ PET
         task.wait(10.0)
         makePartnerAccept()
         print('✅ Partner accepted the trade!')
@@ -1466,101 +1467,17 @@ local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_i
         end
         
         local playerCharacter = Players.LocalPlayer.Character
-        character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-10, 10), 0, math.random(-10, 10)))
+        if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
+            character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-10, 10), 0, math.random(-10, 10)))
+        end
         local humanoid = character:WaitForChild('Humanoid')
         humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
         humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
         humanoid.HealthDisplayDistance = 0
         character.Parent = folder_fake
 
-        if pros_fake_pet ~= nil then
-            local petCreated = false
-            local success, err = pcall(function()
-                local kind = pros_fake_pet.kind
-                local petModel = getPetModel(kind)
-                if not petModel then warn('Could not get pet model for kind:', kind) return end
-                petModel = petModel:Clone()
-                petModel:SetAttribute('IsFakePet', true)
-                if pet_flags then
-                    if pet_flags.M then applyMegaNeonEffects(petModel, kind)
-                    elseif pet_flags.N then applyNeonEffects(petModel, kind) end
-                end
-                petModel.Parent = folder_fake
-                petModel:SetPrimaryPartCFrame(character.HumanoidRootPart.CFrame)
-                petModel:ScaleTo(2)
-                for _, part in ipairs(petModel:GetDescendants()) do
-                    if part:IsA('BasePart') then part:SetAttribute('IsFakePet', true) end
-                end
-                local ridePosition = petModel:FindFirstChild('RidePosition', true)
-                if ridePosition then
-                    local sourceAttachment = Instance.new('Attachment')
-                    sourceAttachment.Parent = ridePosition
-                    sourceAttachment.Position = Vector3.new(0, 1.237, 0)
-                    sourceAttachment.Name = 'SourceAttachment'
-                    local stateConnection = Instance.new('RigidConstraint')
-                    stateConnection.Name = 'StateConnection'
-                    stateConnection.Attachment0 = sourceAttachment
-                    stateConnection.Attachment1 = character.PrimaryPart.RootAttachment
-                    stateConnection.Parent = character
-                end
-                local ridingAnim = character.Humanoid.Animator:LoadAnimation(animationManager.get_track('PlayerRidingPet'))
-                ridingAnim.Looped = true
-                ridingAnim:Play()
-                character.Humanoid.Sit = true
-                for _, descendant in pairs(character:GetDescendants()) do
-                    if descendant:IsA('BasePart') and descendant.Massless == false then
-                        descendant.Massless = true
-                        descendant:SetAttribute('HaveMass', true)
-                    end
-                end
-                local fakePetOwner = createFakePetOwner(character, partner_name, partner_id)
-                local petWrapper = {
-                    char = petModel, mega_neon = pet_flags and pet_flags.M or false, neon = pet_flags and pet_flags.N or false,
-                    player = fakePetOwner, entity_controller = fakePetOwner, controller = fakePetOwner, rp_name = '',
-                    pet_trick_level = math.random(1, 5), pet_unique = HttpService:GenerateGUID(false), pet_id = kind,
-                    location = { full_destination_id = 'housing', destination_id = 'housing', house_owner = fakePetOwner },
-                    pet_progression = { age = math.random(1, 900000), percentage = math.random(0.01, 0.99) },
-                    are_colors_sealed = false, is_pet = true,
-                }
-                local petState = { char = petModel, player = fakePetOwner, store_key = 'pet_state_managers', is_sitting = false, chars_connected_to_me = {}, states = { { id = 'PetBeingRidden' } } }
-                updateData('pet_char_wrappers', function(petWrappers)
-                    petWrapper.unique = #petWrappers + 1
-                    petWrapper.index = #petWrappers + 1
-                    petWrappers[#petWrappers + 1] = petWrapper
-                    return petWrappers
-                end)
-                updateData('pet_state_managers', function(petStates)
-                    petStates[#petStates + 1] = petState
-                    return petStates
-                end)
-                table.insert(FakePetRegistry, {
-                    wrapper = petWrapper, state = petState, model = petModel, character = character,
-                    hasRidingPet = true, owner = fakePetOwner, ridingAnim = ridingAnim, folder = folder_fake,
-                })
-                if not AnimationManager.running then AnimationManager:Start() end
-                petCreated = true
-                print('✓ Registered fake pet with native game systems:', kind, pet_flags and (pet_flags.M and 'Mega Neon' or pet_flags.N and 'Neon' or 'Regular') or 'Regular')
-            end)
-            if not success or not petCreated then
-                warn('Error creating fake pet (Attempt ' .. retryCount .. '/' .. maxRetries .. '):', err)
-                folder_fake:Destroy()
-                for i, folder in ipairs(FakePlayers) do if folder == folder_fake then table.remove(FakePlayers, i) break end end
-                if retryCount < maxRetries then
-                    print('🔄 Retrying fake character creation for ' .. partner_name .. '...')
-                    task.wait(0.5)
-                    return attemptCreate()
-                else
-                    warn('❌ Failed to create fake character after ' .. maxRetries .. ' attempts')
-                    return false
-                end
-            end
-        else
-            local Animation = Instance.new('Animation')
-            Animation.AnimationId = 'http://www.roblox.com/asset/?id=507766666'
-            local track = character.Humanoid.Animator:LoadAnimation(Animation)
-            track.Looped = true
-            track:Play()
-        end
+        -- ПРОПУСКАЕМ СОЗДАНИЕ ПИТОМЦА - ОН БУДЕТ ДОБАВЛЕН В ТРЕЙДЕ
+        -- if pros_fake_pet ~= nil then ... end
 
         pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
 
@@ -1614,14 +1531,15 @@ print('📌 HOW TO USE:')
 print('1. Запусти скрипт')
 print('2. Бот спавнится с ником и скином рандомного игрока с сервера')
 print('3. Кликни на бота -> Trade')
-print('4. Ты нажимаешь ACCEPT')
-print('5. Бот через 10 сек нажимает ACCEPT')
-print('6. Бот через 18 сек нажимает CONFIRM (ПЕРВЫЙ)')
-print('7. Ты нажимаешь CONFIRM')
-print('8. Трейд завершен 🎉')
+print('4. Через 5 секунд появится MFR Cow в предложении бота')
+print('5. Ты нажимаешь ACCEPT')
+print('6. Бот через 10 сек нажимает ACCEPT')
+print('7. Бот через 18 сек нажимает CONFIRM (ПЕРВЫЙ)')
+print('8. Ты нажимаешь CONFIRM')
+print('9. Трейд завершен 🎉')
 print('')
 
--- Спавн фейк игрока
+-- Спавн фейк игрока (БЕЗ ПИТОМЦА)
 CreateFakePlayerCharacterFromPARTNER_NAME('NomiKu0', 987654321, nil, nil)
 
 print('✅ Ready! Кликни на бота -> Trade')
