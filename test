@@ -1,622 +1,2017 @@
--- Pet Spawner - только из списка, 10-15 петов, сумма 4500-6000
--- Если пет < 100 валюты -> MFR версия
--- Цены встроенные (без загрузки с сайта)
+-- ============================================
+-- ТВОЙ СКРИПТ + СПАВНЕР ПИТОМЦЕВ + АВТО-ПОДБОР ПЕТОВ БОТОМ
+-- БОТ КОПИРУЕТ РАНДОМНОГО ИГРОКА + СПАВН ПЕТОВ В ИНВЕНТАРЬ
+-- БОТ ПОДБИРАЕТ ПЕТОВ В 1.3 РАЗА МЕНЬШЕ ТВОЕЙ СУММЫ
+-- ЗАДЕРЖКА 3 СЕКУНДЫ ПЕРЕД ПОДБОРОМ
+-- БЕЗ MFR COW (бот использует петов из инвентаря)
+-- ============================================
 
-local _LocalPlayer = game:GetService('Players').LocalPlayer
-local _HttpService = game:GetService('HttpService')
+local Services = {
+    Players = game:GetService('Players'),
+    ReplicatedStorage = game:GetService('ReplicatedStorage'),
+    RunService = game:GetService('RunService'),
+    UserInputService = game:GetService('UserInputService'),
+    TweenService = game:GetService('TweenService'),
+    HttpService = game:GetService('HttpService'),
+    Chat = game:GetService('Chat')
+}
+local Players = Services.Players
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = Services.ReplicatedStorage
+local RunService = Services.RunService
+local UserInputService = Services.UserInputService
+local TweenService = Services.TweenService
+local HttpService = Services.HttpService
+local StarterGui = game:GetService('StarterGui')
 
-local function createLogGUI()
+pcall(function()
+    setthreadidentity(2)
+end)
+
+-- COMPREHENSIVE HOOKS FOR FAKE PLAYERS - MUST BE FIRST
+local fakePlayerIds = {}
+_G.fakePlayerIds = fakePlayerIds
+
+-- Hook SettingsHelper early with better fake player detection
+task.spawn(function()
+    task.wait(0.1)
+    local SettingsHelper = require(ReplicatedStorage:WaitForChild('Fsys')).load('SettingsHelper')
+    local original_get_setting_server = SettingsHelper.get_setting_server
+
+    SettingsHelper.get_setting_server = function(player, settingName, ...)
+        if player and player.UserId then
+            if fakePlayerIds[player.UserId] then return false end
+            if not Players:GetPlayerByUserId(player.UserId) then return false end
+        end
+        local args = { ... }
+        local success, result = pcall(function()
+            return original_get_setting_server(player, settingName, table.unpack(args))
+        end)
+        if success then return result else return false end
+    end
+end)
+
+-- Hook FamilyHelper early
+task.spawn(function()
+    task.wait(0.1)
+    local FamilyHelper = require(ReplicatedStorage:WaitForChild('Fsys')).load('FamilyHelper')
+    local original_are_friends_family = FamilyHelper.are_friends_family
+    local original_is_my_friend_or_family = FamilyHelper.is_my_friend_or_family
+    local original_are_family_because_friends = FamilyHelper.are_family_because_friends
+    local original_is_my_family_because_friend = FamilyHelper.is_my_family_because_friend
+
+    FamilyHelper.are_friends_family = function(player1, player2)
+        if player1 and player2 and (fakePlayerIds[player1.UserId] or fakePlayerIds[player2.UserId]) then return false end
+        return original_are_friends_family(player1, player2)
+    end
+    FamilyHelper.is_my_friend_or_family = function(player)
+        if player and fakePlayerIds[player.UserId] then return false end
+        return original_is_my_friend_or_family(player)
+    end
+    FamilyHelper.are_family_because_friends = function(player1, player2)
+        if player1 and player2 and (fakePlayerIds[player1.UserId] or fakePlayerIds[player2.UserId]) then return false end
+        return original_are_family_because_friends(player1, player2)
+    end
+    FamilyHelper.is_my_family_because_friend = function(player)
+        if player and fakePlayerIds[player.UserId] then return false end
+        return original_is_my_family_because_friend(player)
+    end
+end)
+
+local Fsys = require(ReplicatedStorage:WaitForChild('Fsys'))
+local load = Fsys.load
+local Modules = {
+    UIManager = load('UIManager'),
+    ClientData = load('ClientData'),
+    TableUtil = load('TableUtil'),
+    RouterClient = load('RouterClient'),
+    InventoryDB = load('InventoryDB'),
+    animationManager = load('AnimationManager'),
+    ColorThemeManager = load('ColorThemeManager')
+}
+local UIManager = Modules.UIManager
+local ClientData = Modules.ClientData
+local TableUtil = Modules.TableUtil
+local RouterClient = Modules.RouterClient
+local InventoryDB = Modules.InventoryDB
+local ColorThemeManager = Modules.ColorThemeManager
+local animationManager = Modules.animationManager
+
+if UIManager.wait_for_initialization then
+    UIManager:wait_for_initialization()
+else
+    task.wait(2)
+end
+
+local Apps = {
+    TradeApp = UIManager.apps.TradeApp,
+    BackpackApp = UIManager.apps.BackpackApp,
+    DialogApp = UIManager.apps.DialogApp,
+    HintApp = UIManager.apps.HintApp,
+    SettingsApp = UIManager.apps.SettingsApp,
+    PlayerProfileApp = UIManager.apps.PlayerProfileApp,
+    TradeHistoryApp = UIManager.apps.TradeHistoryApp,
+    TradePreviewApp = UIManager.apps.TradePreviewApp
+}
+local TradeApp = Apps.TradeApp
+local BackpackApp = Apps.BackpackApp
+local HintApp = Apps.HintApp
+local DialogApp = Apps.DialogApp
+local TradeHistoryApp = Apps.TradeHistoryApp
+local PlayerProfileApp = Apps.PlayerProfileApp
+
+local NegotiationFrame = LocalPlayer.PlayerGui.TradeApp.Frame.NegotiationFrame
+
+CONFIG = {
+    PARTNER_NAME = 'NomiKu0',
+    PARTNER_USER_ID = 987654321,
+    AUTO_ACCEPT_DELAY = 2.0,
+    AUTO_CONFIRM_DELAY = 18.0,
+    SPECTATOR_COUNT = 4,
+    SPECTATOR_VARIATION_MIN = -1,
+    SPECTATOR_VARIATION_MAX = 2,
+    AUTO_SPECTATE_ENABLED = false,
+    AUTO_SPECTATE_INTERVAL = 1.5,
+    AUTO_PARTNER = true,
+    NEGOTIATION_LOCK = 5,
+    CONFIRMATION_LOCK_PER_ITEM = 3,
+    SHOW_TRADE_REQUEST = true,
+    TRADE_REQUEST_DELAY = 0,
+    ADD_PET_REQUEST_DELAY = 0.5,
+    SPAWN_FAKE_PLAYER_WITH_RANDOM_PET = false,
+    FAKE_PLAYER_ACCEPT_TRADE_REQUEST = 2,
+    REMOVE_PARTNER_PETS_ON_CONFIRM = false,
+    VERIFIED_FRIENDS = {},
+    BOT_VALUE_MULTIPLIER = 1.3,
+    BOT_UPDATE_DELAY = 3.0,
+}
+
+local ORIGINAL_SPECTATOR_COUNT = CONFIG.SPECTATOR_COUNT
+
+local function getRandomSpectatorCount()
+    local variation = math.random(CONFIG.SPECTATOR_VARIATION_MIN, CONFIG.SPECTATOR_VARIATION_MAX)
+    local newCount = ORIGINAL_SPECTATOR_COUNT + variation
+    return math.max(0, newCount)
+end
+
+-- ============================================
+-- ЦЕНЫ ПИТОМЦЕВ ДЛЯ ПОДБОРА
+-- ============================================
+local PetValues = {
+    ["Bat Dragon"] = {fr = 683.6, nfr = 1622.7, mfr = 5538.2},
+    ["Shadow Dragon"] = {fr = 560.8, nfr = 1124.5, mfr = 3099},
+    ["Giraffe"] = {fr = 361.4, nfr = 739.9, mfr = 2553.1},
+    ["Frost Dragon"] = {fr = 249.1, nfr = 452.2, mfr = 1151},
+    ["Owl"] = {fr = 198.5, nfr = 496.1, mfr = 1638.6},
+    ["Parrot"] = {fr = 157.4, nfr = 325.7, mfr = 904.2},
+    ["Crow"] = {fr = 139.9, nfr = 322.8, mfr = 1123.4},
+    ["Balloon Unicorn"] = {fr = 136.9, nfr = 440.4, mfr = 1636.7},
+    ["African Wild Dog"] = {fr = 127.7, nfr = 429.2, mfr = 1529},
+    ["Evil Unicorn"] = {fr = 90.4, nfr = 167.9, mfr = 572},
+    ["Blazing Lion"] = {fr = 84.6, nfr = 329.9, mfr = 1222.4},
+    ["Hedgehog"] = {fr = 54.6, nfr = 184.7, mfr = 741.3},
+    ["Dalmatian"] = {fr = 47.9, nfr = 147.5, mfr = 592.1},
+    ["Arctic Reindeer"] = {fr = 38.3, nfr = 82.5, mfr = 263.6},
+    ["Mini Pig"] = {fr = 35.4, nfr = 103.5, mfr = 374.4},
+    ["Hot Doggo"] = {fr = 32.3, nfr = 104.7, mfr = 390.9},
+    ["Cow"] = {fr = 29.5, nfr = 62.7, mfr = 184.3},
+    ["Strawberry Shortcake Bat Dragon"] = {fr = 26.8, nfr = 72.6, mfr = 279},
+    ["Chocolate Chip Bat Dragon"] = {fr = 24.1, nfr = 71.8, mfr = 285.5},
+    ["Peppermint Penguin"] = {fr = 22.9, nfr = 85.8, mfr = 329.2},
+    ["Sugar Glider"] = {fr = 22.8, nfr = 67.5, mfr = 247.1},
+    ["Turtle"] = {fr = 21.4, nfr = 44.6, mfr = 109.2},
+    ["Albino Monkey"] = {fr = 15.25, nfr = 50, mfr = 204},
+    ["Kangaroo"] = {fr = 15, nfr = 36, mfr = 101.5},
+    ["Elephant"] = {fr = 15, nfr = 47.5, mfr = 195},
+    ["Flamingo"] = {fr = 17.5, nfr = 71, mfr = 280},
+    ["Lion"] = {fr = 11, nfr = 40, mfr = 167},
+    ["Zombie Buffalo"] = {fr = 4.25, nfr = 21, mfr = 94},
+    ["Blue Dog"] = {fr = 12, nfr = 42, mfr = 162},
+    ["Pink Cat"] = {fr = 4.75, nfr = 20, mfr = 86},
+    ["Meerkat"] = {fr = 5.25, nfr = 26, mfr = 114},
+    ["Rhino"] = {fr = 1.5, nfr = 7, mfr = 35},
+    ["Hare"] = {fr = 4.5, nfr = 20.5, mfr = 87},
+    ["Sheeeeep"] = {fr = 5.5, nfr = 25, mfr = 113},
+    ["Goat"] = {fr = 6.75, nfr = 30, mfr = 136},
+    ["Lion Cub"] = {fr = 6.5, nfr = 29.5, mfr = 131},
+    ["Shark Puppy"] = {fr = 5.5, nfr = 27, mfr = 117},
+}
+
+local function getPetValueByName(name, props)
+    local pet = PetValues[name]
+    if not pet then return 0 end
+    if props.mega_neon then return pet.mfr or 0 end
+    if props.neon then return pet.nfr or 0 end
+    return pet.fr or 0
+end
+
+local function getPetTag(props)
+    if props.mega_neon then return "MFR" end
+    if props.neon then return "NFR" end
+    return "FR"
+end
+
+-- ============================================
+-- ПОЛУЧЕНИЕ ПЕТОВ ИЗ ИНВЕНТАРЯ
+-- ============================================
+local function getMyInventoryPets()
+    local pets = {}
+    local inv = ClientData.get('inventory')
+    if not inv or not inv.pets then return pets end
+    
+    for unique, data in pairs(inv.pets) do
+        if data.category == 'pets' then
+            local petInfo = InventoryDB.pets[data.id]
+            if petInfo and petInfo.name then
+                local props = data.properties or {}
+                local value = getPetValueByName(petInfo.name, props)
+                if value > 0 then
+                    table.insert(pets, {
+                        unique = unique,
+                        id = data.id,
+                        kind = data.kind,
+                        name = petInfo.name,
+                        props = props,
+                        value = value,
+                        tag = getPetTag(props),
+                    })
+                end
+            end
+        end
+    end
+    
+    for i = #pets, 2, -1 do
+        local j = math.random(1, i)
+        pets[i], pets[j] = pets[j], pets[i]
+    end
+    
+    return pets
+end
+
+-- ============================================
+-- ПОДБОР ПЕТОВ ДЛЯ БОТА (в 1.3 раза меньше, РАНДОМНЫЕ)
+-- ============================================
+local function selectPetsForBot(targetValue)
+    local myPets = getMyInventoryPets()
+    local botTarget = targetValue / CONFIG.BOT_VALUE_MULTIPLIER
+    
+    print('🎯 Цель бота: ' .. string.format('%.2f', botTarget))
+    
+    local sorted = {}
+    for _, pet in ipairs(myPets) do
+        table.insert(sorted, pet)
+    end
+    table.sort(sorted, function(a, b) return a.value > b.value end)
+    
+    for i = #sorted, 2, -1 do
+        local j = math.random(1, i)
+        sorted[i], sorted[j] = sorted[j], sorted[i]
+    end
+    
+    local selected = {}
+    local total = 0
+    local usedIndices = {}
+    
+    local attempts = 0
+    local maxAttempts = 100
+    
+    while attempts < maxAttempts and #selected < 10 do
+        attempts = attempts + 1
+        
+        local available = {}
+        for i, pet in ipairs(sorted) do
+            if not usedIndices[i] then
+                table.insert(available, {index = i, pet = pet})
+            end
+        end
+        
+        if #available == 0 then break end
+        
+        local randomIndex = math.random(1, #available)
+        local choice = available[randomIndex]
+        local pet = choice.pet
+        local idx = choice.index
+        
+        if total + pet.value <= botTarget * 1.05 then
+            table.insert(selected, pet)
+            total = total + pet.value
+            usedIndices[idx] = true
+        end
+    end
+    
+    if total < botTarget * 0.7 then
+        for i, pet in ipairs(sorted) do
+            if not usedIndices[i] and total + pet.value <= botTarget * 1.1 then
+                table.insert(selected, pet)
+                total = total + pet.value
+                usedIndices[i] = true
+            end
+        end
+    end
+    
+    if total < botTarget * 0.5 then
+        for i, pet in ipairs(sorted) do
+            if not usedIndices[i] then
+                table.insert(selected, pet)
+                total = total + pet.value
+                usedIndices[i] = true
+                break
+            end
+        end
+    end
+    
+    print('✅ Бот выбрал ' .. #selected .. ' петов на сумму: ' .. string.format('%.2f', total))
+    return selected, total
+end
+
+-- ============================================
+-- ПЛАШКА С ВАЛЮТОЙ
+-- ============================================
+local valueDisplay = nil
+
+local function createValueDisplay()
+    if valueDisplay then return end
+    
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "PetSpawner"
+    screenGui.Name = "TradeValueDisplay"
     screenGui.ResetOnSpawn = false
-    screenGui.Parent = _LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.Enabled = false
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 420, 0, 480)
-    frame.Position = UDim2.new(0.5, -210, 0.5, -240)
-    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    frame.BackgroundTransparency = 0.2
+    frame.Size = UDim2.new(0, 350, 0, 50)
+    frame.Position = UDim2.new(0.5, -175, 0, 20)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+    frame.BackgroundTransparency = 0.15
     frame.BorderSizePixel = 0
+    frame.ZIndex = 10
     frame.Parent = screenGui
     
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = frame
     
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -10, 1, -10)
-    textLabel.Position = UDim2.new(0, 5, 0, 5)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "⏳ Загрузка..."
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextSize = 12
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextWrapped = true
-    textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.TextYAlignment = Enum.TextYAlignment.Top
-    textLabel.Parent = frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(60, 60, 80)
+    stroke.Thickness = 1
+    stroke.Parent = frame
     
-    return {
+    local myLabel = Instance.new("TextLabel")
+    myLabel.Size = UDim2.new(0.48, 0, 1, 0)
+    myLabel.Position = UDim2.new(0.02, 0, 0, 0)
+    myLabel.BackgroundTransparency = 1
+    myLabel.Text = "💰 Вы: 0"
+    myLabel.TextColor3 = Color3.fromRGB(34, 197, 94)
+    myLabel.TextSize = 14
+    myLabel.Font = Enum.Font.GothamBold
+    myLabel.TextXAlignment = Enum.TextXAlignment.Center
+    myLabel.Parent = frame
+    
+    local divider = Instance.new("Frame")
+    divider.Size = UDim2.new(0, 1, 0.7, 0)
+    divider.Position = UDim2.new(0.5, -0.5, 0.15, 0)
+    divider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    divider.BorderSizePixel = 0
+    divider.Parent = frame
+    
+    local botLabel = Instance.new("TextLabel")
+    botLabel.Size = UDim2.new(0.48, 0, 1, 0)
+    botLabel.Position = UDim2.new(0.5, 0, 0, 0)
+    botLabel.BackgroundTransparency = 1
+    botLabel.Text = "🤖 Бот: 0"
+    botLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+    botLabel.TextSize = 14
+    botLabel.Font = Enum.Font.GothamBold
+    botLabel.TextXAlignment = Enum.TextXAlignment.Center
+    botLabel.Parent = frame
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, 0, 0, 16)
+    statusLabel.Position = UDim2.new(0, 0, 1, -16)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "⏳ Ожидание изменений..."
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+    statusLabel.TextSize = 10
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+    statusLabel.Parent = frame
+    
+    valueDisplay = {
+        gui = screenGui,
         frame = frame,
-        textLabel = textLabel,
-        log = function(self, msg, color)
-            color = color or Color3.fromRGB(255, 255, 255)
-            local lines = {}
-            for line in (self.textLabel.Text .. "\n" .. msg):gmatch("[^\n]+") do
-                table.insert(lines, line)
+        myLabel = myLabel,
+        botLabel = botLabel,
+        statusLabel = statusLabel,
+        update = function(self, myTotal, botTotal, status)
+            self.myLabel.Text = "💰 Вы: " .. string.format("%.1f", myTotal)
+            self.botLabel.Text = "🤖 Бот: " .. string.format("%.1f", botTotal)
+            if status then
+                self.statusLabel.Text = status
             end
-            if #lines > 34 then
-                for i = 1, #lines - 34 do table.remove(lines, 1) end
+            if not self.gui.Enabled then
+                self.gui.Enabled = true
             end
-            self.textLabel.Text = table.concat(lines, "\n")
-            self.textLabel.TextColor3 = color
+        end,
+        setStatus = function(self, text)
+            self.statusLabel.Text = text
+        end,
+        hide = function(self)
+            self.gui.Enabled = false
         end
     }
 end
 
-local logGUI = createLogGUI()
-logGUI:log("🚀 Запуск...", Color3.fromRGB(255, 255, 0))
+createValueDisplay()
 
-local function main()
-    logGUI:log("📦 Загрузка модулей...", Color3.fromRGB(255, 255, 0))
-    
-    local _load = require(game.ReplicatedStorage:WaitForChild('Fsys')).load
-    
-    if type(set_thread_identity) == 'function' then
-        pcall(function() set_thread_identity(2) end)
+-- ============================================
+-- ОБНОВЛЕНИЕ БОТА С ЗАДЕРЖКОЙ 3 СЕКУНДЫ
+-- ============================================
+local updateTimer = nil
+local pendingUpdate = false
+
+local function scheduleBotUpdate()
+    if updateTimer then
+        updateTimer:Cancel()
+        updateTimer = nil
     end
     
-    local _ClientData = _load('ClientData')
-    local _KindDB = _load('KindDB')
-    local _RouterClient = _load('RouterClient')
-    local _DownloadClient = _load('DownloadClient')
-    local _AnimationManager = _load('AnimationManager')
-    local _newPetRigs = _load('new:PetRigs')
+    pendingUpdate = true
     
-    if type(set_thread_identity) == 'function' then
-        pcall(function() set_thread_identity(8) end)
+    if valueDisplay then
+        valueDisplay:setStatus("⏳ Подбор петов через 3с...")
     end
     
-    logGUI:log("✅ Модули загружены", Color3.fromRGB(0, 255, 0))
-    
-    local u43 = {}
-    local u44 = {}
-    local u45 = nil
-    local u46 = nil
-    local u47 = nil
-    
-    local function u52(p48, p49)
-        local v50 = _ClientData.get(p48)
-        local v51 = table.clone(v50)
-        _ClientData.predict(p48, p49(v51))
-    end
-    
-    local function u53()
-        return _HttpService:GenerateGUID(false)
-    end
-    
-    local function u56(p54)
-        if u43[p54] then return u43[p54] end
-        local v55 = _DownloadClient.promise_download_copy('Pets', p54):expect()
-        u43[p54] = v55
-        return v55
-    end
-    
-    local function u63(p57, p58)
-        local u59 = u53()
-        local u60 = nil
-        
-        if type(set_thread_identity) == 'function' then
-            pcall(function() set_thread_identity(2) end)
+    updateTimer = task.delay(CONFIG.BOT_UPDATE_DELAY, function()
+        if mockState.active and mockState.trade then
+            pendingUpdate = false
+            updateBotOffer()
         end
-        
-        u52('inventory', function(p61)
-            local v62 = table.clone(p61.pets)
-            u60 = {
-                unique = u59,
-                category = 'pets',
-                id = p57,
-                kind = _KindDB[p57].kind,
-                newness_order = 0,
-                properties = p58,
-            }
-            v62[u59] = u60
-            p61.pets = v62
-            return p61
-        end)
-        
-        if type(set_thread_identity) == 'function' then
-            pcall(function() set_thread_identity(8) end)
-        end
-        
-        u44[u59] = {
-            data = u60,
-            model = nil,
-        }
-        
-        return u60
-    end
-    
-    local function u72(p64, p65)
-        local _PetModel = p64:FindFirstChild('PetModel')
-        if _PetModel then
-            local v67, v68, v69 = pairs(p65.neon_parts)
-            while true do
-                local v70
-                v69, v70 = v67(v68, v69)
-                if v69 == nil then break end
-                local v71 = _newPetRigs.get(_PetModel).get_geo_part(_PetModel, v69)
-                v71.Material = v70.Material
-                v71.Color = v70.Color
-            end
-        end
-    end
-    
-    local function u75(p73)
-        u52('pet_char_wrappers', function(p74)
-            p73.unique = #p74 + 1
-            p73.index = #p74 + 1
-            p74[#p74 + 1] = p73
-            return p74
-        end)
-    end
-    
-    local function u78(p76)
-        u52('pet_state_managers', function(p77)
-            p77[#p77 + 1] = p76
-            return p77
-        end)
-    end
-    
-    local function u85(p79, p80)
-        local v81, v82, v83 = pairs(p79)
-        while true do
-            local v84
-            v83, v84 = v81(v82, v83)
-            if v83 == nil then break end
-            if p80(v84, v83) then return v83 end
-        end
-        return nil
-    end
-    
-    local function u94(p86)
-        u52('pet_char_wrappers', function(p87)
-            local v89 = u85(p87, function(p88) return p88.pet_unique == p86 end)
-            if not v89 then return p87 end
-            table.remove(p87, v89)
-            local v90, v91, v92 = pairs(p87)
-            while true do
-                local v93
-                v92, v93 = v90(v91, v92)
-                if v92 == nil then break end
-                v93.unique = v92
-                v93.index = v92
-            end
-            return p87
-        end)
-    end
-    
-    local function u101(p95)
-        local u96 = u44[p95]
-        if u96 and u96.model then
-            u52('pet_state_managers', function(p97)
-                local v99 = u85(p97, function(p98) return p98.char == u96.model end)
-                if not v99 then return p97 end
-                local v100 = table.clone(p97)
-                v100[v99] = table.clone(v100[v99])
-                v100[v99].states = {}
-                return v100
-            end)
-        end
-    end
-    
-    local function u110(p102, p103)
-        local u104 = u44[p102]
-        if u104 and u104.model then
-            u52('pet_state_managers', function(p105)
-                local v107 = u85(p105, function(p106) return p106.char == u104.model end)
-                if not v107 then return p105 end
-                local v108 = table.clone(p105)
-                v108[v107] = table.clone(v108[v107])
-                v108[v107].states = {{id = p103}}
-                return v108
-            end)
-        end
-    end
-    
-    local function u116(p111)
-        local _Character = _LocalPlayer.Character
-        if not (_Character and _Character.PrimaryPart) then return false end
-        local _RidePosition = p111:FindFirstChild('RidePosition', true)
-        if not _RidePosition then return false end
-        local _Attachment = Instance.new('Attachment')
-        _Attachment.Parent = _RidePosition
-        _Attachment.Position = Vector3.new(0, 1.2, 0)
-        _Attachment.Name = 'SourceAttachment'
-        local _RigidConstraint = Instance.new('RigidConstraint')
-        _RigidConstraint.Attachment0 = _Attachment
-        _RigidConstraint.Attachment1 = _Character.PrimaryPart.RootAttachment
-        _RigidConstraint.Parent = _Character
-        return true
-    end
-    
-    local function u119()
-        u52('state_manager', function(p117)
-            local v118 = table.clone(p117)
-            v118.states = {}
-            v118.is_sitting = false
-            return v118
-        end)
-    end
-    
-    local function u123(p120)
-        u52('state_manager', function(p121)
-            local v122 = table.clone(p121)
-            v122.states = {{id = p120}}
-            v122.is_sitting = true
-            return v122
-        end)
-    end
-    
-    local function u129(p124)
-        local u125 = u44[p124]
-        if u125 and u125.model then
-            u52('pet_state_managers', function(p126)
-                local v128 = u85(p126, function(p127) return p127.char == u125.model end)
-                if not v128 then return p126 end
-                table.remove(p126, v128)
-                return p126
-            end)
-        end
-    end
-    
-    local function u138(p130)
-        local v131 = u44[p130]
-        if v131 and v131.model then
-            if u47 then u47:Stop(); u47:Destroy() end
-            local _SourceAttachment = v131.model:FindFirstChild('SourceAttachment', true)
-            if _SourceAttachment then _SourceAttachment:Destroy() end
-            u101(p130)
-            u119()
-            v131.model:ScaleTo(1)
-            u46 = nil
-        end
-    end
-    
-    local function u148(p139, p140, p141)
-        local v142 = u44[p139]
-        if v142 and v142.model then
-            local v143 = _LocalPlayer
-            if v143.Character and v143.Character.PrimaryPart then
-                u46 = p139
-                u110(p139, p141)
-                u123(p140)
-                v142.model:ScaleTo(2)
-                u116(v142.model)
-                u47 = v143.Character.Humanoid.Animator:LoadAnimation(_AnimationManager.get_track('PlayerRidingPet'))
-                v143.Character.Humanoid.Sit = true
-                u47:Play()
-            end
-        end
-    end
-    
-    local function u150(p149) u148(p149, 'PlayerFlyingPet', 'PetBeingFlown') end
-    local function u152(p151) u148(p151, 'PlayerRidingPet', 'PetBeingRidden') end
-    
-    local function u155(p153)
-        local v154 = u44[p153.unique]
-        if v154 and v154.model then
-            u138(p153.unique)
-            u94(p153.unique)
-            u129(p153.unique)
-            if v154.model then v154.model:Destroy() end
-            v154.model = nil
-            u45 = nil
-        end
-    end
-    
-    local function u158(p156)
-        if u45 then u155(u45) end
-        local v157 = u56(p156.kind):Clone()
-        v157.Parent = workspace
-        u44[p156.unique].model = v157
-        if p156.properties.neon or p156.properties.mega_neon then
-            u72(v157, _KindDB[p156.kind])
-        end
-        u45 = p156
-        u75({
-            char = v157,
-            mega_neon = p156.properties.mega_neon,
-            neon = p156.properties.neon,
-            player = _LocalPlayer,
-            entity_controller = _LocalPlayer,
-            controller = _LocalPlayer,
-            rp_name = p156.properties.rp_name or '',
-            pet_trick_level = p156.properties.pet_trick_level,
-            pet_unique = p156.unique,
-            pet_id = p156.id,
-            location = {full_destination_id = 'housing', destination_id = 'housing', house_owner = _LocalPlayer},
-            pet_progression = {friendship_level = p156.properties.friendship_level, age = p156.properties.age, percentage = 0},
-            are_colors_sealed = false,
-            is_pet = true,
-        })
-        u78({
-            char = v157,
-            player = _LocalPlayer,
-            store_key = 'pet_state_managers',
-            is_sitting = false,
-            chars_connected_to_me = {},
-            states = {},
-        })
-    end
-    
-    local _get = _RouterClient.get
-    
-    local function v161(p160)
-        return {InvokeServer = function(_, ...) return p160(...) end}
-    end
-    
-    local u164 = v161(function(p162)
-        local v163 = u44[p162]
-        if v163 then u158(v163.data); return true, {action = 'equip', is_server = true} end
+        updateTimer = nil
     end)
+end
+
+local function updateBotOffer()
+    if not mockState.active or not mockState.trade then return
+    if not pendingUpdate then return end
     
-    local u167 = v161(function(p165)
-        local v166 = u44[p165]
-        if v166 then u155(v166.data); return true, {action = 'unequip', is_server = true} end
-    end)
-    
-    local u169 = v161(function(p168) u152(p168.pet_unique) end)
-    local u171 = v161(function(p170) u150(p170.pet_unique) end)
-    local u172 = v161(function() u138(u46) end)
-    
-    local u174 = (function(p173)
-        return {FireServer = function(_, ...) return p173(...) end}
-    end)(function() u138(u46) end)
-    
-    function _RouterClient.get(p175)
-        if p175 == 'ToolAPI/Equip' then return u164
-        elseif p175 == 'ToolAPI/Unequip' then return u167
-        elseif p175 == 'AdoptAPI/RidePet' then return u169
-        elseif p175 == 'AdoptAPI/FlyPet' then return u171
-        elseif p175 == 'AdoptAPI/ExitSeatStatesYield' then return u172
-        elseif p175 == 'AdoptAPI/ExitSeatStates' then return u174
-        else return _get(p175) end
-    end
-    
-    local _InventoryDB = require(game.ReplicatedStorage.Fsys).load('InventoryDB')
-    
-    function GetPetIdByName(petName)
-        for id, data in pairs(_InventoryDB.pets) do
-            if data.name and data.name:lower() == petName:lower() then return id end
-            if id:lower() == petName:lower() then return id end
+    local myTotal = 0
+    for _, item in ipairs(mockState.trade.sender_offer.items) do
+        if item.category == 'pets' then
+            local petInfo = InventoryDB.pets[item.kind]
+            if petInfo and petInfo.name then
+                local props = item.properties or {}
+                local value = getPetValueByName(petInfo.name, props)
+                myTotal = myTotal + value
+            end
         end
-        return nil
     end
+    mockState.myTotalValue = myTotal
     
-    -- ═══════════════════════════════════════════════════════════════
-    -- ВСТРОЕННЫЕ ЦЕНЫ (FR, NFR, MFR)
-    -- ═══════════════════════════════════════════════════════════════
-    
-    logGUI:log("📊 Использую встроенные цены", Color3.fromRGB(255, 255, 0))
-    
-    local PetValues = {
-        ["Bat Dragon"] = {fr = 683.6, nfr = 1622.7, mfr = 5538.2},
-        ["Shadow Dragon"] = {fr = 560.8, nfr = 1124.5, mfr = 3099},
-        ["Giraffe"] = {fr = 361.4, nfr = 739.9, mfr = 2553.1},
-        ["Frost Dragon"] = {fr = 249.1, nfr = 452.2, mfr = 1151},
-        ["Owl"] = {fr = 198.5, nfr = 496.1, mfr = 1638.6},
-        ["Parrot"] = {fr = 157.4, nfr = 325.7, mfr = 904.2},
-        ["Crow"] = {fr = 139.9, nfr = 322.8, mfr = 1123.4},
-        ["Balloon Unicorn"] = {fr = 136.9, nfr = 440.4, mfr = 1636.7},
-        ["Giant Panda"] = {fr = 129.5, nfr = 513.1, mfr = 2008.3},
-        ["African Wild Dog"] = {fr = 127.7, nfr = 429.2, mfr = 1529},
-        ["Cryptid"] = {fr = 109.8, nfr = 256.6, mfr = 907.9},
-        ["Haetae"] = {fr = 96.7, nfr = 321.5, mfr = 1287.2},
-        ["Orchid Butterfly"] = {fr = 92.2, nfr = 290, mfr = 1142.8},
-        ["Evil Unicorn"] = {fr = 90.4, nfr = 167.9, mfr = 572},
-        ["Blazing Lion"] = {fr = 84.6, nfr = 329.9, mfr = 1222.4},
-        ["Hedgehog"] = {fr = 54.6, nfr = 184.7, mfr = 741.3},
-        ["Diamond Butterfly"] = {fr = 52, nfr = 159.9, mfr = 636.4},
-        ["Dalmatian"] = {fr = 47.9, nfr = 147.5, mfr = 592.1},
-        ["Jekyll Hydra"] = {fr = 42.4, nfr = 125.5, mfr = 487.6},
-        ["Arctic Reindeer"] = {fr = 38.3, nfr = 82.5, mfr = 263.6},
-        ["Undead Jousting Horse"] = {fr = 36.5, nfr = 112.4, mfr = 414.3},
-        ["Mini Pig"] = {fr = 35.4, nfr = 103.5, mfr = 374.4},
-        ["Hot Doggo"] = {fr = 32.3, nfr = 104.7, mfr = 390.9},
-        ["Goose"] = {fr = 30.3, nfr = 80.3, mfr = 258.5},
-        ["Mermicorn"] = {fr = 29.9, nfr = 84.7, mfr = 303.1},
-        ["Pelican"] = {fr = 29.5, nfr = 118.4, mfr = 475},
-        ["Cow"] = {fr = 29.5, nfr = 62.7, mfr = 184.3},
-        ["Strawberry Shortcake Bat Dragon"] = {fr = 26.8, nfr = 72.6, mfr = 279},
-        ["Chocolate Chip Bat Dragon"] = {fr = 24.1, nfr = 71.8, mfr = 285.5},
-        ["Peppermint Penguin"] = {fr = 22.9, nfr = 85.8, mfr = 329.2},
-        ["Sugar Glider"] = {fr = 22.8, nfr = 67.5, mfr = 247.1},
-        ["Cabbit"] = {fr = 22.4, nfr = 50.7, mfr = 196.9},
-        ["Turtle"] = {fr = 21.4, nfr = 44.6, mfr = 109.2},
-        ["Monkey King"] = {fr = 21.3, nfr = 84.9, mfr = 339.7},
-    }
-    
-    logGUI:log("✅ Цены готовы (" .. #PetValues .. " петов)", Color3.fromRGB(0, 255, 0))
-    
-    -- ═══════════════════════════════════════════════════════════════
-    -- СОБИРАЕМ ДОСТУПНЫХ ПИТОМЦЕВ
-    -- ═══════════════════════════════════════════════════════════════
-    
-    local availablePets = {}
-    
-    for name, data in pairs(PetValues) do
-        local id = GetPetIdByName(name)
-        if id then
-            table.insert(availablePets, {
-                id = id,
-                name = name,
-                fr = data.fr,
-                nfr = data.nfr,
-                mfr = data.mfr
-            })
-            logGUI:log("✅ " .. name, Color3.fromRGB(0, 255, 0))
-        else
-            logGUI:log("❌ " .. name .. " - не найден в базе", Color3.fromRGB(255, 0, 0))
+    if myTotal == 0 then
+        mockState.trade.recipient_offer.items = {}
+        mockState.botSelectedPets = {}
+        mockState.botTotalValue = 0
+        TradeApp:_overwrite_local_trade_state(mockState.trade)
+        if valueDisplay then
+            valueDisplay:update(0, 0, "✅ Добавь петов в свой слот")
         end
-        task.wait(0.02)
-    end
-    
-    if #availablePets == 0 then
-        logGUI:log("❌ Нет петов для спавна!", Color3.fromRGB(255, 0, 0))
+        pendingUpdate = false
         return
     end
     
-    logGUI:log("📋 Доступно: " .. #availablePets, Color3.fromRGB(0, 255, 255))
+    local selected, total = selectPetsForBot(myTotal)
+    mockState.botSelectedPets = selected
+    mockState.botTotalValue = total
     
-    -- ═══════════════════════════════════════════════════════════════
-    -- СПАВН 10-15 ПИТОМЦЕВ НА СУММУ 4500-6000
-    -- ═══════════════════════════════════════════════════════════════
-    
-    local petCount = math.random(10, 15)
-    logGUI:log("🎯 Спавн " .. petCount .. " петов", Color3.fromRGB(255, 255, 0))
-    
-    local targetMin = 4500
-    local targetMax = 6000
-    local currentValue = 0
-    local spawnedPets = {}
-    local attempts = 0
-    local maxAttempts = 200
-    
-    -- Перемешиваем
-    for i = #availablePets, 2, -1 do
-        local j = math.random(1, i)
-        availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
+    local botItems = {}
+    for _, pet in ipairs(selected) do
+        table.insert(botItems, {
+            category = 'pets',
+            kind = pet.id,
+            unique = pet.unique .. '_bot_' .. tick() .. '_' .. math.random(1000, 9999),
+            properties = table.clone(pet.props),
+        })
     end
     
-    while #spawnedPets < petCount and attempts < maxAttempts do
-        attempts = attempts + 1
-        local randomIndex = math.random(1, #availablePets)
-        local pet = availablePets[randomIndex]
-        
-        -- Выбираем тип: если MFR цена < 100, то используем MFR
-        -- Иначе рандомно FR/NFR/MFR
-        local variantType
-        local price
-        
-        if pet.mfr < 100 then
-            -- Если MFR меньше 100, используем MFR
-            variantType = "MFR"
-            price = pet.mfr
+    mockState.trade.recipient_offer.items = botItems
+    mockState.trade.sender_offer.negotiated = false
+    mockState.trade.recipient_offer.negotiated = false
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    
+    TradeApp:_overwrite_local_trade_state(mockState.trade)
+    
+    if valueDisplay then
+        local status = "✅ Подобрано " .. #selected .. " петов"
+        valueDisplay:update(myTotal, total, status)
+    end
+    
+    print('📊 Моя сумма: ' .. string.format('%.2f', myTotal) .. ' | Бот: ' .. string.format('%.2f', total) .. ' (' .. #selected .. ' петов)')
+    pendingUpdate = false
+end
+
+-- ============================================
+-- ХУК НА ДОБАВЛЕНИЕ/УДАЛЕНИЕ ПЕТОВ
+-- ============================================
+local function hookTradeFunctions()
+    local original_add_item = TradeApp._add_item_to_my_offer
+    local original_remove_item = TradeApp._remove_item_from_my_offer
+    
+    TradeApp._add_item_to_my_offer = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.isAddingItem then return end
+            mockState.isAddingItem = true
+            
+            local pickedItem = nil
+            pcall(function()
+                pickedItem = BackpackApp:pick_item({ 
+                    keep_cached_scroll_positions_on_open = true, 
+                    allow_callback = function() return true end 
+                })
+            end)
+            
+            if pickedItem then
+                local alreadyInTrade = false
+                for _, item in ipairs(mockState.trade.sender_offer.items) do 
+                    if item.unique == pickedItem.unique then 
+                        alreadyInTrade = true 
+                        break 
+                    end 
+                end
+                if not alreadyInTrade then
+                    table.insert(mockState.trade.sender_offer.items, pickedItem)
+                    mockState.trade.sender_offer.negotiated = false
+                    mockState.trade.recipient_offer.negotiated = false
+                    if mockState.trade.current_stage == 'confirmation' then
+                        mockState.trade.current_stage = 'negotiation'
+                        mockState.trade.sender_offer.confirmed = false
+                        mockState.trade.recipient_offer.confirmed = false
+                    end
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                    self:_lock_trade_for_appropriate_time()
+                    
+                    pendingUpdate = true
+                    scheduleBotUpdate()
+                end
+            end
+            mockState.isAddingItem = false
         else
-            -- Иначе рандомно выбираем
-            local variants = {
-                {name = "FR", price = pet.fr},
-                {name = "NFR", price = pet.nfr},
-                {name = "MFR", price = pet.mfr},
-            }
-            local chosen = variants[math.random(1, 3)]
-            variantType = chosen.name
-            price = chosen.price
+            return original_add_item(self)
+        end
+    end
+    
+    TradeApp._remove_item_from_my_offer = function(self, item)
+        if mockState.active and mockState.trade then
+            for i, v in ipairs(mockState.trade.sender_offer.items) do
+                if v.unique == item.unique then
+                    table.remove(mockState.trade.sender_offer.items, i)
+                    mockState.trade.sender_offer.negotiated = false
+                    mockState.trade.recipient_offer.negotiated = false
+                    if mockState.trade.current_stage == 'confirmation' then
+                        mockState.trade.current_stage = 'negotiation'
+                        mockState.trade.recipient_offer.negotiated = false
+                        mockState.trade.sender_offer.confirmed = false
+                        mockState.trade.recipient_offer.confirmed = false
+                    end
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                    self:_lock_trade_for_appropriate_time()
+                    
+                    pendingUpdate = true
+                    scheduleBotUpdate()
+                    break
+                end
+            end
+        else
+            return original_remove_item(self, item)
+        end
+    end
+    
+    local original_change = TradeApp._change_local_trade_state
+    TradeApp._change_local_trade_state = function(self, changes)
+        local result = original_change(self, changes)
+        if mockState.active and mockState.trade then
+            if changes and changes.sender_offer and changes.sender_offer.items then
+                pendingUpdate = true
+                scheduleBotUpdate()
+            end
+        end
+        return result
+    end
+end
+
+hookTradeFunctions()
+
+local function storeOriginalFunctions()
+    local funcs = {
+        '_get_local_trade_state', '_overwrite_local_trade_state',
+        '_get_my_offer', '_get_partner_offer', '_get_my_player', '_get_partner',
+        '_get_current_trade_stage', '_on_accept_pressed', '_on_confirm_pressed',
+        '_on_unaccept_pressed', '_decline_trade', '_lock_trade_for_appropriate_time', '_get_lock_time',
+        'refresh_all', '_evaluate_trade_fairness',
+    }
+    for _, funcName in ipairs(funcs) do
+        if TradeApp[funcName] then
+            mockState.originalFunctions[funcName] = TradeApp[funcName]
+        end
+    end
+end
+
+storeOriginalFunctions()
+
+local function createMockPartner(player)
+    local partnerName = player and player.Name or CONFIG.PARTNER_NAME
+    local partnerDisplayName = player and player.DisplayName or CONFIG.PARTNER_NAME
+    local partnerUserId = player and player.UserId or CONFIG.PARTNER_USER_ID
+    
+    local mockPlayer = {
+        Name = partnerName,
+        DisplayName = partnerDisplayName,
+        UserId = partnerUserId,
+        ClassName = 'Player',
+        Character = nil,
+        Team = nil,
+        TeamColor = BrickColor.new('White'),
+        Neutral = true,
+        AccountAge = 365,
+        MembershipType = Enum.MembershipType.None,
+        CharacterAdded = Instance.new('BindableEvent'),
+        CharacterRemoving = Instance.new('BindableEvent'),
+    }
+    
+    return setmetatable(mockPlayer, {
+        __index = function(t, k)
+            if k == 'Parent' then return Players end
+            if k == 'IsA' then 
+                return function(self, className) 
+                    return className == 'Player' or className == 'Instance'
+                end 
+            end
+            if k == 'GetAttribute' then
+                return function(self, attr)
+                    return nil
+                end
+            end
+            if k == 'FindFirstChild' then
+                return function(self, name)
+                    return nil
+                end
+            end
+            if k == 'WaitForChild' then
+                return function(self, name, timeout)
+                    return nil
+                end
+            end
+            return rawget(t, k)
+        end,
+        __tostring = function() return partnerName end,
+        __eq = function(a, b)
+            if type(b) == 'table' then
+                return rawget(a, 'UserId') == rawget(b, 'UserId')
+            end
+            return false
+        end,
+    })
+end
+
+local mockPartner = createMockPartner()
+
+local function createMockTrade(realPlayer)
+    local partner = realPlayer and createMockPartner(realPlayer) or mockPartner
+    local hasLicense = true
+    if realPlayer then hasLicense = checkTradeLicense(realPlayer) end
+    return {
+        trade_id = 'MOCK_' .. tick(),
+        sender = LocalPlayer,
+        recipient = partner,
+        sender_offer = { items = {}, player_name = LocalPlayer.Name, negotiated = false, confirmed = false },
+        recipient_offer = { items = {}, player_name = CONFIG.PARTNER_NAME, negotiated = false, confirmed = false },
+        current_stage = 'negotiation',
+        offer_version = 1,
+        sender_has_trade_license = true,
+        recipient_has_trade_license = hasLicense,
+        busy_indicators = {},
+        subscriber_count = CONFIG.SPECTATOR_COUNT,
+    }
+end
+
+local function createTradeHistoryRecord(trade)
+    return {
+        trade_id = trade.trade_id,
+        timestamp = os.time(),
+        sender_user_id = LocalPlayer.UserId,
+        sender_name = LocalPlayer.Name,
+        sender_items = TableUtil.deep_copy(trade.sender_offer.items),
+        recipient_user_id = trade.recipient.UserId,
+        recipient_name = CONFIG.PARTNER_NAME,
+        recipient_items = TableUtil.deep_copy(trade.recipient_offer.items),
+        reported = false,
+        reverted = nil,
+    }
+end
+
+local function appendToTradeHistory(tradeRecord)
+    if mockState.addedTradeIds[tradeRecord.trade_id] then return end
+    mockState.addedTradeIds[tradeRecord.trade_id] = true
+    table.insert(mockState.tradeHistory, tradeRecord)
+end
+
+local function hookTradeHistoryFunctions()
+    if not TradeHistoryApp then return end
+
+    TradeHistoryApp._get_trade_history = function(self, useCache)
+        local history = mockState.originalGetTradeHistory(self, useCache)
+        local combined, seenIds = {}, {}
+        if history then
+            for _, realTrade in ipairs(history) do
+                if not seenIds[realTrade.trade_id] then
+                    table.insert(combined, realTrade)
+                    seenIds[realTrade.trade_id] = true
+                end
+            end
+        end
+        for _, mockTrade in ipairs(mockState.tradeHistory) do
+            if not seenIds[mockTrade.trade_id] then
+                table.insert(combined, mockTrade)
+                seenIds[mockTrade.trade_id] = true
+            end
+        end
+        self.cached_trade_history = combined
+        return combined
+    end
+
+    TradeHistoryApp.report_scam = function(self, tradeData)
+        if tradeData and string.find(tostring(tradeData.trade_id), 'MOCK_') then
+            self.UIManager.set_app_visibility(self.ClassName, false)
+            local response1 = self.UIManager.apps.DialogApp:dialog({
+                dialog_type = 'ReportScamDialog',
+                suspect_name = CONFIG.PARTNER_NAME,
+                placeholder_text = 'What happened? (Optional)',
+                max_length = 500,
+                use_utf8_length = true,
+                left = 'Cancel',
+                right = 'Report',
+            })
+            self.UIManager.set_app_visibility(self.ClassName, true)
+            if response1 == 'Report' then
+                for _, record in ipairs(mockState.tradeHistory) do
+                    if record.trade_id == tradeData.trade_id then
+                        record.reported = true
+                        break
+                    end
+                end
+                self.UIManager.apps.DialogApp:dialog({ text = 'Report submitted for review.', button = 'Close', yields = false })
+            end
+            if self.instance.Frame.Visible then self:_refresh() else self:_clear_scrolling_frame() end
+            return
+        end
+        return mockState.originalReportScam(self, tradeData)
+    end
+end
+
+hookTradeHistoryFunctions()
+
+local function update_busy_indicators(args1)
+    local v144 = mockState.trade.busy_indicators
+    local v145 = TradeApp._get_partner().UserId
+    v144[tostring(v145)] = args1
+    TradeApp.partner_negotiation_offer_pane:display_busy(v144[tostring(v145)])
+end
+
+local function addPetToPartnerOffer(petName, flags)
+    if not mockState.active or not mockState.trade then return false, 'No active mock trade' end
+    if mockState.trade.current_stage == 'confirmation' then return false, 'Cannot modify during confirmation' end
+    if #mockState.trade.recipient_offer.items >= 18 then return end
+
+    update_busy_indicators({ ['picking'] = true })
+    task.wait(CONFIG.ADD_PET_REQUEST_DELAY)
+
+    for category_name, category_table in pairs(InventoryDB) do
+        if category_name == 'pets' then
+            for id, item in pairs(category_table) do
+                if item.name == petName then
+                    local petItem = {
+                        category = 'pets',
+                        kind = id,
+                        unique = HttpService:GenerateGUID(),
+                        properties = { flyable = flags.F, rideable = flags.R, neon = flags.N, mega_neon = flags.M, age = 1 },
+                    }
+                    table.insert(mockState.trade.recipient_offer.items, petItem)
+                    mockState.trade.sender_offer.negotiated = false
+                    mockState.trade.recipient_offer.negotiated = false
+                    if mockState.trade.current_stage == 'confirmation' then
+                        mockState.trade.current_stage = 'negotiation'
+                        mockState.trade.sender_offer.confirmed = false
+                        mockState.trade.recipient_offer.confirmed = false
+                    end
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    TradeApp:_overwrite_local_trade_state(mockState.trade)
+                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                    if TradeApp._render_message_in_trade_chat then
+                        TradeApp:_render_message_in_trade_chat(nil, string.format('%s added %s.', CONFIG.PARTNER_NAME, petName), true)
+                    end
+                    update_busy_indicators({ ['picking'] = false })
+                    return true, 'Pet added successfully'
+                end
+            end
+        end
+    end
+    return false, 'Pet not found'
+end
+
+local function removeLatestPetFromPartnerOffer()
+    if not mockState.active or not mockState.trade then return false, 'No active mock trade' end
+    if mockState.trade.current_stage == 'confirmation' then return false, 'Cannot modify during confirmation' end
+    local partnerItems = mockState.trade.recipient_offer.items
+    if #partnerItems == 0 then return false, 'No items to remove' end
+
+    local removedItem = table.remove(partnerItems)
+    mockState.trade.sender_offer.negotiated = false
+    mockState.trade.recipient_offer.negotiated = false
+    if mockState.trade.current_stage == 'confirmation' then
+        mockState.trade.current_stage = 'negotiation'
+        mockState.trade.sender_offer.confirmed = false
+        mockState.trade.recipient_offer.confirmed = false
+    end
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    TradeApp:_overwrite_local_trade_state(mockState.trade)
+    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+    if TradeApp._render_message_in_trade_chat then
+        local itemName = 'item'
+        if removedItem.category == 'pets' then
+            for _, category_table in pairs(InventoryDB) do
+                for id, item in pairs(category_table) do
+                    if id == removedItem.kind then itemName = item.name break end
+                end
+            end
+        end
+        TradeApp:_render_message_in_trade_chat(nil, string.format('%s removed %s.', CONFIG.PARTNER_NAME, itemName), true)
+    end
+    return true, 'Pet removed successfully'
+end
+
+local function generateRandomPetProperties()
+    local petTypes = { 'FR', 'NFR' }
+    local chosenType = petTypes[math.random(1, #petTypes)]
+    local properties = { F = false, R = false, N = false, M = false }
+    if chosenType == 'FR' then
+        properties.F, properties.R = true, true
+    elseif chosenType == 'NFR' then
+        properties.F, properties.R, properties.N = true, true, true
+    end
+    return properties
+end
+
+local function getPropertiesString(properties)
+    local props = {}
+    if properties.M then table.insert(props, 'Mega') end
+    if properties.N then table.insert(props, 'Neon') end
+    if properties.F then table.insert(props, 'Fly') end
+    if properties.R then table.insert(props, 'Ride') end
+    if #props > 0 then return ' (' .. table.concat(props, ' ') .. ')' end
+    return ''
+end
+
+local function sendTradeChatMessage(message)
+    if not mockState.active or not mockState.trade then return false end
+    if TradeApp and TradeApp._render_message_in_trade_chat then
+        TradeApp:_render_message_in_trade_chat(nil, string.format('%s: %s', CONFIG.PARTNER_NAME, message), true)
+        return true
+    end
+    return false
+end
+
+local function removePartnerPetsVisually()
+    if not mockState.active or not mockState.trade then return false end
+    local partnerItems = mockState.trade.recipient_offer.items
+    if #partnerItems == 0 then return false end
+    mockState.partnerPetsBeforeConfirm = TableUtil.deep_copy(partnerItems)
+    mockState.trade.recipient_offer.items = {}
+    mockState.trade.offer_version = mockState.trade.offer_version + 1
+    TradeApp:_overwrite_local_trade_state(mockState.trade)
+    return true
+end
+
+local showBlockedTradeRequests
+
+local function makePartnerAccept()
+    if mockState.active and mockState.trade then
+        if mockState.trade.current_stage == 'negotiation' then
+            if not mockState.trade.recipient_offer.negotiated then
+                mockState.trade.recipient_offer.negotiated = true
+                if mockState.trade.sender_offer.negotiated then
+                    mockState.trade.current_stage = 'confirmation'
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    TradeApp:_overwrite_local_trade_state(mockState.trade)
+                    if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                else
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    TradeApp:_overwrite_local_trade_state(mockState.trade)
+                end
+            end
+        elseif mockState.trade.current_stage == 'confirmation' then
+            if not mockState.trade.recipient_offer.confirmed then
+                mockState.trade.recipient_offer.confirmed = true
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+                if mockState.trade.sender_offer.confirmed and not mockState.tradeCompleting then
+                    mockState.tradeCompleting = true
+                    if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
+                    task.wait(3)
+                    local historyRecord = createTradeHistoryRecord(mockState.trade)
+                    appendToTradeHistory(historyRecord)
+                    mockState.active = false
+                    mockState.trade = nil
+                    mockState.tradeCompleting = false
+                    mockState.scamWarningShown = true
+                    mockState.canShowTradeRequest = true
+                    mockState.tradeRequestBlocked = false
+                    UIManager.set_app_visibility('TradeApp', false)
+                    task.wait(0.1)
+                    showBlockedTradeRequests()
+                    if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
+                    if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
+                end
+            end
+        end
+    end
+end
+
+local function partnerAutoAction()
+    if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
+    mockState.partnerActionPending = true
+
+    while TradeApp.lock_countdown and TradeApp.lock_countdown.is_going and TradeApp.lock_countdown:is_going() do
+        task.wait(0.1)
+    end
+
+    if mockState.trade.current_stage == 'negotiation' then
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.negotiated = true
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.current_stage = 'confirmation'
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+                if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+            else
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                TradeApp:_overwrite_local_trade_state(mockState.trade)
+            end
+        end
+    elseif mockState.trade.current_stage == 'confirmation' then
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)
+        if mockState.active and mockState.trade then
+            mockState.trade.recipient_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            TradeApp:_overwrite_local_trade_state(mockState.trade)
+        end
+    end
+    mockState.partnerActionPending = false
+end
+
+local function hookMainTradeFunctions()
+    TradeApp._get_local_trade_state = function(self)
+        if mockState.active and mockState.trade then return TableUtil.deep_copy(mockState.trade) end
+        return mockState.originalFunctions._get_local_trade_state(self)
+    end
+
+    TradeApp._overwrite_local_trade_state = function(self, newState)
+        if mockState.active then
+            if newState then
+                mockState.trade = newState
+                self.local_trade_state = newState
+                if mockState.trade then mockState.trade.subscriber_count = CONFIG.SPECTATOR_COUNT end
+                if self._on_local_trade_state_changed then self:_on_local_trade_state_changed(newState, newState) end
+                if self.refresh_all then self:refresh_all() end
+            else
+                mockState.trade = nil
+                mockState.active = false
+                mockState.scamWarningShown = false
+                mockState.canShowTradeRequest = true
+                mockState.tradeRequestBlocked = false
+                self.local_trade_state = nil
+                showBlockedTradeRequests()
+                if valueDisplay then valueDisplay:hide() end
+                if updateTimer then updateTimer:Cancel(); updateTimer = nil end
+                pendingUpdate = false
+            end
+        else
+            return mockState.originalFunctions._overwrite_local_trade_state(self, newState)
+        end
+    end
+
+    TradeApp._get_my_offer = function(self)
+        local state = self:_get_local_trade_state()
+        if mockState.active and state then
+            if LocalPlayer == state.sender then return state.sender_offer, 'sender_offer' else return state.recipient_offer, 'recipient_offer' end
+        end
+        return mockState.originalFunctions._get_my_offer(self)
+    end
+
+    TradeApp._get_partner_offer = function(self)
+        local state = self:_get_local_trade_state()
+        if mockState.active and state then
+            if LocalPlayer == state.sender then return state.recipient_offer, 'recipient_offer' else return state.sender_offer, 'sender_offer' end
+        end
+        return mockState.originalFunctions._get_partner_offer(self)
+    end
+
+    TradeApp._get_my_player = function(self)
+        if mockState.active and mockState.trade then return LocalPlayer end
+        return mockState.originalFunctions._get_my_player(self)
+    end
+
+    TradeApp._get_partner = function(self)
+        if mockState.active and mockState.trade then return mockState.trade.recipient end
+        return mockState.originalFunctions._get_partner(self)
+    end
+
+    TradeApp._get_current_trade_stage = function(self)
+        if mockState.active and mockState.trade then return mockState.trade.current_stage end
+        return mockState.originalFunctions._get_current_trade_stage(self)
+    end
+
+    TradeApp._change_local_trade_state = function(self, changes)
+        if mockState.active then
+            local function recursiveMerge(target, source)
+                for k, v in pairs(source) do
+                    if type(v) == 'table' and target[k] and type(target[k]) == 'table' then recursiveMerge(target[k], v) else target[k] = v end
+                end
+                return target
+            end
+            self:_overwrite_local_trade_state(recursiveMerge(self:_get_local_trade_state(), changes))
+        else
+            return mockState.originalFunctions._change_local_trade_state(self, changes)
+        end
+    end
+
+    TradeApp._get_lock_time = function(self)
+        if mockState.active and mockState.trade then
+            if self:_get_current_trade_stage() == 'negotiation' then return CONFIG.NEGOTIATION_LOCK
+            else return math.clamp(CONFIG.CONFIRMATION_LOCK_PER_ITEM * (#mockState.trade.sender_offer.items + #mockState.trade.recipient_offer.items), 5, 15) end
+        end
+        return mockState.originalFunctions._get_lock_time(self)
+    end
+
+    TradeApp._lock_trade_for_appropriate_time = function(self)
+        if mockState.active then
+            if self.lock_countdown then self.lock_countdown:stop() self.lock_countdown:set_duration(self:_get_lock_time()) self.lock_countdown:start() end
+        else
+            return mockState.originalFunctions._lock_trade_for_appropriate_time(self)
+        end
+    end
+
+    TradeApp._on_accept_pressed = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.trade.sender_offer.negotiated then
+                mockState.trade.sender_offer.negotiated = false
+                mockState.trade.offer_version = mockState.trade.offer_version + 1
+                self:_overwrite_local_trade_state(mockState.trade)
+            else
+                mockState.trade.sender_offer.negotiated = true
+                if mockState.trade.recipient_offer.negotiated then
+                    mockState.trade.current_stage = 'confirmation'
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                    if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
+                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
+                else
+                    mockState.trade.offer_version = mockState.trade.offer_version + 1
+                    self:_overwrite_local_trade_state(mockState.trade)
+                end
+            end
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.negotiated and mockState.trade.sender_offer.negotiated then task.spawn(partnerAutoAction) end
+        else
+            return mockState.originalFunctions._on_accept_pressed(self)
+        end
+    end
+
+    TradeApp._on_confirm_pressed = function(self)
+        if mockState.active and mockState.trade then
+            if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
+            
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
+                task.spawn(partnerAutoAction)
+            end
+            
+            while not mockState.trade.recipient_offer.confirmed do
+                task.wait(0.1)
+            end
+            
+            mockState.trade.sender_offer.confirmed = true
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            self:_overwrite_local_trade_state(mockState.trade)
+            
+            if mockState.trade.sender_offer.confirmed and mockState.trade.recipient_offer.confirmed and not mockState.tradeCompleting then
+                mockState.tradeCompleting = true
+                if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
+                task.wait(3)
+                local historyRecord = createTradeHistoryRecord(mockState.trade)
+                appendToTradeHistory(historyRecord)
+                mockState.active = false
+                mockState.trade = nil
+                mockState.tradeCompleting = false
+                mockState.scamWarningShown = true
+                mockState.canShowTradeRequest = true
+                mockState.tradeRequestBlocked = false
+                UIManager.set_app_visibility('TradeApp', false)
+                task.wait(0.1)
+                showBlockedTradeRequests()
+                if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
+                if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
+                if valueDisplay then valueDisplay:hide() end
+                if updateTimer then updateTimer:Cancel(); updateTimer = nil end
+                pendingUpdate = false
+            end
+        else
+            return mockState.originalFunctions._on_confirm_pressed(self)
+        end
+    end
+
+    TradeApp._on_unaccept_pressed = function(self)
+        if mockState.active and mockState.trade then
+            mockState.trade.sender_offer.negotiated = false
+            if mockState.trade.current_stage == 'confirmation' then
+                mockState.trade.current_stage = 'negotiation'
+                mockState.trade.recipient_offer.negotiated = false
+                mockState.trade.sender_offer.confirmed = false
+                mockState.trade.recipient_offer.confirmed = false
+            end
+            mockState.trade.offer_version = mockState.trade.offer_version + 1
+            self:_overwrite_local_trade_state(mockState.trade)
+        else
+            return mockState.originalFunctions._on_unaccept_pressed(self)
+        end
+    end
+
+    TradeApp._decline_trade = function(self, silent)
+        if mockState.active then
+            if self.lock_countdown then self.lock_countdown:stop() end
+            mockState.active = false
+            mockState.trade = nil
+            mockState.isAddingItem = false
+            mockState.partnerActionPending = false
+            mockState.tradeCompleting = false
+            mockState.scamWarningShown = false
+            mockState.canShowTradeRequest = true
+            mockState.tradeRequestBlocked = false
+            self:_overwrite_local_trade_state(nil)
+            UIManager.set_app_visibility('TradeApp', false)
+            if BackpackApp.reset_hidden_item_tag then BackpackApp:reset_hidden_item_tag('TradeApp') end
+            showBlockedTradeRequests()
+            if valueDisplay then valueDisplay:hide() end
+            if updateTimer then updateTimer:Cancel(); updateTimer = nil end
+            pendingUpdate = false
+        else
+            return mockState.originalFunctions._decline_trade(self, silent)
+        end
+    end
+
+    TradeApp._evaluate_trade_fairness = function(self)
+        if mockState.active and mockState.trade and not mockState.scamWarningShown then
+            local myItems = #mockState.trade.sender_offer.items
+            local partnerItems = #mockState.trade.recipient_offer.items
+            if myItems > 0 and partnerItems == 0 then
+                mockState.scamWarningShown = true
+                if DialogApp then
+                    DialogApp:dialog({ text = 'This trade seems unbalanced. Be careful - you could be getting scammed.', button = 'Next', yields = false })
+                    DialogApp:dialog({ text = 'Any items lost to scams WILL NOT be returned. Be sure before you accept!', button = 'I understand', yields = false })
+                end
+            end
+        else
+            return mockState.originalFunctions._evaluate_trade_fairness(self)
+        end
+    end
+end
+
+hookMainTradeFunctions()
+
+local function startMockTradeDirectly()
+    if mockState.active then return end
+    
+    local success, err = pcall(function()
+        mockState.active = false
+        mockState.trade = nil
+        mockState.isAddingItem = false
+        mockState.partnerActionPending = false
+        mockState.tradeCompleting = false
+        mockState.scamWarningShown = true
+        mockState.tradeRequestBlocked = true
+        mockState.blockedTradeRequests = {}
+        mockState.pendingTradeRequest = false
+        mockState.botSelectedPets = {}
+        mockState.botTotalValue = 0
+        mockState.myTotalValue = 0
+        pendingUpdate = false
+        if updateTimer then updateTimer:Cancel(); updateTimer = nil end
+        
+        mockState.trade = createMockTrade()
+        mockState.active = true
+        
+        pcall(function() UIManager.set_app_visibility('TradeApp', false) end)
+        task.wait(0.05)
+        
+        pcall(function() TradeApp:_overwrite_local_trade_state(mockState.trade) end)
+        task.wait(0.05)
+        
+        pcall(function() UIManager.set_app_visibility('TradeApp', true) end)
+        
+        pcall(function()
+            if TradeApp._show_intro_message then
+                TradeApp:_show_intro_message()
+            end
+        end)
+        
+        task.wait(0.05)
+        pcall(function() 
+            if TradeApp.refresh_all then 
+                TradeApp:refresh_all() 
+            end 
+        end)
+        
+        print('✅ Trade started with ' .. CONFIG.PARTNER_NAME)
+        
+        if valueDisplay then
+            valueDisplay:update(0, 0, "✅ Добавь петов в свой слот")
         end
         
-        -- Пропускаем если цена 0
-        if price <= 0 then
-            price = pet.fr
-            if price <= 0 then price = pet.nfr end
-            if price <= 0 then price = pet.mfr end
-            if price <= 0 then
-                logGUI:log("⚠️ " .. pet.name .. " - нет цены", Color3.fromRGB(255, 255, 0))
-                task.wait(0.05)
-                continue
+        -- БЕЗ MFR COW - бот подбирает петов через 3 секунды после твоих действий
+        
+        -- БОТ НАЖИМАЕТ ACCEPT ЧЕРЕЗ 10 СЕКУНД ПОСЛЕ ОТКРЫТИЯ ТРЕЙДА
+        task.wait(10.0)
+        makePartnerAccept()
+        print('✅ Partner accepted the trade!')
+    end)
+    
+    if not success and HintApp then
+        HintApp:hint({ text = 'Error starting trade: ' .. tostring(err), length = 5, overridable = true })
+    end
+end
+
+local function showTradeRequest()
+    if mockState.pendingTradeRequest or mockState.active then
+        return
+    end
+    mockState.pendingTradeRequest = true
+    mockState.canShowTradeRequest = false
+    task.wait(CONFIG.TRADE_REQUEST_DELAY)
+    if not mockState.pendingTradeRequest or mockState.active then
+        mockState.pendingTradeRequest = false
+        mockState.canShowTradeRequest = true
+        return
+    end
+    
+    local name = CONFIG.PARTNER_NAME
+    local trade_request_table = { 
+        ["text"] = name .. " sent you a trade request", 
+        ["left"] = "Decline", 
+        ["right"] = "Accept",
+        ["yields"] = true
+    } 
+    
+    mockState.isMockTradeDialog = true
+    
+    local dialogResult
+    local success, err = pcall(function()
+        if mockState.originalDialogFunction then
+            dialogResult = mockState.originalDialogFunction(DialogApp, trade_request_table)
+        else
+            dialogResult = DialogApp:dialog(trade_request_table)
+        end
+    end)
+    
+    mockState.isMockTradeDialog = false
+    mockState.pendingTradeRequest = false
+    
+    if success and dialogResult and (dialogResult == "Accept" or dialogResult == "right") then
+        startMockTradeDirectly()
+    else
+        mockState.canShowTradeRequest = true
+    end
+end
+
+local function hookTradeRequestEvent()
+    local tradeRequestEvent = RouterClient.get_event('TradeAPI/TradeRequestReceived')
+    if tradeRequestEvent then
+        local originalConnections = getconnections(tradeRequestEvent.OnClientEvent)
+        for _, connection in pairs(originalConnections) do connection:Disable() end
+        tradeRequestEvent.OnClientEvent:Connect(function(requestingPlayer)
+            if mockState.active or mockState.tradeRequestBlocked then
+                table.insert(mockState.blockedTradeRequests, { player = requestingPlayer, timestamp = tick() })
+                return
+            end
+            for _, connection in pairs(originalConnections) do
+                if connection.Function then connection.Function(requestingPlayer) end
+            end
+        end)
+    end
+end
+
+local function hookDialogApp()
+    if not DialogApp or not DialogApp.dialog then return end
+    mockState.originalDialogFunction = DialogApp.dialog
+    DialogApp.dialog = function(self, dialogData)
+        if dialogData and dialogData.text and string.find(dialogData.text, 'has expired!') then return 'Okay' end
+        
+        if mockState.isMockTradeDialog then
+            return mockState.originalDialogFunction(self, dialogData)
+        end
+        
+        if dialogData and dialogData.header and type(dialogData.header) == 'table' and dialogData.header.text == 'Verified Friend' then
+            return mockState.originalDialogFunction(self, dialogData)
+        end
+        
+        if dialogData and dialogData.handle == 'trade_request' then
+            if mockState.pendingTradeRequest or mockState.active or mockState.tradeRequestBlocked then return 'Decline' end
+        end
+        
+        return mockState.originalDialogFunction(self, dialogData)
+    end
+end
+
+hookDialogApp()
+hookTradeRequestEvent()
+
+showBlockedTradeRequests = function()
+    if #mockState.blockedTradeRequests > 0 then
+        task.wait(0.5)
+        local TradeExcluder = load('TradeExcluder')
+        for _, request in ipairs(mockState.blockedTradeRequests) do
+            local requestingPlayer = request.player
+            if TradeExcluder and TradeExcluder.is_player_excluded(requestingPlayer) then
+                RouterClient.get('TradeAPI/AcceptOrDeclineTradeRequest'):InvokeServer(requestingPlayer, false)
+            else
+                if DialogApp and mockState.originalDialogFunction then
+                    local response = mockState.originalDialogFunction(DialogApp, {
+                        text = string.format('%s sent you a trade request', requestingPlayer.Name),
+                        left = 'Decline', right = 'Accept', handle = 'trade_request',
+                    })
+                    if response == 'Accept' then
+                        local shouldAccept = true
+                        if TradeApp._confirm_player_if_suspicious then shouldAccept = TradeApp:_confirm_player_if_suspicious(requestingPlayer) end
+                        if shouldAccept and not TradeApp:check_and_warn_if_trading_restricted() then TradeApp:show_scam_warning() end
+                        RouterClient.get('TradeAPI/AcceptOrDeclineTradeRequest'):InvokeServer(requestingPlayer, shouldAccept)
+                    else
+                        RouterClient.get('TradeAPI/AcceptOrDeclineTradeRequest'):InvokeServer(requestingPlayer, false)
+                    end
+                end
+            end
+        end
+        mockState.blockedTradeRequests = {}
+    end
+end
+
+function updatePartnerFromUsername(username)
+    local success, userId = pcall(function() return Players:GetUserIdFromNameAsync(username) end)
+    if success and userId then
+        CONFIG.PARTNER_USER_ID = userId
+        CONFIG.PARTNER_NAME = username
+        mockPartner = createMockPartner()
+        return true
+    else
+        CONFIG.PARTNER_NAME = username
+        mockPartner = createMockPartner()
+        return false
+    end
+end
+
+local function applyMegaNeonEffects(petModel, kind)
+    local petRigs = load('new:PetRigs')
+    local petModelInstance = petModel:FindFirstChild('PetModel') or petModel
+    local petData = InventoryDB.pets[kind]
+    if not petData or not petData.neon_parts then return end
+    for neonPart, configuration in pairs(petData.neon_parts) do
+        local trueNeonPart = petRigs.get(petModelInstance).get_geo_part(petModelInstance, neonPart)
+        if trueNeonPart then
+            trueNeonPart.Material = Enum.Material.Neon
+            local originalColor = configuration.Color
+            if originalColor then
+                local h, s, v = originalColor:ToHSV()
+                trueNeonPart.Color = Color3.fromHSV(h, math.min(s * 1.3, 1), math.min(v * 1.4, 1))
+            else
+                trueNeonPart.Color = Color3.fromRGB(170, 0, 255)
+            end
+        end
+    end
+end
+
+local function applyNeonEffects(petModel, kind)
+    local petRigs = load('new:PetRigs')
+    local petModelInstance = petModel:FindFirstChild('PetModel') or petModel
+    local petData = InventoryDB.pets[kind]
+    if not petData or not petData.neon_parts then return end
+    for neonPart, configuration in pairs(petData.neon_parts) do
+        local trueNeonPart = petRigs.get(petModelInstance).get_geo_part(petModelInstance, neonPart)
+        if trueNeonPart then
+            trueNeonPart.Material = Enum.Material.Neon
+            if configuration.Color then trueNeonPart.Color = configuration.Color end
+        end
+    end
+end
+
+local FakePlayers = {}
+local FakePetRegistry = {}
+
+local function updateData(key, action)
+    local data = ClientData.get(key)
+    local clonedData = table.clone(data)
+    ClientData.predict(key, action(clonedData))
+end
+
+local AnimationManager = { running = false, checkInterval = 0.3, animationTracks = {} }
+
+function AnimationManager:Start()
+    if self.running then return end
+    self.running = true
+    task.spawn(function()
+        while self.running do
+            task.wait(self.checkInterval)
+            for _, petData in ipairs(FakePetRegistry) do
+                if petData and petData.model and petData.model.Parent then
+                    pcall(function()
+                        local character = petData.character
+                        if character and character.Parent then
+                            local humanoid = character:FindFirstChild('Humanoid')
+                            if humanoid then
+                                local animator = humanoid:FindFirstChild('Animator')
+                                if animator then
+                                    local isRiding = false
+                                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                                        if track.Animation.AnimationId:find('PlayerRidingPet') or track.Animation.AnimationId:find('507766666') then isRiding = true break end
+                                    end
+                                    if not isRiding and petData.hasRidingPet then
+                                        if not petData.ridingAnim or not petData.ridingAnim.IsPlaying then
+                                            if petData.ridingAnim then petData.ridingAnim:Stop() end
+                                            petData.ridingAnim = animator:LoadAnimation(animationManager.get_track('PlayerRidingPet'))
+                                            petData.ridingAnim.Looped = true
+                                            petData.ridingAnim:Play()
+                                            humanoid.Sit = true
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        if petData.wrapper.mega_neon then applyMegaNeonEffects(petData.model, petData.wrapper.pet_id)
+                        elseif petData.wrapper.neon then applyNeonEffects(petData.model, petData.wrapper.pet_id) end
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+function AnimationManager:Stop()
+    self.running = false
+    for _, petData in ipairs(FakePetRegistry) do
+        if petData.ridingAnim then petData.ridingAnim:Stop() end
+    end
+end
+
+function AnimationManager:AddPet(petData)
+    table.insert(FakePetRegistry, petData)
+    if not self.running then self:Start() end
+end
+
+local function createFakePetOwner(fakeCharacter, partnerName, partnerId)
+    return setmetatable({
+        Name = partnerName, DisplayName = partnerName, UserId = partnerId, Character = fakeCharacter,
+    }, {
+        __index = function(t, k)
+            if k == 'Parent' then return Players end
+            if k == 'IsA' then return function(self, className) return className == 'Player' end end
+            if k == 'GetChildren' then return function() return {} end end
+            return rawget(t, k)
+        end,
+        __tostring = function() return partnerName end
+    })
+end
+
+function OpenProfile(Id)
+    UIManager.apps.PlayerProfileApp:open_player_profile_for_user_id(Id)
+end
+
+task.spawn(function()
+    task.wait(0.1)
+    local InteractionsEngine = load('InteractionsEngine')
+    local original_register = InteractionsEngine.register
+    InteractionsEngine.register = function(self, interactionData)
+        if interactionData and interactionData.part then
+            local checkPart = interactionData.part
+            while checkPart do
+                if checkPart:GetAttribute('IsFakePet') == true and checkPart.Parent then return end
+                checkPart = checkPart.Parent
+            end
+        end
+        return original_register(self, interactionData)
+    end
+end)
+
+function GetKindPet(name)
+    for k, v in pairs(InventoryDB.pets) do
+        if v['name']:lower() == name:lower() then return k end
+    end
+end
+
+local function enableNoclip(character)
+    if not character then return end
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA('BasePart') then
+            part.CanCollide = false
+            part.CanTouch = false
+            part.CanQuery = false
+            pcall(function() part.CollisionGroup = 'Noclip' end)
+        end
+    end
+    character.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA('BasePart') then
+            task.wait()
+            descendant.CanCollide = false
+            descendant.CanTouch = false
+            descendant.CanQuery = false
+            pcall(function() descendant.CollisionGroup = 'Noclip' end)
+        end
+    end)
+end
+
+local function enableNoclipForAllFakePlayers()
+    for _, folder in ipairs(FakePlayers) do
+        if folder and folder.Parent then
+            for _, child in ipairs(folder:GetChildren()) do
+                if child:IsA('Model') then enableNoclip(child) end
+            end
+        end
+    end
+end
+
+local function enableNoclipForPets()
+    for _, petData in ipairs(FakePetRegistry) do
+        if petData and petData.model and petData.model.Parent then enableNoclip(petData.model) end
+    end
+end
+
+function BlockPlayer(Selected)
+    pcall(function()
+        setthreadidentity(8)
+    end)
+    StarterGui:SetCore('PromptBlockPlayer', Selected)
+    repeat
+        RunService.Heartbeat:Wait()
+    until game:GetService('CoreGui'):FindFirstChild('BlockingModalScreen')
+    game:GetService('CoreGui').BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BlockingModal.BackgroundTransparency = 1
+    game:GetService('CoreGui').BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BackgroundTransparency = 1
+    game:GetService('CoreGui').BlockingModalScreen.BlockingModalContainer.BackgroundTransparency = 1
+    game:GetService('CoreGui').BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BlockingModal.AlertModal.Position = UDim2.new(0.00800000038, -110, 0.5, 0)
+    local interact = function(path)
+        game:GetService('GuiService').SelectedObject = path
+        task.wait()
+        if game:GetService('GuiService').SelectedObject == path then
+            game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+            game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+            task.wait()
+        end
+        game:GetService('GuiService').SelectedObject = nil
+    end
+    interact(game:GetService('CoreGui').BlockingModalScreen.BlockingModalContainer.BlockingModalContainerWrapper.BlockingModal.AlertModal.AlertContents.Footer.Buttons['3'])
+    pcall(function()
+        setthreadidentity(2)
+    end)
+end
+
+local function sendTradeToPlayer(player)
+    if not player then return end
+    local targetPlayer = Players:FindFirstChild(player.Name)
+    if targetPlayer then
+        pcall(function()
+            local success = false
+            
+            local success1 = pcall(function()
+                local sendRequest = RouterClient.get('TradeAPI/SendTradeRequest')
+                if sendRequest then
+                    if sendRequest.FireServer then
+                        sendRequest:FireServer(targetPlayer)
+                        success = true
+                    elseif sendRequest.InvokeServer then
+                        sendRequest:InvokeServer(targetPlayer)
+                        success = true
+                    end
+                end
+            end)
+            
+            if not success then
+                local success2 = pcall(function()
+                    local TradeRemote = ReplicatedStorage:FindFirstChild('Remotes') and ReplicatedStorage.Remotes:FindFirstChild('TradeAPI') and ReplicatedStorage.Remotes.TradeAPI:FindFirstChild('SendTradeRequest')
+                    if TradeRemote then
+                        TradeRemote:FireServer(targetPlayer)
+                        success = true
+                    end
+                end)
+            end
+            
+            if not success then
+                local success3 = pcall(function()
+                    local InteractionsEngine = load('InteractionsEngine')
+                    if InteractionsEngine then
+                        InteractionsEngine:send_trade_request(targetPlayer)
+                        success = true
+                    end
+                end)
+            end
+            
+            if success and HintApp then
+                HintApp:hint({ text = 'Trade request sent to ' .. player.Name, length = 3, overridable = true })
+            elseif HintApp then
+                HintApp:hint({ text = 'Could not send trade request to ' .. player.Name, length = 3, overridable = true })
+            end
+        end)
+    else
+        if HintApp then
+            HintApp:hint({ text = 'Player ' .. player.Name .. ' not found in server', length = 3, overridable = true })
+        end
+    end
+end
+
+-- ============================================
+-- ПОЛУЧАЕМ РАНДОМНОГО ИГРОКА С СЕРВЕРА
+-- ============================================
+local function getRandomPlayerFromServer()
+    local players = Players:GetPlayers()
+    local filtered = {}
+    
+    for _, player in ipairs(players) do
+        if player ~= LocalPlayer and not fakePlayerIds[player.UserId] then
+            table.insert(filtered, player)
+        end
+    end
+    
+    if #filtered == 0 then
+        return {
+            Name = CONFIG.PARTNER_NAME,
+            DisplayName = CONFIG.PARTNER_NAME,
+            UserId = CONFIG.PARTNER_USER_ID,
+            Character = nil,
+        }
+    end
+    
+    local randomPlayer = filtered[math.random(1, #filtered)]
+    
+    return {
+        Name = randomPlayer.Name,
+        DisplayName = randomPlayer.DisplayName,
+        UserId = randomPlayer.UserId,
+        Character = randomPlayer.Character,
+    }
+end
+
+-- ============================================
+-- КОПИРУЕМ СКИН С ИГРОКА
+-- ============================================
+local function copyCharacterAppearance(fromCharacter, toCharacter)
+    if not fromCharacter or not toCharacter then return end
+    
+    for _, part in ipairs(fromCharacter:GetChildren()) do
+        if part:IsA('BasePart') or part:IsA('Accessory') or part:IsA('Shirt') or part:IsA('Pants') or part:IsA('Hat') then
+            local newPart = part:Clone()
+            newPart.Parent = toCharacter
+        end
+    end
+    
+    local fromHumanoid = fromCharacter:FindFirstChild('Humanoid')
+    local toHumanoid = toCharacter:FindFirstChild('Humanoid')
+    if fromHumanoid and toHumanoid then
+        toHumanoid.WalkSpeed = fromHumanoid.WalkSpeed
+        toHumanoid.JumpPower = fromHumanoid.JumpPower
+        toHumanoid.MaxHealth = fromHumanoid.MaxHealth
+        toHumanoid.Health = fromHumanoid.Health
+    end
+end
+
+-- ============================================
+-- КОПИРУЕМ АНИМАЦИИ С РАНДОМНОГО ИГРОКА
+-- ============================================
+local function copyAnimations(fromCharacter, toCharacter)
+    if not fromCharacter or not toCharacter then return end
+    
+    local fromHumanoid = fromCharacter:FindFirstChild('Humanoid')
+    local toHumanoid = toCharacter:FindFirstChild('Humanoid')
+    if not fromHumanoid or not toHumanoid then return end
+    
+    local fromAnimator = fromHumanoid:FindFirstChild('Animator')
+    local toAnimator = toHumanoid:FindFirstChild('Animator')
+    if not fromAnimator or not toAnimator then return end
+    
+    for _, track in ipairs(fromAnimator:GetPlayingAnimationTracks()) do
+        local newTrack = toAnimator:LoadAnimation(track.Animation)
+        newTrack.Looped = track.Looped
+        newTrack:Play()
+    end
+end
+
+-- ============================================
+-- СОЗДАНИЕ ФЕЙКОВОГО ИГРОКА (С КОПИРОВАНИЕМ СКИНА + АНИМАЦИИ)
+-- ============================================
+local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_id, pros_fake_pet, pet_flags)
+    local maxRetries, retryCount = 3, 0
+
+    local function attemptCreate()
+        retryCount = retryCount + 1
+        fakePlayerIds[partner_id] = true
+        _G.fakePlayerIds[partner_id] = true
+
+        local folder_fake = Instance.new('Folder')
+        folder_fake.Name = 'fake_folder_' .. partner_name
+        folder_fake.Parent = workspace
+
+        local randomData = getRandomPlayerFromServer()
+        if randomData and randomData.Name then
+            partner_name = randomData.Name
+            partner_id = randomData.UserId
+            CONFIG.PARTNER_NAME = randomData.Name
+            CONFIG.PARTNER_USER_ID = randomData.UserId
+            print('🎭 Бот скопировал игрока: ' .. randomData.Name .. ' (ID: ' .. randomData.UserId .. ')')
+        end
+
+        local character = Players:CreateHumanoidModelFromUserId(partner_id)
+        
+        if randomData and randomData.Character then
+            copyCharacterAppearance(randomData.Character, character)
+            copyAnimations(randomData.Character, character)
+            print('✅ Скин и анимации скопированы с ' .. randomData.Name)
+        end
+        
+        local playerCharacter = LocalPlayer.Character
+        if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
+            character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-10, 10), 0, math.random(-10, 10)))
+        end
+        local humanoid = character:WaitForChild('Humanoid')
+        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+        humanoid.HealthDisplayDistance = 0
+        character.Parent = folder_fake
+
+        pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
+
+        local Part = character:FindFirstChild('HumanoidRootPart')
+        if Part then
+            local InteractionsEngine = load('InteractionsEngine')
+            local emptyFunc = function() end
+            pcall(function()
+                InteractionsEngine:register({
+                    text = partner_name, part = Part,
+                    on_selected = {
+                        { text = 'Profile', on_selected = function() pcall(OpenProfile, partner_id) end },
+                        { text = 'Trade', on_selected = function()
+                            pcall(function()
+                                task.spawn(function()
+                                    pcall(function()
+                                        if HintApp then HintApp:hint({ text = 'Trade request sent to ' .. partner_name, length = 3, overridable = true }) end
+                                    end)
+                                end)
+                                task.wait(CONFIG.FAKE_PLAYER_ACCEPT_TRADE_REQUEST)
+                                updatePartnerFromUsername(partner_name)
+                                startMockTradeDirectly()
+                            end)
+                        end },
+                        { text = 'Give Item...', on_selected = emptyFunc },
+                        { text = 'Mute', on_selected = emptyFunc },
+                    },
+                })
+            end)
+        end
+
+        table.insert(FakePlayers, folder_fake)
+        folder_fake:SetAttribute('IsFakePlayer', true)
+        folder_fake:SetAttribute('PartnerName', partner_name)
+        folder_fake:SetAttribute('PartnerId', partner_id)
+        return true
+    end
+
+    return attemptCreate()
+end
+
+-- ============================================
+-- СПАВНЕР ПИТОМЦЕВ В ИНВЕНТАРЬ
+-- ============================================
+local function spawnPets()
+    print('🔄 Запуск спавнера петов...')
+    
+    local petSpawnerSuccess, petSpawnerErr = pcall(function()
+        local _KindDB = require(ReplicatedStorage.Fsys).load('KindDB')
+        
+        local function addPetToInventory(kind, properties)
+            local unique = HttpService:GenerateGUID(false)
+            local petData = nil
+            
+            updateData('inventory', function(inv)
+                local newInv = table.clone(inv)
+                if not newInv.pets then newInv.pets = {} end
+                
+                petData = {
+                    unique = unique,
+                    category = 'pets',
+                    id = kind,
+                    kind = _KindDB[kind].kind,
+                    newness_order = 0,
+                    properties = properties,
+                }
+                newInv.pets[unique] = petData
+                return newInv
+            end)
+            
+            return petData
+        end
+        
+        local function GetPetIdByName(petName)
+            for id, data in pairs(InventoryDB.pets) do
+                if data.name and data.name:lower() == petName:lower() then return id end
+                if id:lower() == petName:lower() then return id end
+            end
+            return nil
+        end
+        
+        local availablePets = {}
+        for name, data in pairs(PetValues) do
+            local id = GetPetIdByName(name)
+            if id then
+                table.insert(availablePets, {
+                    id = id,
+                    name = name,
+                    fr = data.fr,
+                    nfr = data.nfr,
+                    mfr = data.mfr
+                })
             end
         end
         
-        local petData = {
-            pet_trick_level = 0,
-            rideable = true,
-            flyable = true,
-            friendship_level = 0,
-            age = 1,
-            ailments_completed = 0,
-            rp_name = '',
+        if #availablePets == 0 then
+            print('❌ Нет петов для спавна!')
+            return
+        end
+        
+        local ageNames = {
+            [1] = "Reborn", [2] = "Sparkle", [3] = "Twinkle", [4] = "Flare",
+            [5] = "Luminous", [6] = "Sunshine", [7] = "Full Grown", [8] = "Post Teen",
+            [9] = "Teen", [10] = "Pre Teen", [11] = "Junior", [12] = "Newborn",
         }
         
-        if variantType == "MFR" then
-            petData.mega_neon = true
-        elseif variantType == "NFR" then
-            petData.neon = true
+        for i = #availablePets, 2, -1 do
+            local j = math.random(1, i)
+            availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
         end
-        -- FR - ничего не добавляем, просто rideable + flyable
         
-        logGUI:log("🔄 " .. pet.name .. " (" .. variantType .. ")", Color3.fromRGB(255, 255, 0))
+        local petCount = math.random(10, 15)
+        local targetMin = 4500
+        local targetMax = 6000
+        local currentValue = 0
+        local spawnedPets = {}
+        local attempts = 0
+        local maxAttempts = 300
         
-        local success, result = pcall(function()
-            return u63(pet.id, petData)
-        end)
+        print('🎯 Спавн ' .. petCount .. ' петов...')
         
-        if success and result then
-            currentValue = currentValue + price
-            table.insert(spawnedPets, pet.name .. " (" .. variantType .. ") [" .. string.format("%.1f", price) .. "]")
-            logGUI:log("✅ " .. pet.name .. " (" .. variantType .. ") +" .. price, Color3.fromRGB(0, 255, 0))
+        while #spawnedPets < petCount and attempts < maxAttempts do
+            attempts = attempts + 1
+            local randomIndex = math.random(1, #availablePets)
+            local pet = availablePets[randomIndex]
+            
+            local age = math.random(1, 12)
+            local ageName = ageNames[age] or "Unknown"
+            
+            local variantType
+            local price
+            
+            if pet.mfr < 100 then
+                variantType = "MFR"
+                price = pet.mfr
+            else
+                local variants = {
+                    {name = "FR", price = pet.fr},
+                    {name = "NFR", price = pet.nfr},
+                    {name = "MFR", price = pet.mfr},
+                }
+                local chosen = variants[math.random(1, 3)]
+                variantType = chosen.name
+                price = chosen.price
+            end
+            
+            if price <= 0 then
+                price = pet.fr
+                if price <= 0 then price = pet.nfr end
+                if price <= 0 then price = pet.mfr end
+                if price <= 0 then
+                    task.wait(0.05)
+                    continue
+                end
+            end
+            
+            local petData = {
+                pet_trick_level = 0,
+                rideable = true,
+                flyable = true,
+                friendship_level = 0,
+                age = age,
+                ailments_completed = 0,
+                rp_name = '',
+            }
+            
+            if variantType == "MFR" then
+                petData.mega_neon = true
+            elseif variantType == "NFR" then
+                petData.neon = true
+            end
+            
+            local success, result = pcall(function()
+                return addPetToInventory(pet.id, petData)
+            end)
+            
+            if success and result then
+                currentValue = currentValue + price
+                table.insert(spawnedPets, pet.name .. " (" .. variantType .. ", " .. ageName .. ")")
+                print('  ✅ ' .. pet.name .. ' (' .. variantType .. ', ' .. ageName .. ') +' .. string.format('%.1f', price))
+                
+                pcall(function()
+                    StarterGui:SetCore('SendNotification', {
+                        Title = '✅ Спавн!',
+                        Text = pet.name .. ' (' .. variantType .. ', ' .. ageName .. ')',
+                        Duration = 2,
+                    })
+                end)
+            end
+            
+            task.wait(0.08)
+            
+            if currentValue >= targetMin and #spawnedPets >= 10 then
+                break
+            end
+        end
+        
+        print('━━━━━━━━━━━━━━━━━━━━━━━━')
+        if #spawnedPets > 0 then
+            print('✅ Спавнено: ' .. #spawnedPets)
+            print('💰 Сумма: ' .. string.format('%.2f', currentValue))
+            for i, pet in ipairs(spawnedPets) do
+                print('  ' .. i .. '. ' .. pet)
+            end
+            
+            local statusText = "Спавнено " .. #spawnedPets .. " петов! Сумма: " .. string.format('%.2f', currentValue)
+            if currentValue < targetMin then
+                statusText = statusText .. " (маловато 😅)"
+            elseif currentValue > targetMax then
+                statusText = statusText .. " (многовато 😅)"
+            else
+                statusText = statusText .. " ✅"
+            end
             
             pcall(function()
-                game.StarterGui:SetCore('SendNotification', {
-                    Title = '✅ Спавн!',
-                    Text = pet.name .. ' (' .. variantType .. ')',
-                    Duration = 2,
+                StarterGui:SetCore('SendNotification', {
+                    Title = '✅ Пет-спавнер!',
+                    Text = statusText,
+                    Duration = 5,
                 })
             end)
         else
-            logGUI:log("❌ Ошибка: " .. pet.name, Color3.fromRGB(255, 0, 0))
+            print('❌ Не спавнено ни одного пета!')
         end
-        
-        task.wait(0.08)
-        
-        -- Если набрали нужную сумму и достаточно петов - выходим
-        if currentValue >= targetMin and #spawnedPets >= 10 then
-            break
-        end
-    end
+        print('━━━━━━━━━━━━━━━━━━━━━━━━')
+    end)
     
-    -- ═══════════════════════════════════════════════════════════════
-    -- РЕЗУЛЬТАТ
-    -- ═══════════════════════════════════════════════════════════════
-    
-    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
-    if #spawnedPets > 0 then
-        logGUI:log("✅ Спавнено: " .. #spawnedPets, Color3.fromRGB(0, 255, 0))
-        logGUI:log("💰 Сумма: " .. string.format("%.2f", currentValue), Color3.fromRGB(255, 255, 0))
-        for i, pet in ipairs(spawnedPets) do
-            logGUI:log("  " .. i .. ". " .. pet, Color3.fromRGB(200, 200, 200))
-        end
-        
-        local statusText = "Спавнено " .. #spawnedPets .. " петов! Сумма: " .. string.format("%.2f", currentValue)
-        if currentValue < targetMin then
-            statusText = statusText .. " (маловато 😅)"
-        elseif currentValue > targetMax then
-            statusText = statusText .. " (многовато 😅)"
-        else
-            statusText = statusText .. " ✅"
-        end
-        
-        pcall(function()
-            game.StarterGui:SetCore('SendNotification', {
-                Title = '✅ Готово!',
-                Text = statusText,
-                Duration = 5,
-            })
-        end)
-    else
-        logGUI:log("❌ Не спавнено ни одного пета!", Color3.fromRGB(255, 0, 0))
+    if not petSpawnerSuccess then
+        warn('❌ Ошибка спавнера: ' .. tostring(petSpawnerErr))
     end
-    logGUI:log("━━━━━━━━━━━━━━━━━━━━━━━━", Color3.fromRGB(255, 255, 255))
 end
 
--- Запускаем
-local success, err = pcall(main)
-if not success then
-    logGUI:log("❌ ОШИБКА: " .. tostring(err), Color3.fromRGB(255, 0, 0))
-    pcall(function()
-        game.StarterGui:SetCore('SendNotification', {
-            Title = '❌ Ошибка',
-            Text = 'Ошибка: ' .. tostring(err),
-            Duration = 10,
-        })
-    end)
-end
+print('========================================')
+print('  FAKE PLAYER SCRIPT + PET SPAWNER + AUTO-BOT')
+print('  Бот копирует рандомного игрока с сервера')
+print('  Бот подбирает петов в 1.3 раза меньше твоей суммы')
+print('  Задержка 3 секунды перед подбором')
+print('  БЕЗ MFR COW - только пет из инвентаря')
+print('  Bot accepts after 10 seconds')
+print('  Bot CONFIRMS FIRST after 18 seconds')
+print('  Пет-спавнер запускается автоматически')
+print('========================================')
+print('')
+print('📌 HOW TO USE:')
+print('1. Запусти скрипт')
+print('2. Бот спавнится с ником, скином и анимациями рандомного игрока')
+print('3. В инвентарь спавнятся 10-15 петов на сумму ~4500-6000')
+print('4. Кликни на бота -> Trade')
+print('5. Добавляй петов в свой слот')
+print('6. Через 3 секунды после остановки бот подберет петов в 1.3 раза меньше')
+print('7. Ты нажимаешь ACCEPT')
+print('8. Бот через 10 сек нажимает ACCEPT')
+print('9. Бот через 18 сек нажимает CONFIRM (ПЕРВЫЙ)')
+print('10. Ты нажимаешь CONFIRM')
+print('11. Трейд завершен 🎉')
+print('')
+
+CreateFakePlayerCharacterFromPARTNER_NAME('NomiKu0', 987654321, nil, nil)
+
+print('✅ Бот создан! Кликни на бота -> Trade')
+
+task.spawn(function()
+    task.wait(2)
+    spawnPets()
+end)
