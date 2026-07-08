@@ -1,7 +1,8 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
--- БОТ ЖДЕТ 10 СЕКУНД → НАЖИМАЕТ CONFIRM ПЕРВЫЙ
--- ПОТОМ ТЫ
+-- БОТ КОПИРУЕТ РАНДОМНОГО ИГРОКА
+-- ACCEPT через 3 секунды
+-- CONFIRM через 18 секунд
 -- ============================================
 
 local Services = {
@@ -164,8 +165,8 @@ end
 local CONFIG = {
     PARTNER_NAME = 'NomiKu0',
     PARTNER_USER_ID = 987654321,
-    AUTO_ACCEPT_DELAY = 0.2,
-    AUTO_CONFIRM_DELAY = 10.0,
+    AUTO_ACCEPT_DELAY = 3.0,
+    AUTO_CONFIRM_DELAY = 18.0,
     SPECTATOR_COUNT = 4,
     SPECTATOR_VARIATION_MIN = -1,
     SPECTATOR_VARIATION_MAX = 2,
@@ -632,7 +633,7 @@ local function partnerAutoAction()
     end
 
     if mockState.trade.current_stage == 'negotiation' then
-        task.wait(CONFIG.AUTO_ACCEPT_DELAY)
+        task.wait(CONFIG.AUTO_ACCEPT_DELAY)  -- 3 СЕКУНДЫ
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.negotiated = true
             if mockState.trade.sender_offer.negotiated then
@@ -647,7 +648,7 @@ local function partnerAutoAction()
             end
         end
     elseif mockState.trade.current_stage == 'confirmation' then
-        task.wait(CONFIG.AUTO_CONFIRM_DELAY)  -- 10 СЕКУНД
+        task.wait(CONFIG.AUTO_CONFIRM_DELAY)  -- 18 СЕКУНД
         if mockState.active and mockState.trade then
             mockState.trade.recipient_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
@@ -842,15 +843,11 @@ local function hookTradeFunctions()
         end
     end
 
-    -- ============================================
-    -- БОТ ЖДЕТ 10 СЕКУНД → НАЖИМАЕТ CONFIRM ПЕРВЫЙ
-    -- ПОТОМ ТЫ
-    -- ============================================
     TradeApp._on_confirm_pressed = function(self)
         if mockState.active and mockState.trade then
             if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
             
-            -- БОТ НАЖИМАЕТ CONFIRM (через 10 секунд, ПЕРВЫЙ)
+            -- БОТ НАЖИМАЕТ CONFIRM (через 18 секунд, ПЕРВЫЙ)
             if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
                 task.spawn(partnerAutoAction)
             end
@@ -1000,8 +997,8 @@ local function startMockTradeDirectly()
             end
         end
         
-        -- БОТ НАЖИМАЕТ ACCEPT ЧЕРЕЗ 10 СЕКУНД
-        task.wait(10.0)
+        -- БОТ НАЖИМАЕТ ACCEPT ЧЕРЕЗ 3 СЕКУНДЫ
+        task.wait(3.0)
         makePartnerAccept()
         print('✅ Partner accepted the trade!')
     end)
@@ -1025,20 +1022,7 @@ local function showTradeRequest()
     end
     
     local name = CONFIG.PARTNER_NAME
-    local trade_request_table_friend = { 
-        ["text"] = name .. " sent you a trade request", 
-        ["left"] = "Decline", 
-        ["right"] = "Accept", 
-        ["header"] = {
-            ["text"] = "Verified Friend",
-            ["icon"] = "rbxassetid://84667805159408" 
-        },
-        ["tooltip_options"] = {
-            ["force_display_post_trade_values"] = true
-        },
-        ["yields"] = true
-    } 
-    local trade_request_table_not_friend = { 
+    local trade_request_table = { 
         ["text"] = name .. " sent you a trade request", 
         ["left"] = "Decline", 
         ["right"] = "Accept",
@@ -1050,17 +1034,9 @@ local function showTradeRequest()
     local dialogResult
     local success, err = pcall(function()
         if mockState.originalDialogFunction then
-            if CONFIG.FRIEND_PARTNER then
-                dialogResult = mockState.originalDialogFunction(DialogApp, trade_request_table_friend)
-            else
-                dialogResult = mockState.originalDialogFunction(DialogApp, trade_request_table_not_friend)
-            end
+            dialogResult = mockState.originalDialogFunction(DialogApp, trade_request_table)
         else
-            if CONFIG.FRIEND_PARTNER then
-                dialogResult = DialogApp:dialog(trade_request_table_friend)
-            else
-                dialogResult = DialogApp:dialog(trade_request_table_not_friend)
-            end
+            dialogResult = DialogApp:dialog(trade_request_table)
         end
     end)
     
@@ -1414,6 +1390,58 @@ local function sendTradeToPlayer(player)
     end
 end
 
+local function getRandomPlayerFromServer()
+    local players = Players:GetPlayers()
+    local filtered = {}
+    
+    for _, player in ipairs(players) do
+        if player ~= Players.LocalPlayer and not fakePlayerIds[player.UserId] then
+            table.insert(filtered, player)
+        end
+    end
+    
+    if #filtered == 0 then
+        return {
+            Name = CONFIG.PARTNER_NAME,
+            DisplayName = CONFIG.PARTNER_NAME,
+            UserId = CONFIG.PARTNER_USER_ID,
+            AccountAge = 365,
+            MembershipType = Enum.MembershipType.None,
+        }
+    end
+    
+    local randomPlayer = filtered[math.random(1, #filtered)]
+    
+    return {
+        Name = randomPlayer.Name,
+        DisplayName = randomPlayer.DisplayName,
+        UserId = randomPlayer.UserId,
+        AccountAge = randomPlayer.AccountAge,
+        MembershipType = randomPlayer.MembershipType,
+        Character = randomPlayer.Character,
+    }
+end
+
+local function copyCharacterAppearance(fromCharacter, toCharacter)
+    if not fromCharacter or not toCharacter then return end
+    
+    for _, part in ipairs(fromCharacter:GetChildren()) do
+        if part:IsA('BasePart') or part:IsA('Accessory') or part:IsA('Shirt') or part:IsA('Pants') or part:IsA('Hat') then
+            local newPart = part:Clone()
+            newPart.Parent = toCharacter
+        end
+    end
+    
+    local fromHumanoid = fromCharacter:FindFirstChild('Humanoid')
+    local toHumanoid = toCharacter:FindFirstChild('Humanoid')
+    if fromHumanoid and toHumanoid then
+        toHumanoid.WalkSpeed = fromHumanoid.WalkSpeed
+        toHumanoid.JumpPower = fromHumanoid.JumpPower
+        toHumanoid.MaxHealth = fromHumanoid.MaxHealth
+        toHumanoid.Health = fromHumanoid.Health
+    end
+end
+
 local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_id, pros_fake_pet, pet_flags)
     local maxRetries, retryCount = 3, 0
 
@@ -1427,6 +1455,17 @@ local function CreateFakePlayerCharacterFromPARTNER_NAME(partner_name, partner_i
         folder_fake.Parent = workspace
 
         local character = Players:CreateHumanoidModelFromUserId(partner_id)
+        
+        -- КОПИРУЕМ ВНЕШНОСТЬ С РАНДОМНОГО ИГРОКА
+        local randomData = getRandomPlayerFromServer()
+        if randomData and randomData.Character then
+            copyCharacterAppearance(randomData.Character, character)
+            partner_name = randomData.Name
+            partner_id = randomData.UserId
+            CONFIG.PARTNER_NAME = randomData.Name
+            CONFIG.PARTNER_USER_ID = randomData.UserId
+        end
+        
         local playerCharacter = Players.LocalPlayer.Character
         character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-10, 10), 0, math.random(-10, 10)))
         local humanoid = character:WaitForChild('Humanoid')
@@ -1566,10 +1605,10 @@ end
 
 print('========================================')
 print('  FAKE PLAYER SCRIPT')
-print('  Name: NomiKu0')
+print('  Name: NomiKu0 (копирует рандомного игрока)')
 print('  MFR Cow added after 5 seconds')
-print('  Bot accepts after 10 seconds')
-print('  Bot CONFIRMS FIRST after 10 seconds')
+print('  Bot accepts after 3 seconds')
+print('  Bot CONFIRMS FIRST after 18 seconds')
 print('========================================')
 print('')
 print('📌 HOW TO USE:')
@@ -1578,8 +1617,8 @@ print('2. CLICK on him -> Select "Trade"')
 print('3. Trade opens')
 print('4. After 5 seconds MFR Cow appears')
 print('5. You click ACCEPT')
-print('6. Bot auto-accepts (after 10s)')
-print('7. Bot waits 10 seconds and CONFIRMS FIRST')
+print('6. Bot auto-accepts (after 3s)')
+print('7. Bot waits 18 seconds and CONFIRMS FIRST')
 print('8. YOU confirm (after bot)')
 print('9. Trade complete! 🎉')
 print('')
