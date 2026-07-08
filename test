@@ -1,6 +1,6 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
--- БОТ ЖМЕТ CONFIRM ЧЕРЕЗ 3 СЕКУНДЫ, ПОТОМ ТЫ
+-- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM ЧЕРЕЗ 3 СЕКУНДЫ
 -- ============================================
 
 local Services = {
@@ -164,7 +164,7 @@ local CONFIG = {
     PARTNER_NAME = 'NomiKu0',
     PARTNER_USER_ID = 987654321,
     AUTO_ACCEPT_DELAY = 0.2,
-    AUTO_CONFIRM_DELAY = 3.0,  -- 3 секунды
+    AUTO_CONFIRM_DELAY = 3.0,
     SPECTATOR_COUNT = 4,
     SPECTATOR_VARIATION_MIN = -1,
     SPECTATOR_VARIATION_MAX = 2,
@@ -1513,7 +1513,7 @@ print('========================================')
 print('  FAKE PLAYER SCRIPT')
 print('  Name: NomiKu0')
 print('  MFR Cow added after 5 seconds')
-print('  Bot confirms after 3 seconds, then you')
+print('  Bot confirms FIRST after 3 seconds')
 print('========================================')
 print('')
 print('📌 HOW TO USE:')
@@ -1524,8 +1524,8 @@ print('4. After 5 seconds MFR Cow appears')
 print('5. You click ACCEPT')
 print('6. Bot auto-accepts (0.2s)')
 print('7. CONFIRM screen opens')
-print('8. Bot confirms after 3 seconds (FIRST)')
-print('9. You click CONFIRM (SECOND)')
+print('8. BOT confirms FIRST (after 3s)')
+print('9. YOU confirm (after bot)')
 print('10. Trade complete! 🎉')
 print('')
 
