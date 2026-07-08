@@ -1,6 +1,6 @@
 -- ============================================
 -- ТВОЙ СКРИПТ (БЕЗ GUI)
--- Копия твоего оригинального скрипта, только убран GUI
+-- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM
 -- ============================================
 
 local Services = {
@@ -607,24 +607,6 @@ local function partnerAutoAction()
             mockState.trade.recipient_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
             TradeApp:_overwrite_local_trade_state(mockState.trade)
-            if mockState.trade.sender_offer.confirmed and not mockState.tradeCompleting then
-                mockState.tradeCompleting = true
-                if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
-                task.wait(3)
-                local historyRecord = createTradeHistoryRecord(mockState.trade)
-                appendToTradeHistory(historyRecord)
-                mockState.active = false
-                mockState.trade = nil
-                mockState.tradeCompleting = false
-                mockState.scamWarningShown = true
-                mockState.canShowTradeRequest = true
-                mockState.tradeRequestBlocked = false
-                UIManager.set_app_visibility('TradeApp', false)
-                task.wait(0.1)
-                showBlockedTradeRequests()
-                if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
-                if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
-            end
         end
     end
     mockState.partnerActionPending = false
@@ -815,13 +797,42 @@ local function hookTradeFunctions()
         end
     end
 
+    -- ============================================
+    -- ИСПРАВЛЕННЫЙ _on_confirm_pressed
+    -- БОТ ПЕРВЫЙ ЖМЕТ CONFIRM
+    -- ============================================
     TradeApp._on_confirm_pressed = function(self)
         if mockState.active and mockState.trade then
             if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
+            
+            -- БОТ ПЕРВЫЙ НАЖИМАЕТ CONFIRM
+            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
+                task.spawn(partnerAutoAction)
+            end
+            
+            -- ТЫ НАЖИМАЕШЬ CONFIRM
             mockState.trade.sender_offer.confirmed = true
             mockState.trade.offer_version = mockState.trade.offer_version + 1
             self:_overwrite_local_trade_state(mockState.trade)
-            if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then task.spawn(partnerAutoAction) end
+            
+            if mockState.trade.sender_offer.confirmed and mockState.trade.recipient_offer.confirmed and not mockState.tradeCompleting then
+                mockState.tradeCompleting = true
+                if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
+                task.wait(3)
+                local historyRecord = createTradeHistoryRecord(mockState.trade)
+                appendToTradeHistory(historyRecord)
+                mockState.active = false
+                mockState.trade = nil
+                mockState.tradeCompleting = false
+                mockState.scamWarningShown = true
+                mockState.canShowTradeRequest = true
+                mockState.tradeRequestBlocked = false
+                UIManager.set_app_visibility('TradeApp', false)
+                task.wait(0.1)
+                showBlockedTradeRequests()
+                if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
+                if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
+            end
         else
             return mockState.originalFunctions._on_confirm_pressed(self)
         end
@@ -1493,7 +1504,7 @@ print('3. Trade opens automatically')
 print('4. You click ACCEPT')
 print('5. He auto-accepts')
 print('6. You click CONFIRM')
-print('7. He auto-confirms')
+print('7. He auto-confirms FIRST (0.3s)')
 print('8. Trade complete! 🎉')
 print('')
 
