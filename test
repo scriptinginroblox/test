@@ -1,13 +1,11 @@
---[[
-    ═══════════════════════════════════════════════════════════════════════
-    VOLTAGE UI v2.0
-    ───────────────────────────────────────────────────────────────────────
-    FIXED: ImageColor3 nil error
-    ═══════════════════════════════════════════════════════════════════════
---]]
+-- [[
+--     ═══════════════════════════════════════════════════════════════════════
+--     VOLTAGE UI v2.1 — FIXED SVG EXPORT
+--     ═══════════════════════════════════════════════════════════════════════
+-- ]]
 
 -- ═══════════════════════════════════════════════════════════════════════
--- SERVICES & SETUP
+-- SERVICES
 -- ═══════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -15,18 +13,13 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
 local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local Camera = Workspace.CurrentCamera
-
 local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- ═══════════════════════════════════════════════════════════════════════
--- SVG ICONS (Custom Voltage Icons)
+-- SVG ICONS (ЭКСПОРТИРУЕМЫЕ)
 -- ═══════════════════════════════════════════════════════════════════════
 
 local SVG = {
@@ -82,57 +75,33 @@ local SVG = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════
--- THEME SYSTEM — PULSE/VOLTAGE
+-- THEME
 -- ═══════════════════════════════════════════════════════════════════════
 
 local Theme = {
-    -- Core Colors
     Background = Color3.fromRGB(8, 8, 14),
     Surface = Color3.fromRGB(14, 14, 22),
     SurfaceHover = Color3.fromRGB(20, 20, 32),
     Element = Color3.fromRGB(18, 18, 28),
     ElementHover = Color3.fromRGB(26, 26, 40),
-    
-    -- Voltage Palette
     Voltage = Color3.fromRGB(0, 200, 255),
     VoltageDim = Color3.fromRGB(0, 120, 180),
-    VoltageDark = Color3.fromRGB(0, 60, 100),
     Pulse = Color3.fromRGB(180, 60, 255),
-    PulseDim = Color3.fromRGB(120, 40, 180),
-    
-    -- Text
     Text = Color3.fromRGB(235, 240, 255),
     TextDim = Color3.fromRGB(140, 150, 180),
-    TextDisabled = Color3.fromRGB(70, 75, 90),
-    
-    -- Borders
     Border = Color3.fromRGB(30, 35, 50),
-    BorderHover = Color3.fromRGB(50, 60, 85),
-    
-    -- Status
     Success = Color3.fromRGB(60, 220, 120),
     Error = Color3.fromRGB(220, 60, 80),
     Warning = Color3.fromRGB(255, 200, 60),
 }
 
-local themeElements = {}
-
-local function registerTheme(obj, prop, key)
-    table.insert(themeElements, {obj = obj, prop = prop, key = key})
-    if Theme[key] then
-        obj[prop] = Theme[key]
-    end
-end
-
 -- ═══════════════════════════════════════════════════════════════════════
 -- UTILITIES
 -- ═══════════════════════════════════════════════════════════════════════
 
-local function tween(obj, props, time, style, dir)
+local function tween(obj, props, time)
     time = time or 0.2
-    style = style or Enum.EasingStyle.Quad
-    dir = dir or Enum.EasingDirection.Out
-    local tw = TweenService:Create(obj, TweenInfo.new(time, style, dir), props)
+    local tw = TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
     tw:Play()
     return tw
 end
@@ -144,24 +113,13 @@ local function corner(obj, r)
     return c
 end
 
-local function stroke(obj, col, thick, trans)
+local function stroke(obj, col, thick)
     local s = Instance.new("UIStroke")
     s.Color = col or Theme.Border
     s.Thickness = thick or 1
-    s.Transparency = trans or 0
     s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     s.Parent = obj
     return s
-end
-
-local function pad(obj, t, r, b, l)
-    local p = Instance.new("UIPadding")
-    p.PaddingTop = UDim.new(0, t or 0)
-    p.PaddingRight = UDim.new(0, r or 0)
-    p.PaddingBottom = UDim.new(0, b or 0)
-    p.PaddingLeft = UDim.new(0, l or 0)
-    p.Parent = obj
-    return p
 end
 
 local function makeIcon(parent, icon, size, color)
@@ -169,11 +127,7 @@ local function makeIcon(parent, icon, size, color)
     img.Size = size or UDim2.fromOffset(18, 18)
     img.BackgroundTransparency = 1
     img.Image = icon
-    if color then
-        img.ImageColor3 = color
-    else
-        img.ImageColor3 = Theme.Text
-    end
+    img.ImageColor3 = color or Theme.Text
     img.Parent = parent
     return img
 end
@@ -205,8 +159,6 @@ local function saveConfig()
     for k, v in pairs(Flags) do
         if type(v) == "Color3" then
             data[k] = {__type = "Color3", r = v.R, g = v.G, b = v.B}
-        elseif type(v) == "table" and v.__type then
-            data[k] = v
         else
             data[k] = v
         end
@@ -232,7 +184,7 @@ local function loadConfig()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- SPEEDHACK SYSTEM
+-- SPEEDHACK
 -- ═══════════════════════════════════════════════════════════════════════
 
 local SpeedHack = {
@@ -264,7 +216,6 @@ function SpeedHack:Enable()
     
     local conn = RunService.Heartbeat:Connect(function()
         if self.enabled then
-            -- Keep speed applied
             self:ApplySpeed()
         end
     end)
@@ -300,27 +251,22 @@ function SpeedHack:ApplySpeed()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- VOLTAGE UI — MAIN LIBRARY
+-- VOLTAGE UI — MAIN
 -- ═══════════════════════════════════════════════════════════════════════
 
 local Voltage = {
     Flags = Flags,
     Theme = Theme,
+    SVG = SVG, -- ← ЭКСПОРТИРУЕМ SVG!
     SpeedHack = SpeedHack,
-    Version = "2.0.0",
-    _windows = {},
+    Version = "2.1.0",
 }
 
-function Voltage:SaveConfig()
-    saveConfig()
-end
-
-function Voltage:LoadConfig()
-    loadConfig()
-end
+function Voltage:SaveConfig() saveConfig() end
+function Voltage:LoadConfig() loadConfig() end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- WINDOW SYSTEM
+-- WINDOW
 -- ═══════════════════════════════════════════════════════════════════════
 
 function Voltage:Window(config)
@@ -330,7 +276,6 @@ function Voltage:Window(config)
     local width = config.Width or 820
     local height = config.Height or 580
     
-    -- Destroy existing GUI
     if CoreGui:FindFirstChild("VoltageUI") then
         CoreGui.VoltageUI:Destroy()
     end
@@ -343,7 +288,7 @@ function Voltage:Window(config)
     ScreenGui.DisplayOrder = 999
     ScreenGui.Parent = CoreGui
     
-    -- ── Main Window ──
+    -- Main Window
     local Main = Instance.new("Frame")
     Main.Name = "Main"
     Main.Size = UDim2.fromOffset(0, 0)
@@ -354,76 +299,34 @@ function Voltage:Window(config)
     Main.BorderSizePixel = 0
     Main.ClipsDescendants = true
     Main.Parent = ScreenGui
-    registerTheme(Main, "BackgroundColor3", "Background")
     corner(Main, 14)
+    stroke(Main, Theme.Border, 1.5)
     
-    local MainStroke = stroke(Main, Theme.Border, 1.5, 0.3)
-    registerTheme(MainStroke, "Color", "Border")
-    
-    -- Glow border
-    local Glow = Instance.new("ImageLabel")
-    Glow.Size = UDim2.new(1, 40, 1, 40)
-    Glow.Position = UDim2.new(0.5, -20, 0.5, -20)
-    Glow.AnchorPoint = Vector2.new(0.5, 0.5)
-    Glow.BackgroundTransparency = 1
-    Glow.Image = "rbxassetid://18245826428"
-    Glow.ImageColor3 = Theme.Voltage
-    Glow.ImageTransparency = 0.85
-    Glow.ScaleType = Enum.ScaleType.Slice
-    Glow.SliceCenter = Rect.new(Vector2.new(20, 20), Vector2.new(80, 80))
-    Glow.ZIndex = 0
-    Glow.Parent = Main
-    registerTheme(Glow, "ImageColor3", "Voltage")
-    
-    -- Pulsing glow animation
-    task.spawn(function()
-        local dir = 1
-        while Main.Parent do
-            local trans = 0.85 + dir * 0.1
-            tween(Glow, {ImageTransparency = trans}, 1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-            dir = -dir
-            task.wait(1.5)
-        end
-    end)
-    
-    -- ── Window Scale Animation ──
+    -- Scale
     local UIScale = Instance.new("UIScale")
     UIScale.Scale = 0
     UIScale.Parent = Main
     
     task.spawn(function()
-        tween(UIScale, {Scale = 1}, 0.5, Enum.EasingStyle.Back)
-        tween(Main, {BackgroundTransparency = 0, Size = UDim2.fromOffset(width, height)}, 0.4, Enum.EasingStyle.Quart)
+        tween(UIScale, {Scale = 1}, 0.5)
+        tween(Main, {BackgroundTransparency = 0, Size = UDim2.fromOffset(width, height)}, 0.4)
     end)
     
-    -- ── Sidebar ──
+    -- Sidebar
     local Sidebar = Instance.new("Frame")
     Sidebar.Size = UDim2.new(0, 200, 1, 0)
     Sidebar.BackgroundColor3 = Theme.Surface
     Sidebar.BorderSizePixel = 0
     Sidebar.Parent = Main
-    registerTheme(Sidebar, "BackgroundColor3", "Surface")
     corner(Sidebar, 14)
     
-    -- Sidebar accent line
-    local AccentLine = Instance.new("Frame")
-    AccentLine.Size = UDim2.new(0, 2, 1, -20)
-    AccentLine.Position = UDim2.new(1, -2, 0.5, 0)
-    AccentLine.AnchorPoint = Vector2.new(1, 0.5)
-    AccentLine.BackgroundColor3 = Theme.Voltage
-    AccentLine.BorderSizePixel = 0
-    AccentLine.Parent = Sidebar
-    registerTheme(AccentLine, "BackgroundColor3", "Voltage")
-    corner(AccentLine, 2)
-    
-    -- ── Logo ──
+    -- Logo
     local Logo = Instance.new("Frame")
     Logo.Size = UDim2.new(1, 0, 0, 70)
     Logo.BackgroundTransparency = 1
     Logo.Parent = Sidebar
     
-    local LogoIcon = makeIcon(Logo, SVG.bolt, UDim2.fromOffset(32, 32), Theme.Voltage)
-    LogoIcon.Position = UDim2.new(0, 16, 0.5, -16)
+    makeIcon(Logo, SVG.bolt, UDim2.fromOffset(32, 32), Theme.Voltage)
     
     local LogoText = Instance.new("TextLabel")
     LogoText.Size = UDim2.new(1, -60, 0, 24)
@@ -435,7 +338,6 @@ function Voltage:Window(config)
     LogoText.TextSize = 18
     LogoText.TextXAlignment = Enum.TextXAlignment.Left
     LogoText.Parent = Logo
-    registerTheme(LogoText, "TextColor3", "Text")
     
     local LogoSub = Instance.new("TextLabel")
     LogoSub.Size = UDim2.new(1, -60, 0, 16)
@@ -447,9 +349,8 @@ function Voltage:Window(config)
     LogoSub.TextSize = 11
     LogoSub.TextXAlignment = Enum.TextXAlignment.Left
     LogoSub.Parent = Logo
-    registerTheme(LogoSub, "TextColor3", "TextDim")
     
-    -- ── Tab Navigation ──
+    -- Tabs
     local TabContainer = Instance.new("ScrollingFrame")
     TabContainer.Size = UDim2.new(1, 0, 1, -70)
     TabContainer.Position = UDim2.new(0, 0, 0, 70)
@@ -459,7 +360,6 @@ function Voltage:Window(config)
     TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
     TabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     TabContainer.Parent = Sidebar
-    registerTheme(TabContainer, "ScrollBarImageColor3", "VoltageDim")
     pad(TabContainer, 6, 6, 6, 6)
     
     local TabLayout = Instance.new("UIListLayout")
@@ -467,14 +367,14 @@ function Voltage:Window(config)
     TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
     TabLayout.Parent = TabContainer
     
-    -- ── Content Area ──
+    -- Content
     local Content = Instance.new("Frame")
     Content.Size = UDim2.new(1, -210, 1, -10)
     Content.Position = UDim2.new(0, 205, 0, 5)
     Content.BackgroundTransparency = 1
     Content.Parent = Main
     
-    -- ── Top Bar ──
+    -- Top Bar
     local TopBar = Instance.new("Frame")
     TopBar.Size = UDim2.new(1, 0, 0, 45)
     TopBar.BackgroundTransparency = 1
@@ -490,89 +390,8 @@ function Voltage:Window(config)
     TitleText.TextSize = 20
     TitleText.TextXAlignment = Enum.TextXAlignment.Left
     TitleText.Parent = TopBar
-    registerTheme(TitleText, "TextColor3", "Text")
     
-    -- Title pulse line
-    local TitleLine = Instance.new("Frame")
-    TitleLine.Size = UDim2.new(0, 40, 0, 2)
-    TitleLine.Position = UDim2.new(0, 12, 1, -4)
-    TitleLine.BackgroundColor3 = Theme.Voltage
-    TitleLine.BorderSizePixel = 0
-    TitleLine.Parent = TopBar
-    registerTheme(TitleLine, "BackgroundColor3", "Voltage")
-    corner(TitleLine, 2)
-    
-    -- ── Window Controls ──
-    local Controls = Instance.new("Frame")
-    Controls.Size = UDim2.new(0, 90, 1, 0)
-    Controls.Position = UDim2.new(1, -90, 0, 0)
-    Controls.BackgroundTransparency = 1
-    Controls.Parent = TopBar
-    
-    local controlIcons = {
-        minimize = SVG.minimize,
-        maximize = SVG.maximize,
-        close = SVG.close,
-    }
-    
-    local btnX = -10
-    for name, icon in pairs(controlIcons) do
-        btnX = btnX - 28
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.fromOffset(22, 22)
-        btn.Position = UDim2.new(1, btnX, 0.5, -11)
-        btn.BackgroundColor3 = Theme.Surface
-        btn.BackgroundTransparency = 0.5
-        btn.Text = ""
-        btn.AutoButtonColor = false
-        btn.Parent = Controls
-        registerTheme(btn, "BackgroundColor3", "Surface")
-        corner(btn, 6)
-        
-        local img = makeIcon(btn, icon, UDim2.fromOffset(12, 12), Theme.TextDim)
-        img.Position = UDim2.new(0.5, -6, 0.5, -6)
-        
-        btn.MouseEnter:Connect(function()
-            tween(btn, {BackgroundTransparency = 0})
-            tween(img, {ImageColor3 = Theme.Text})
-        end)
-        btn.MouseLeave:Connect(function()
-            if name ~= "close" then
-                tween(btn, {BackgroundTransparency = 0.5})
-                tween(img, {ImageColor3 = Theme.TextDim})
-            end
-        end)
-        
-        if name == "close" then
-            btn.MouseEnter:Connect(function()
-                tween(btn, {BackgroundColor3 = Theme.Error})
-                tween(img, {ImageColor3 = Color3.new(1, 1, 1)})
-            end)
-            btn.MouseLeave:Connect(function()
-                tween(btn, {BackgroundColor3 = Theme.Surface, BackgroundTransparency = 0.5})
-                tween(img, {ImageColor3 = Theme.TextDim})
-            end)
-            btn.MouseButton1Click:Connect(function()
-                tween(UIScale, {Scale = 0}, 0.3, Enum.EasingStyle.Back)
-                tween(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Quart)
-                task.wait(0.35)
-                ScreenGui:Destroy()
-            end)
-        elseif name == "minimize" then
-            btn.MouseButton1Click:Connect(function()
-                local currentSize = Main.Size
-                tween(Main, {Size = UDim2.fromOffset(currentSize.X.Offset, 45)}, 0.3, Enum.EasingStyle.Quart)
-                tween(Content, {Size = UDim2.new(1, -210, 0, 0)}, 0.3, Enum.EasingStyle.Quart)
-                tween(Sidebar, {Size = UDim2.new(0, 200, 0, 0)}, 0.3, Enum.EasingStyle.Quart)
-                task.wait(0.35)
-                tween(Main, {Size = UDim2.fromOffset(currentSize.X.Offset, currentSize.Y.Offset)}, 0.3, Enum.EasingStyle.Quart)
-                tween(Content, {Size = UDim2.new(1, -210, 1, -10)}, 0.3, Enum.EasingStyle.Quart)
-                tween(Sidebar, {Size = UDim2.new(0, 200, 1, 0)}, 0.3, Enum.EasingStyle.Quart)
-            end)
-        end
-    end
-    
-    -- ── Content Pages ──
+    -- Page Container
     local PageContainer = Instance.new("Frame")
     PageContainer.Size = UDim2.new(1, 0, 1, -50)
     PageContainer.Position = UDim2.new(0, 0, 0, 50)
@@ -583,13 +402,12 @@ function Voltage:Window(config)
     local Pages = {}
     local CurrentTab = nil
     
-    -- ── Tab System ──
+    -- ── Tab Creator ──
     local function createTab(config)
         config = config or {}
         local name = config.Name or "Tab"
         local icon = config.Icon or SVG.bolt
         
-        -- Tab Button
         local TabBtn = Instance.new("TextButton")
         TabBtn.Size = UDim2.new(1, 0, 0, 40)
         TabBtn.BackgroundTransparency = 1
@@ -598,11 +416,9 @@ function Voltage:Window(config)
         TabBtn.Parent = TabContainer
         corner(TabBtn, 8)
         
-        -- Tab Icon
         local TabIcon = makeIcon(TabBtn, icon, UDim2.fromOffset(18, 18), Theme.TextDim)
         TabIcon.Position = UDim2.new(0, 12, 0.5, -9)
         
-        -- Tab Label
         local TabLabel = Instance.new("TextLabel")
         TabLabel.Size = UDim2.new(1, -40, 1, 0)
         TabLabel.Position = UDim2.new(0, 38, 0, 0)
@@ -613,9 +429,7 @@ function Voltage:Window(config)
         TabLabel.TextSize = 13
         TabLabel.TextXAlignment = Enum.TextXAlignment.Left
         TabLabel.Parent = TabBtn
-        registerTheme(TabLabel, "TextColor3", "TextDim")
         
-        -- Tab indicator
         local Indicator = Instance.new("Frame")
         Indicator.Size = UDim2.new(0, 3, 1, -12)
         Indicator.Position = UDim2.new(0, 0, 0.5, 0)
@@ -624,10 +438,8 @@ function Voltage:Window(config)
         Indicator.BackgroundTransparency = 1
         Indicator.BorderSizePixel = 0
         Indicator.Parent = TabBtn
-        registerTheme(Indicator, "BackgroundColor3", "Voltage")
         corner(Indicator, 2)
         
-        -- Tab Content
         local TabContent = Instance.new("ScrollingFrame")
         TabContent.Size = UDim2.new(1, 0, 1, 0)
         TabContent.BackgroundTransparency = 1
@@ -637,7 +449,6 @@ function Voltage:Window(config)
         TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
         TabContent.Visible = false
         TabContent.Parent = PageContainer
-        registerTheme(TabContent, "ScrollBarImageColor3", "VoltageDim")
         pad(TabContent, 10, 10, 20, 10)
         
         local ContentLayout = Instance.new("UIListLayout")
@@ -645,7 +456,6 @@ function Voltage:Window(config)
         ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ContentLayout.Parent = TabContent
         
-        -- Tab Data
         local TabData = {
             Name = name,
             Button = TabBtn,
@@ -654,15 +464,12 @@ function Voltage:Window(config)
             Indicator = Indicator,
             Content = TabContent,
             Layout = ContentLayout,
-            Sections = {},
         }
         
-        -- Tab Click
         TabBtn.MouseButton1Click:Connect(function()
             Voltage:SelectTab(TabData)
         end)
         
-        -- Hover Effects
         TabBtn.MouseEnter:Connect(function()
             if CurrentTab ~= TabData then
                 tween(TabBtn, {BackgroundTransparency = 0.8})
@@ -678,12 +485,11 @@ function Voltage:Window(config)
             end
         end)
         
-        -- Section Builder
+        -- Section Creator
         local function createSection(sectionConfig)
             sectionConfig = sectionConfig or {}
             local sectionName = sectionConfig.Name or "Section"
             
-            -- Section Frame
             local Section = Instance.new("Frame")
             Section.Size = UDim2.new(1, 0, 0, 0)
             Section.BackgroundTransparency = 1
@@ -705,7 +511,6 @@ function Voltage:Window(config)
             SectionTitle.TextSize = 11
             SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
             SectionTitle.Parent = SectionHeader
-            registerTheme(SectionTitle, "TextColor3", "TextDim")
             
             local SectionDivider = Instance.new("Frame")
             SectionDivider.Size = UDim2.new(1, -20, 0, 1)
@@ -713,7 +518,6 @@ function Voltage:Window(config)
             SectionDivider.BackgroundColor3 = Theme.Border
             SectionDivider.BorderSizePixel = 0
             SectionDivider.Parent = SectionHeader
-            registerTheme(SectionDivider, "BackgroundColor3", "Border")
             
             local SectionContent = Instance.new("Frame")
             SectionContent.Size = UDim2.new(1, 0, 0, 0)
@@ -728,7 +532,7 @@ function Voltage:Window(config)
             
             local SectionAPI = {}
             
-            -- ── Toggle ──
+            -- Toggle
             function SectionAPI:Toggle(config)
                 config = config or {}
                 local name = config.Name or "Toggle"
@@ -762,7 +566,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = ToggleContainer
-                registerTheme(Label, "TextColor3", "Text")
                 
                 if hasDesc then
                     local Desc = Instance.new("TextLabel")
@@ -775,7 +578,6 @@ function Voltage:Window(config)
                     Desc.TextSize = 11
                     Desc.TextXAlignment = Enum.TextXAlignment.Left
                     Desc.Parent = ToggleContainer
-                    registerTheme(Desc, "TextColor3", "TextDim")
                 end
                 
                 local Switch = Instance.new("Frame")
@@ -784,7 +586,6 @@ function Voltage:Window(config)
                 Switch.BackgroundColor3 = Theme.Element
                 Switch.BorderSizePixel = 0
                 Switch.Parent = ToggleContainer
-                registerTheme(Switch, "BackgroundColor3", "Element")
                 corner(Switch, 10)
                 
                 local SwitchKnob = Instance.new("Frame")
@@ -823,7 +624,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── Button ──
+            -- Button
             function SectionAPI:Button(config)
                 config = config or {}
                 local name = config.Name or "Button"
@@ -844,7 +645,6 @@ function Voltage:Window(config)
                 Button.Text = ""
                 Button.AutoButtonColor = false
                 Button.Parent = Frame
-                registerTheme(Button, "BackgroundColor3", "Element")
                 corner(Button, 8)
                 
                 local Container = Instance.new("Frame")
@@ -863,7 +663,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Container
-                registerTheme(Label, "TextColor3", "Text")
                 
                 if hasDesc then
                     local Desc = Instance.new("TextLabel")
@@ -876,14 +675,13 @@ function Voltage:Window(config)
                     Desc.TextSize = 11
                     Desc.TextXAlignment = Enum.TextXAlignment.Left
                     Desc.Parent = Container
-                    registerTheme(Desc, "TextColor3", "TextDim")
                 end
                 
                 local Arrow = makeIcon(Container, SVG.chevron_right, UDim2.fromOffset(14, 14), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -2, 0.5, -7)
                 
                 Button.MouseEnter:Connect(function()
-                    tween(Button, {BackgroundColor3 = Theme.ElementHover}, 0.15)
+                    tween(Button, {BackgroundColor3 = Theme.SurfaceHover}, 0.15)
                     tween(Arrow, {ImageColor3 = Theme.Text}, 0.15)
                 end)
                 Button.MouseLeave:Connect(function()
@@ -893,14 +691,14 @@ function Voltage:Window(config)
                 Button.MouseButton1Click:Connect(function()
                     tween(Button, {Size = UDim2.new(0.98, 0, 0.92, 0)}, 0.08)
                     task.wait(0.1)
-                    tween(Button, {Size = UDim2.new(1, 0, 1, 0)}, 0.15, Enum.EasingStyle.Back)
+                    tween(Button, {Size = UDim2.new(1, 0, 1, 0)}, 0.15)
                     pcall(callback)
                 end)
                 
                 return { Press = function() pcall(callback) end }
             end
             
-            -- ── Slider ──
+            -- Slider
             function SectionAPI:Slider(config)
                 config = config or {}
                 local name = config.Name or "Slider"
@@ -931,7 +729,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = LabelRow
-                registerTheme(Label, "TextColor3", "Text")
                 
                 local ValueLabel = Instance.new("TextLabel")
                 ValueLabel.Size = UDim2.new(0, 50, 1, 0)
@@ -943,7 +740,6 @@ function Voltage:Window(config)
                 ValueLabel.TextSize = 13
                 ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
                 ValueLabel.Parent = LabelRow
-                registerTheme(ValueLabel, "TextColor3", "Voltage")
                 
                 local Track = Instance.new("TextButton")
                 Track.Size = UDim2.new(1, 0, 0, 4)
@@ -952,7 +748,6 @@ function Voltage:Window(config)
                 Track.Text = ""
                 Track.AutoButtonColor = false
                 Track.Parent = Frame
-                registerTheme(Track, "BackgroundColor3", "Element")
                 corner(Track, 2)
                 
                 local Fill = Instance.new("Frame")
@@ -960,7 +755,6 @@ function Voltage:Window(config)
                 Fill.BackgroundColor3 = Theme.Voltage
                 Fill.BorderSizePixel = 0
                 Fill.Parent = Track
-                registerTheme(Fill, "BackgroundColor3", "Voltage")
                 corner(Fill, 2)
                 
                 local Knob = Instance.new("Frame")
@@ -1022,7 +816,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── Dropdown ──
+            -- Dropdown
             function SectionAPI:Dropdown(config)
                 config = config or {}
                 local name = config.Name or "Dropdown"
@@ -1043,7 +837,6 @@ function Voltage:Window(config)
                 DropdownBtn.Text = ""
                 DropdownBtn.AutoButtonColor = false
                 DropdownBtn.Parent = Frame
-                registerTheme(DropdownBtn, "BackgroundColor3", "Element")
                 corner(DropdownBtn, 8)
                 
                 local Label = Instance.new("TextLabel")
@@ -1056,7 +849,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = DropdownBtn
-                registerTheme(Label, "TextColor3", "Text")
                 
                 local ValueLabel = Instance.new("TextLabel")
                 ValueLabel.Size = UDim2.new(0, 100, 1, 0)
@@ -1068,7 +860,6 @@ function Voltage:Window(config)
                 ValueLabel.TextSize = 13
                 ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
                 ValueLabel.Parent = DropdownBtn
-                registerTheme(ValueLabel, "TextColor3", "TextDim")
                 
                 local Arrow = makeIcon(DropdownBtn, SVG.chevron_down, UDim2.fromOffset(14, 14), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -24, 0.5, -7)
@@ -1084,10 +875,8 @@ function Voltage:Window(config)
                 List.Visible = false
                 List.ClipsDescendants = true
                 List.Parent = DropdownBtn
-                registerTheme(List, "BackgroundColor3", "Surface")
-                registerTheme(List, "ScrollBarImageColor3", "VoltageDim")
                 corner(List, 8)
-                stroke(List, Theme.Border, 1, 0.5)
+                stroke(List, Theme.Border, 1)
                 
                 local ListLayout = Instance.new("UIListLayout")
                 ListLayout.Padding = UDim.new(0, 2)
@@ -1139,8 +928,6 @@ function Voltage:Window(config)
                     end
                 end
                 
-                -- Build items
-                local itemButtons = {}
                 for _, item in ipairs(items) do
                     local itemFrame = Instance.new("TextButton")
                     itemFrame.Size = UDim2.new(1, -8, 0, 28)
@@ -1160,7 +947,6 @@ function Voltage:Window(config)
                     itemLabel.TextSize = 13
                     itemLabel.TextXAlignment = Enum.TextXAlignment.Left
                     itemLabel.Parent = itemFrame
-                    registerTheme(itemLabel, "TextColor3", "TextDim")
                     
                     local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
                     check.Position = UDim2.new(1, -18, 0.5, -6)
@@ -1177,8 +963,6 @@ function Voltage:Window(config)
                     itemFrame.MouseButton1Click:Connect(function()
                         selectItem(item, true)
                     end)
-                    
-                    itemButtons[item] = {frame = itemFrame, label = itemLabel, check = check}
                 end
                 
                 DropdownBtn.MouseButton1Click:Connect(function()
@@ -1268,10 +1052,9 @@ function Voltage:Window(config)
                         return selected
                     end,
                     Refresh = function(newItems)
-                        for _, btn in pairs(itemButtons) do
-                            btn.frame:Destroy()
+                        for _, child in ipairs(List:GetChildren()) do
+                            if child:IsA("TextButton") then child:Destroy() end
                         end
-                        itemButtons = {}
                         items = newItems or {}
                         for _, item in ipairs(items) do
                             local itemFrame = Instance.new("TextButton")
@@ -1292,7 +1075,6 @@ function Voltage:Window(config)
                             itemLabel.TextSize = 13
                             itemLabel.TextXAlignment = Enum.TextXAlignment.Left
                             itemLabel.Parent = itemFrame
-                            registerTheme(itemLabel, "TextColor3", "TextDim")
                             
                             local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
                             check.Position = UDim2.new(1, -18, 0.5, -6)
@@ -1309,20 +1091,17 @@ function Voltage:Window(config)
                             itemFrame.MouseButton1Click:Connect(function()
                                 selectItem(item, true)
                             end)
-                            
-                            itemButtons[item] = {frame = itemFrame, label = itemLabel, check = check}
                         end
                     end,
                 }
             end
             
-            -- ── ColorPicker ──
+            -- ColorPicker (упрощенная версия)
             function SectionAPI:ColorPicker(config)
                 config = config or {}
                 local name = config.Name or "Color"
                 local flag = config.Flag or name
                 local default = config.Default or Theme.Voltage
-                local alpha = config.Alpha or 1
                 local callback = config.Callback or function() end
                 
                 local Frame = Instance.new("Frame")
@@ -1336,7 +1115,6 @@ function Voltage:Window(config)
                 ColorBtn.Text = ""
                 ColorBtn.AutoButtonColor = false
                 ColorBtn.Parent = Frame
-                registerTheme(ColorBtn, "BackgroundColor3", "Element")
                 corner(ColorBtn, 8)
                 
                 local Label = Instance.new("TextLabel")
@@ -1349,7 +1127,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = ColorBtn
-                registerTheme(Label, "TextColor3", "Text")
                 
                 local Preview = Instance.new("Frame")
                 Preview.Size = UDim2.new(0, 28, 0, 18)
@@ -1357,126 +1134,79 @@ function Voltage:Window(config)
                 Preview.BackgroundColor3 = default
                 Preview.BorderSizePixel = 0
                 Preview.Parent = ColorBtn
-                registerTheme(Preview, "BackgroundColor3", "Voltage")
                 corner(Preview, 6)
-                stroke(Preview, Theme.Border, 1, 0.5)
+                stroke(Preview, Theme.Border, 1)
                 
                 local Popup = Instance.new("Frame")
-                Popup.Size = UDim2.new(0, 240, 0, 200)
-                Popup.Position = UDim2.new(1, -240, 0, 32)
+                Popup.Size = UDim2.new(0, 0, 0, 0)
+                Popup.Position = UDim2.new(0, 0, 0, 34)
                 Popup.BackgroundColor3 = Theme.Surface
                 Popup.BorderSizePixel = 0
                 Popup.Visible = false
                 Popup.ZIndex = 10
                 Popup.Parent = ColorBtn
-                registerTheme(Popup, "BackgroundColor3", "Surface")
                 corner(Popup, 10)
-                stroke(Popup, Theme.Border, 1, 0.5)
+                stroke(Popup, Theme.Border, 1)
                 
-                local Wheel = Instance.new("ImageLabel")
-                Wheel.Size = UDim2.new(0, 120, 0, 120)
-                Wheel.Position = UDim2.new(0, 12, 0, 12)
-                Wheel.BackgroundColor3 = Color3.new(1, 1, 1)
-                Wheel.Image = "rbxassetid://4155801252"
-                Wheel.Parent = Popup
-                corner(Wheel, 60)
-                
-                local WheelDot = Instance.new("Frame")
-                WheelDot.Size = UDim2.new(0, 8, 0, 8)
-                WheelDot.Position = UDim2.fromScale(0.5, 0.5)
-                WheelDot.AnchorPoint = Vector2.new(0.5, 0.5)
-                WheelDot.BackgroundColor3 = Color3.new(1, 1, 1)
-                WheelDot.BorderSizePixel = 0
-                WheelDot.Parent = Wheel
-                corner(WheelDot, 4)
-                stroke(WheelDot, Color3.new(0, 0, 0), 1, 0.3)
-                
-                local HueBar = Instance.new("Frame")
-                HueBar.Size = UDim2.new(1, -24, 0, 10)
-                HueBar.Position = UDim2.new(0, 12, 1, -32)
-                HueBar.BackgroundColor3 = Color3.new(1, 1, 1)
-                HueBar.BorderSizePixel = 0
-                HueBar.Parent = Popup
-                corner(HueBar, 5)
-                
-                local HueGrad = Instance.new("UIGradient")
-                HueGrad.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-                    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
-                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
-                    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
-                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+                -- Простой выбор цвета из палитры
+                local colors = {
+                    Color3.fromRGB(255, 0, 0),
+                    Color3.fromRGB(255, 128, 0),
+                    Color3.fromRGB(255, 255, 0),
+                    Color3.fromRGB(0, 255, 0),
+                    Color3.fromRGB(0, 255, 255),
+                    Color3.fromRGB(0, 0, 255),
+                    Color3.fromRGB(255, 0, 255),
+                    Color3.fromRGB(255, 255, 255),
+                    Theme.Voltage,
+                    Theme.Pulse,
                 }
-                HueGrad.Parent = HueBar
                 
-                local HueDot = Instance.new("Frame")
-                HueDot.Size = UDim2.new(0, 6, 1, 2)
-                HueDot.Position = UDim2.new(0.5, -3, 0.5, -1)
-                HueDot.AnchorPoint = Vector2.new(0, 0.5)
-                HueDot.BackgroundColor3 = Color3.new(1, 1, 1)
-                HueDot.BorderSizePixel = 0
-                HueDot.Parent = HueBar
-                corner(HueDot, 2)
-                stroke(HueDot, Color3.new(0, 0, 0), 1, 0.3)
-                
-                local AlphaBar = Instance.new("Frame")
-                AlphaBar.Size = UDim2.new(1, -24, 0, 10)
-                AlphaBar.Position = UDim2.new(0, 12, 1, -18)
-                AlphaBar.BackgroundColor3 = Color3.new(1, 1, 1)
-                AlphaBar.BorderSizePixel = 0
-                AlphaBar.Parent = Popup
-                corner(AlphaBar, 5)
-                
-                local AlphaCheck = Instance.new("ImageLabel")
-                AlphaCheck.Size = UDim2.new(1, 0, 1, 0)
-                AlphaCheck.BackgroundTransparency = 1
-                AlphaCheck.Image = "rbxassetid://18274452449"
-                AlphaCheck.ScaleType = Enum.ScaleType.Tile
-                AlphaCheck.TileSize = UDim2.new(0, 6, 0, 6)
-                AlphaCheck.Parent = AlphaBar
-                
-                local AlphaFill = Instance.new("Frame")
-                AlphaFill.Size = UDim2.new(alpha, 0, 1, 0)
-                AlphaFill.BackgroundColor3 = default
-                AlphaFill.BorderSizePixel = 0
-                AlphaFill.Parent = AlphaBar
-                registerTheme(AlphaFill, "BackgroundColor3", "Voltage")
-                corner(AlphaFill, 5)
-                
-                local AlphaDot = Instance.new("Frame")
-                AlphaDot.Size = UDim2.new(0, 6, 1, 2)
-                AlphaDot.Position = UDim2.new(alpha, -3, 0.5, -1)
-                AlphaDot.AnchorPoint = Vector2.new(0, 0.5)
-                AlphaDot.BackgroundColor3 = Color3.new(1, 1, 1)
-                AlphaDot.BorderSizePixel = 0
-                AlphaDot.Parent = AlphaBar
-                corner(AlphaDot, 2)
-                stroke(AlphaDot, Color3.new(0, 0, 0), 1, 0.3)
-                
-                local color = default
-                local hue, sat, val = Color3.toHSV(default)
-                local alphaVal = alpha
-                local isOpen = false
-                
-                local function updateColor()
-                    color = Color3.fromHSV(hue, sat, val)
-                    Preview.BackgroundColor3 = color
-                    AlphaFill.BackgroundColor3 = color
-                    Wheel.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
-                    WheelDot.Position = UDim2.fromScale(sat, 1 - val)
-                    HueDot.Position = UDim2.new(hue, -3, 0.5, -1)
-                    AlphaDot.Position = UDim2.new(alphaVal, -3, 0.5, -1)
-                    Flags[flag] = {Color = color, Alpha = alphaVal}
-                    pcall(callback, color, alphaVal)
+                local function buildPalette()
+                    for _, child in ipairs(Popup:GetChildren()) do
+                        if child:IsA("TextButton") then child:Destroy() end
+                    end
+                    
+                    local grid = Instance.new("UIGridLayout")
+                    grid.CellSize = UDim2.new(0, 28, 0, 28)
+                    grid.CellPadding = UDim2.new(0, 4, 0, 4)
+                    grid.Parent = Popup
+                    pad(Popup, 8, 8, 8, 8)
+                    
+                    for _, c in ipairs(colors) do
+                        local btn = Instance.new("TextButton")
+                        btn.Size = UDim2.new(0, 28, 0, 28)
+                        btn.BackgroundColor3 = c
+                        btn.Text = ""
+                        btn.AutoButtonColor = false
+                        btn.Parent = Popup
+                        corner(btn, 6)
+                        stroke(btn, Theme.Border, 1)
+                        
+                        btn.MouseEnter:Connect(function()
+                            tween(btn, {Size = UDim2.new(0, 30, 0, 30)}, 0.1)
+                        end)
+                        btn.MouseLeave:Connect(function()
+                            tween(btn, {Size = UDim2.new(0, 28, 0, 28)}, 0.1)
+                        end)
+                        btn.MouseButton1Click:Connect(function()
+                            Preview.BackgroundColor3 = c
+                            Flags[flag] = c
+                            pcall(callback, c)
+                            closePopup()
+                        end)
+                    end
                 end
+                
+                local isOpen = false
                 
                 local function openPopup()
                     isOpen = true
                     Popup.Visible = true
-                    Popup.Size = UDim2.new(0, 0, 0, 200)
-                    tween(Popup, {Size = UDim2.new(0, 240, 0, 200)}, 0.25, Enum.EasingStyle.Back)
+                    Popup.Size = UDim2.new(0, 0, 0, 0)
+                    buildPalette()
+                    local height = clamp(#colors * 32 + 16, 0, 200)
+                    tween(Popup, {Size = UDim2.new(0, 120, 0, height)}, 0.2)
                 end
                 
                 local function closePopup()
@@ -1490,104 +1220,23 @@ function Voltage:Window(config)
                     if isOpen then closePopup() else openPopup() end
                 end)
                 
-                local wheelDragging = false
-                Wheel.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        wheelDragging = true
-                    end
-                end)
-                Wheel.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        wheelDragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if wheelDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        local pos = input.Position
-                        local abs = Wheel.AbsolutePosition
-                        local size = Wheel.AbsoluteSize
-                        local dx = (pos.X - abs.X - size.X / 2) / (size.X / 2)
-                        local dy = (pos.Y - abs.Y - size.Y / 2) / (size.Y / 2)
-                        local dist = math.sqrt(dx * dx + dy * dy)
-                        if dist > 1 then
-                            dx = dx / dist
-                            dy = dy / dist
-                            dist = 1
-                        end
-                        sat = (dx + 1) / 2
-                        val = 1 - (dy + 1) / 2
-                        updateColor()
-                    end
-                end)
-                
-                local hueDragging = false
-                HueBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        hueDragging = true
-                    end
-                end)
-                HueBar.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        hueDragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if hueDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        local pos = input.Position
-                        local abs = HueBar.AbsolutePosition
-                        local size = HueBar.AbsoluteSize
-                        hue = clamp((pos.X - abs.X) / size.X, 0, 1)
-                        updateColor()
-                    end
-                end)
-                
-                local alphaDragging = false
-                AlphaBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        alphaDragging = true
-                    end
-                end)
-                AlphaBar.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        alphaDragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if alphaDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        local pos = input.Position
-                        local abs = AlphaBar.AbsolutePosition
-                        local size = AlphaBar.AbsoluteSize
-                        alphaVal = clamp((pos.X - abs.X) / size.X, 0, 1)
-                        updateColor()
-                    end
-                end)
-                
-                updateColor()
-                
-                FlagSetters[flag] = function(c, a)
-                    if c then
-                        hue, sat, val = Color3.toHSV(c)
-                        if a ~= nil then alphaVal = a end
-                        updateColor()
-                    end
+                FlagSetters[flag] = function(v)
+                    Preview.BackgroundColor3 = v
+                    Flags[flag] = v
+                    pcall(callback, v)
                 end
                 
                 return {
-                    Set = function(c, a)
-                        if c then
-                            hue, sat, val = Color3.toHSV(c)
-                            if a ~= nil then alphaVal = a end
-                            updateColor()
-                        end
+                    Set = function(v)
+                        Preview.BackgroundColor3 = v
+                        Flags[flag] = v
+                        pcall(callback, v)
                     end,
-                    Get = function() return color, alphaVal end,
+                    Get = function() return Preview.BackgroundColor3 end,
                 }
             end
             
-            -- ── Keybind ──
+            -- Keybind
             function SectionAPI:Keybind(config)
                 config = config or {}
                 local name = config.Name or "Keybind"
@@ -1607,7 +1256,6 @@ function Voltage:Window(config)
                 KeyBtn.Text = ""
                 KeyBtn.AutoButtonColor = false
                 KeyBtn.Parent = Frame
-                registerTheme(KeyBtn, "BackgroundColor3", "Element")
                 corner(KeyBtn, 8)
                 
                 local Label = Instance.new("TextLabel")
@@ -1620,7 +1268,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = KeyBtn
-                registerTheme(Label, "TextColor3", "Text")
                 
                 local KeyDisplay = Instance.new("TextLabel")
                 KeyDisplay.Size = UDim2.new(0, 80, 1, 0)
@@ -1632,7 +1279,6 @@ function Voltage:Window(config)
                 KeyDisplay.TextSize = 12
                 KeyDisplay.TextXAlignment = Enum.TextXAlignment.Right
                 KeyDisplay.Parent = KeyBtn
-                registerTheme(KeyDisplay, "TextColor3", "Voltage")
                 
                 local currentKey = default
                 local isListening = false
@@ -1660,18 +1306,13 @@ function Voltage:Window(config)
                                 conn:Disconnect()
                                 KeyDisplay.TextColor3 = Theme.Voltage
                             end
-                        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            setKey(Enum.UserInputType.MouseButton1, true)
-                            isListening = false
-                            conn:Disconnect()
-                            KeyDisplay.TextColor3 = Theme.Voltage
                         end
                     end)
                 end)
                 
                 UserInputService.InputBegan:Connect(function(input)
                     if isListening then return end
-                    if input.KeyCode == currentKey or input.UserInputType == currentKey then
+                    if input.KeyCode == currentKey then
                         if mode == "Toggle" then
                             keyState = not keyState
                             pcall(callback, keyState)
@@ -1684,7 +1325,7 @@ function Voltage:Window(config)
                 
                 UserInputService.InputEnded:Connect(function(input)
                     if isListening then return end
-                    if mode == "Hold" and (input.KeyCode == currentKey or input.UserInputType == currentKey) then
+                    if mode == "Hold" and input.KeyCode == currentKey then
                         keyState = false
                         pcall(callback, false)
                     end
@@ -1706,7 +1347,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── TextBox ──
+            -- TextBox
             function SectionAPI:TextBox(config)
                 config = config or {}
                 local name = config.Name or "Input"
@@ -1729,7 +1370,6 @@ function Voltage:Window(config)
                 Label.TextSize = 13
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
-                registerTheme(Label, "TextColor3", "Text")
                 
                 local Input = Instance.new("TextBox")
                 Input.Size = UDim2.new(1, 0, 0, 24)
@@ -1744,8 +1384,6 @@ function Voltage:Window(config)
                 Input.TextXAlignment = Enum.TextXAlignment.Left
                 Input.ClearTextOnFocus = false
                 Input.Parent = Frame
-                registerTheme(Input, "BackgroundColor3", "Element")
-                registerTheme(Input, "TextColor3", "Text")
                 corner(Input, 6)
                 pad(Input, 0, 0, 0, 8)
                 
@@ -1766,11 +1404,10 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── Label ──
+            -- Label
             function SectionAPI:Label(config)
                 config = config or {}
                 local text = config.Text or "Label"
-                local color = config.Color or Theme.TextDim
                 
                 local Frame = Instance.new("Frame")
                 Frame.Size = UDim2.new(1, 0, 0, 24)
@@ -1783,18 +1420,17 @@ function Voltage:Window(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.Gotham
                 Label.Text = text
-                Label.TextColor3 = color
+                Label.TextColor3 = Theme.TextDim
                 Label.TextSize = 12
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
-                registerTheme(Label, "TextColor3", "TextDim")
                 
                 return {
                     Set = function(t) Label.Text = t end,
                 }
             end
             
-            -- ── Divider ──
+            -- Divider
             function SectionAPI:Divider()
                 local Frame = Instance.new("Frame")
                 Frame.Size = UDim2.new(1, -20, 0, 1)
@@ -1802,7 +1438,6 @@ function Voltage:Window(config)
                 Frame.BackgroundColor3 = Theme.Border
                 Frame.BorderSizePixel = 0
                 Frame.Parent = SectionContent
-                registerTheme(Frame, "BackgroundColor3", "Border")
             end
             
             return SectionAPI
@@ -1842,11 +1477,9 @@ function Voltage:Window(config)
         tab.Content.Visible = true
         
         TitleText.Text = tab.Name
-        TitleLine.Size = UDim2.new(0, 0, 0, 2)
-        tween(TitleLine, {Size = UDim2.new(0, 60, 0, 2)}, 0.4, Enum.EasingStyle.Back)
     end
     
-    -- ── SpeedHack Integration ──
+    -- ── SpeedHack Tab ──
     function Voltage:AddSpeedHackTab(config)
         config = config or {}
         local tabName = config.TabName or "Speed"
@@ -1855,7 +1488,7 @@ function Voltage:Window(config)
         local tab = createTab({Name = tabName, Icon = tabIcon})
         local section = tab:Section({Name = "SpeedHack"})
         
-        local speedToggle = section:Toggle({
+        section:Toggle({
             Name = "Enable SpeedHack",
             Flag = "SpeedHackEnabled",
             Default = false,
@@ -1864,7 +1497,7 @@ function Voltage:Window(config)
             end
         })
         
-        local speedSlider = section:Slider({
+        section:Slider({
             Name = "Speed Multiplier",
             Flag = "SpeedHackMultiplier",
             Min = 0.5,
@@ -1877,43 +1510,27 @@ function Voltage:Window(config)
             end
         })
         
-        section:Label({
-            Text = "Status: Disabled",
-            Color = Theme.TextDim,
-        })
+        section:Label({Text = "Status: Disabled"})
         
         task.spawn(function()
             while true do
                 task.wait(0.5)
-                if SpeedHack.enabled then
-                    -- Update status
-                    for _, child in ipairs(section._content:GetChildren()) do
-                        if child:IsA("TextLabel") and child.Text:find("Status:") then
-                            child.Text = "Status: Enabled (" .. SpeedHack.speed .. "x)"
-                        end
-                    end
-                else
-                    for _, child in ipairs(section._content:GetChildren()) do
-                        if child:IsA("TextLabel") and child.Text:find("Status:") then
-                            child.Text = "Status: Disabled"
-                        end
+                for _, child in ipairs(section._content:GetChildren()) do
+                    if child:IsA("TextLabel") and child.Text:find("Status:") then
+                        child.Text = SpeedHack.enabled and "Status: Enabled (" .. SpeedHack.speed .. "x)" or "Status: Disabled"
                     end
                 end
             end
         end)
         
         section:Divider()
-        section:Label({
-            Text = "SpeedHack modifies your character's movement speed",
-        })
-        section:Label({
-            Text = "and can be toggled with the toggle above.",
-        })
+        section:Label({Text = "SpeedHack modifies your movement speed"})
+        section:Label({Text = "Toggle above to enable/disable"})
         
-        return speedToggle, speedSlider
+        return section
     end
     
-    -- ── Notification System ──
+    -- ── Notifications ──
     local NotificationContainer = Instance.new("Frame")
     NotificationContainer.Size = UDim2.new(0, 320, 1, -40)
     NotificationContainer.Position = UDim2.new(1, -340, 0, 20)
@@ -1945,9 +1562,8 @@ function Voltage:Window(config)
         card.BackgroundColor3 = Theme.Surface
         card.BackgroundTransparency = 0.1
         card.Parent = NotificationContainer
-        registerTheme(card, "BackgroundColor3", "Surface")
         corner(card, 10)
-        stroke(card, Theme.Border, 1, 0.5)
+        stroke(card, Theme.Border, 1)
         
         local accentBar = Instance.new("Frame")
         accentBar.Size = UDim2.new(0, 3, 1, -12)
@@ -1968,7 +1584,6 @@ function Voltage:Window(config)
         titleLabel.TextSize = 14
         titleLabel.TextXAlignment = Enum.TextXAlignment.Left
         titleLabel.Parent = card
-        registerTheme(titleLabel, "TextColor3", "Text")
         
         local textLabel = Instance.new("TextLabel")
         textLabel.Size = UDim2.new(1, -20, 0, 20)
@@ -1981,7 +1596,6 @@ function Voltage:Window(config)
         textLabel.TextXAlignment = Enum.TextXAlignment.Left
         textLabel.TextWrapped = true
         textLabel.Parent = card
-        registerTheme(textLabel, "TextColor3", "TextDim")
         
         local progress = Instance.new("Frame")
         progress.Size = UDim2.new(1, 0, 0, 2)
@@ -2007,18 +1621,18 @@ function Voltage:Window(config)
             local vis = not Main.Visible
             Main.Visible = vis
             if vis then
-                tween(UIScale, {Scale = 1}, 0.3, Enum.EasingStyle.Back)
-                tween(Main, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Quart)
+                tween(UIScale, {Scale = 1}, 0.3)
+                tween(Main, {BackgroundTransparency = 0}, 0.3)
             else
-                tween(UIScale, {Scale = 0}, 0.3, Enum.EasingStyle.Back)
-                tween(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Quart)
+                tween(UIScale, {Scale = 0}, 0.3)
+                tween(Main, {BackgroundTransparency = 1}, 0.3)
                 task.wait(0.35)
                 Main.Visible = false
             end
         end
     end)
     
-    -- ── Window API ──
+    -- ── API ──
     local windowAPI = {
         ScreenGui = ScreenGui,
         Main = Main,
@@ -2039,17 +1653,13 @@ function Voltage:Window(config)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- LOAD CONFIG
+-- EXPORT
 -- ═══════════════════════════════════════════════════════════════════════
 
 task.spawn(function()
     task.wait(0.1)
     Voltage:LoadConfig()
 end)
-
--- ═══════════════════════════════════════════════════════════════════════
--- RETURN
--- ═══════════════════════════════════════════════════════════════════════
 
 getgenv().Voltage = Voltage
 return Voltage
