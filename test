@@ -1,1597 +1,2181 @@
--- ============================================
--- ПОЛНЫЙ СКРИПТ С ОТЛАДКОЙ (ДЛЯ ТЕЛЕФОНА)
--- ============================================
+--[[
+    ═══════════════════════════════════════════════════════════════════════
+    VOLTAGE UI v2.0
+    ───────────────────────────────────────────────────────────────────────
+    A next-generation UI library combining the best features from
+    multiple libraries with a unique pulse/voltage aesthetic.
+    
+    Features:
+    • Pulse & Voltage Theming with animated gradients
+    • Complete component suite (Toggle, Slider, Dropdown, etc.)
+    • Advanced config system with auto-save
+    • Blur/Glass effects (acrylic)
+    • Mobile-optimized
+    • SVG icons (no emojis)
+    • SpeedHack integrated
+    • And much more...
+    ═══════════════════════════════════════════════════════════════════════
+--]]
 
-local function notify(title, text, duration)
-    duration = duration or 3
-    pcall(function()
-        game:GetService('StarterGui'):SetCore('SendNotification', {
-            Title = title or 'Статус',
-            Text = text or '',
-            Duration = duration,
-        })
-    end)
-    print(title .. ' - ' .. text)
-end
+-- ═══════════════════════════════════════════════════════════════════════
+-- SERVICES & SETUP
+-- ═══════════════════════════════════════════════════════════════════════
 
-notify('🔴 Запуск', 'Скрипт запущен!', 3)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
-task.wait(1)
-
-local Players = game:GetService('Players')
 local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Mouse = LocalPlayer:GetMouse()
+local Camera = Workspace.CurrentCamera
 
-notify('📦 Загрузка', 'Проверка Fsys...', 2)
+local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-local Fsys = nil
-local success, err = pcall(function()
-    Fsys = require(ReplicatedStorage:WaitForChild('Fsys'))
-end)
+-- ═══════════════════════════════════════════════════════════════════════
+-- SVG ICONS (Custom Voltage Icons)
+-- ═══════════════════════════════════════════════════════════════════════
 
-if not success then
-    notify('❌ Ошибка', 'Fsys не найден: ' .. tostring(err), 5)
-    return
+local SVG = {
+    -- Navigation
+    home = "rbxassetid://106516475571358",
+    bolt = "rbxassetid://107984937203270",
+    pulse = "rbxassetid://109423985558795",
+    settings = "rbxassetid://103508310304799",
+    close = "rbxassetid://121584613963112",
+    minimize = "rbxassetid://114984511355209",
+    maximize = "rbxassetid://116534664044676",
+    search = "rbxassetid://101277274908578",
+    
+    -- Components
+    check = "rbxassetid://109722758655652",
+    chevron_down = "rbxassetid://107506427923664",
+    chevron_up = "rbxassetid://105645398047631",
+    chevron_left = "rbxassetid://119931446401302",
+    chevron_right = "rbxassetid://122862076186029",
+    plus = "rbxassetid://110085020676710",
+    minus = "rbxassetid://113043537756950",
+    trash = "rbxassetid://109180374514075",
+    save = "rbxassetid://109537416690068",
+    folder = "rbxassetid://11422141677",
+    lock = "rbxassetid://122689416230640",
+    unlock = "rbxassetid://116065446345614",
+    
+    -- Voltage Theme
+    lightning = "rbxassetid://108863922127932",
+    spark = "rbxassetid://104388636812890",
+    energy = "rbxassetid://111898006932111",
+    circuit = "rbxassetid://100874670159418",
+    
+    -- Status
+    success = "rbxassetid://102417040824618",
+    warning = "rbxassetid://105243363790238",
+    error = "rbxassetid://109952366318577",
+    info = "rbxassetid://108282096819219",
+    
+    -- User
+    user = "rbxassetid://98376828270066",
+    users = "rbxassetid://104649785777325",
+    friend = "rbxassetid://115725480722697",
+    
+    -- Misc
+    color = "rbxassetid://125763227537432",
+    speed = "rbxassetid://104716788053843",
+    keybind = "rbxassetid://122679509852670",
+    slider = "rbxassetid://112406610781704",
+    dropdown = "rbxassetid://102995470888822",
+    toggle_on = "rbxassetid://108729215749400",
+    toggle_off = "rbxassetid://110845219932553",
+}
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- THEME SYSTEM — PULSE/VOLTAGE
+-- ═══════════════════════════════════════════════════════════════════════
+
+local Theme = {
+    -- Core Colors
+    Background = Color3.fromRGB(8, 8, 14),
+    Surface = Color3.fromRGB(14, 14, 22),
+    SurfaceHover = Color3.fromRGB(20, 20, 32),
+    Element = Color3.fromRGB(18, 18, 28),
+    ElementHover = Color3.fromRGB(26, 26, 40),
+    
+    -- Voltage Palette
+    Voltage = Color3.fromRGB(0, 200, 255),
+    VoltageDim = Color3.fromRGB(0, 120, 180),
+    VoltageDark = Color3.fromRGB(0, 60, 100),
+    Pulse = Color3.fromRGB(180, 60, 255),
+    PulseDim = Color3.fromRGB(120, 40, 180),
+    
+    -- Text
+    Text = Color3.fromRGB(235, 240, 255),
+    TextDim = Color3.fromRGB(140, 150, 180),
+    TextDisabled = Color3.fromRGB(70, 75, 90),
+    
+    -- Borders
+    Border = Color3.fromRGB(30, 35, 50),
+    BorderHover = Color3.fromRGB(50, 60, 85),
+    
+    -- Status
+    Success = Color3.fromRGB(60, 220, 120),
+    Error = Color3.fromRGB(220, 60, 80),
+    Warning = Color3.fromRGB(255, 200, 60),
+}
+
+local themeElements = {}
+local accentGradients = {}
+
+local function registerTheme(obj, prop, key)
+    table.insert(themeElements, {obj = obj, prop = prop, key = key})
+    obj[prop] = Theme[key]
 end
 
-notify('✅ Модули', 'Fsys загружен!', 2)
+local function createGradient(obj, color1, color2, rotation)
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color1),
+        ColorSequenceKeypoint.new(1, color2)
+    }
+    grad.Rotation = rotation or 135
+    grad.Parent = obj
+    table.insert(accentGradients, grad)
+    return grad
+end
 
-local function main()
-    notify('⏳ Загрузка', 'Подгрузка модулей...', 2)
-    
-    local load = Fsys.load
-    local UIManager = load('UIManager')
-    local ClientData = load('ClientData')
-    local TableUtil = load('TableUtil')
-    local RouterClient = load('RouterClient')
-    local InventoryDB = load('InventoryDB')
-    local animationManager = load('AnimationManager')
-    local ColorThemeManager = load('ColorThemeManager')
-    
-    if not UIManager then
-        notify('❌ Ошибка', 'UIManager не загружен!', 5)
-        return
+-- ═══════════════════════════════════════════════════════════════════════
+-- UTILITIES
+-- ═══════════════════════════════════════════════════════════════════════
+
+local function tween(obj, props, time, style, dir)
+    time = time or 0.2
+    style = style or Enum.EasingStyle.Quad
+    dir = dir or Enum.EasingDirection.Out
+    local tw = TweenService:Create(obj, TweenInfo.new(time, style, dir), props)
+    tw:Play()
+    return tw
+end
+
+local function corner(obj, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 6)
+    c.Parent = obj
+    return c
+end
+
+local function stroke(obj, col, thick, trans)
+    local s = Instance.new("UIStroke")
+    s.Color = col or Theme.Border
+    s.Thickness = thick or 1
+    s.Transparency = trans or 0
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = obj
+    return s
+end
+
+local function pad(obj, t, r, b, l)
+    local p = Instance.new("UIPadding")
+    p.PaddingTop = UDim.new(0, t or 0)
+    p.PaddingRight = UDim.new(0, r or 0)
+    p.PaddingBottom = UDim.new(0, b or 0)
+    p.PaddingLeft = UDim.new(0, l or 0)
+    p.Parent = obj
+    return p
+end
+
+local function makeIcon(parent, icon, size, color)
+    local img = Instance.new("ImageLabel")
+    img.Size = size or UDim2.fromOffset(18, 18)
+    img.BackgroundTransparency = 1
+    img.Image = icon
+    img.ImageColor3 = color or Theme.Text
+    img.Parent = parent
+    if color then registerTheme(img, "ImageColor3", color) end
+    return img
+end
+
+local function clamp(v, min, max)
+    return math.max(min, math.min(max, v))
+end
+
+local function round(n, d)
+    local m = 10 ^ (d or 0)
+    return math.floor(n * m + 0.5) / m
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- CONFIG SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+local CONFIG_FOLDER = "VoltageUI"
+local CONFIG_PATH = CONFIG_FOLDER .. "/config.json"
+
+if not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
+
+local Flags = {}
+local FlagSetters = {}
+
+local function saveConfig()
+    if not writefile then return end
+    local data = {}
+    for k, v in pairs(Flags) do
+        if type(v) == "Color3" then
+            data[k] = {__type = "Color3", r = v.R, g = v.G, b = v.B}
+        elseif type(v) == "table" and v.__type then
+            data[k] = v
+        else
+            data[k] = v
+        end
     end
-    
-    notify('⏳ Ожидание', 'Загрузка UI...', 2)
-    
-    if UIManager.wait_for_initialization then
-        UIManager:wait_for_initialization()
+    pcall(function() writefile(CONFIG_PATH, HttpService:JSONEncode(data)) end)
+end
+
+local function loadConfig()
+    if not readfile or not isfile then return end
+    if not isfile(CONFIG_PATH) then return end
+    local data
+    pcall(function() data = HttpService:JSONDecode(readfile(CONFIG_PATH)) end)
+    if not data then return end
+    for k, v in pairs(data) do
+        if FlagSetters[k] then
+            if type(v) == "table" and v.__type == "Color3" then
+                FlagSetters[k](Color3.new(v.r, v.g, v.b))
+            else
+                FlagSetters[k](v)
+            end
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SPEEDHACK SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+local SpeedHack = {
+    enabled = false,
+    speed = 2.0,
+    connections = {},
+    originalNetwork = nil,
+    originalPhysics = nil,
+}
+
+function SpeedHack:Toggle(state)
+    self.enabled = state
+    if state then
+        self:Enable()
     else
-        task.wait(5)
+        self:Disable()
+    end
+end
+
+function SpeedHack:SetSpeed(speed)
+    self.speed = math.max(0.5, math.min(10, speed))
+    if self.enabled then
+        self:ApplySpeed()
+    end
+end
+
+function SpeedHack:Enable()
+    if self.enabled then return end
+    self.enabled = true
+    
+    -- Store original values
+    self.originalNetwork = game:GetService("RunService").Stepped
+    self.originalPhysics = game:GetService("RunService").Heartbeat
+    
+    -- Apply speed
+    self:ApplySpeed()
+    
+    -- Hook RunService
+    local conn = RunService.Heartbeat:Connect(function(dt)
+        if self.enabled then
+            game:GetService("RunService").Stepped:Wait()
+            game:GetService("RunService").Heartbeat:Wait()
+        end
+    end)
+    table.insert(self.connections, conn)
+    
+    -- Modify character walk speed if possible
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = hum.WalkSpeed * self.speed
+        end
+    end
+end
+
+function SpeedHack:Disable()
+    if not self.enabled then return end
+    self.enabled = false
+    
+    for _, conn in ipairs(self.connections) do
+        conn:Disconnect()
+    end
+    self.connections = {}
+    
+    -- Reset character speed
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16
+        end
+    end
+end
+
+function SpeedHack:ApplySpeed()
+    -- Apply to character
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16 * self.speed
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- VOLTAGE UI — MAIN LIBRARY
+-- ═══════════════════════════════════════════════════════════════════════
+
+local Voltage = {
+    Flags = Flags,
+    Theme = Theme,
+    SpeedHack = SpeedHack,
+    Version = "2.0.0",
+    _windows = {},
+    _tabs = {},
+    _sections = {},
+    _elements = {},
+}
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- CONFIG METHODS (defined before Window so they're available)
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Voltage:SaveConfig()
+    saveConfig()
+end
+
+function Voltage:LoadConfig()
+    loadConfig()
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- WINDOW SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════
+
+function Voltage:Window(config)
+    config = config or {}
+    local title = config.Title or "Voltage UI"
+    local icon = config.Icon or SVG.bolt
+    local keybind = config.Keybind or Enum.KeyCode.RightControl
+    local width = config.Width or 820
+    local height = config.Height or 580
+    
+    -- Destroy existing GUI
+    if CoreGui:FindFirstChild("VoltageUI") then
+        CoreGui.VoltageUI:Destroy()
     end
     
-    notify('✅ Готово!', 'Запускаем фейк-трейд!', 2)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "VoltageUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.DisplayOrder = 999
+    ScreenGui.Parent = CoreGui
     
-    local Apps = {
-        TradeApp = UIManager.apps.TradeApp,
-        BackpackApp = UIManager.apps.BackpackApp,
-        DialogApp = UIManager.apps.DialogApp,
-        HintApp = UIManager.apps.HintApp,
-        SettingsApp = UIManager.apps.SettingsApp,
-        PlayerProfileApp = UIManager.apps.PlayerProfileApp,
-        TradeHistoryApp = UIManager.apps.TradeHistoryApp,
-        TradePreviewApp = UIManager.apps.TradePreviewApp
+    -- ── Main Window ──
+    local Main = Instance.new("Frame")
+    Main.Name = "Main"
+    Main.Size = UDim2.fromOffset(0, 0)
+    Main.Position = UDim2.fromScale(0.5, 0.5)
+    Main.AnchorPoint = Vector2.new(0.5, 0.5)
+    Main.BackgroundColor3 = Theme.Background
+    Main.BackgroundTransparency = 1
+    Main.BorderSizePixel = 0
+    Main.ClipsDescendants = true
+    Main.Parent = ScreenGui
+    registerTheme(Main, "BackgroundColor3", "Background")
+    corner(Main, 14)
+    
+    local MainStroke = stroke(Main, Theme.Border, 1.5, 0.3)
+    registerTheme(MainStroke, "Color", "Border")
+    
+    -- Glow border
+    local Glow = Instance.new("ImageLabel")
+    Glow.Size = UDim2.new(1, 40, 1, 40)
+    Glow.Position = UDim2.new(0.5, -20, 0.5, -20)
+    Glow.AnchorPoint = Vector2.new(0.5, 0.5)
+    Glow.BackgroundTransparency = 1
+    Glow.Image = "rbxassetid://18245826428"
+    Glow.ImageColor3 = Theme.Voltage
+    Glow.ImageTransparency = 0.85
+    Glow.ScaleType = Enum.ScaleType.Slice
+    Glow.SliceCenter = Rect.new(Vector2.new(20, 20), Vector2.new(80, 80))
+    Glow.ZIndex = 0
+    Glow.Parent = Main
+    registerTheme(Glow, "ImageColor3", "Voltage")
+    
+    -- Pulsing glow animation
+    task.spawn(function()
+        local dir = 1
+        while Main.Parent do
+            local trans = 0.85 + dir * 0.1
+            tween(Glow, {ImageTransparency = trans}, 1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            dir = -dir
+            task.wait(1.5)
+        end
+    end)
+    
+    -- ── Window Scale Animation ──
+    local UIScale = Instance.new("UIScale")
+    UIScale.Scale = 0
+    UIScale.Parent = Main
+    
+    task.spawn(function()
+        tween(UIScale, {Scale = 1}, 0.5, Enum.EasingStyle.Back)
+        tween(Main, {BackgroundTransparency = 0, Size = UDim2.fromOffset(width, height)}, 0.4, Enum.EasingStyle.Quart)
+    end)
+    
+    -- ── Sidebar ──
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Size = UDim2.new(0, 200, 1, 0)
+    Sidebar.BackgroundColor3 = Theme.Surface
+    Sidebar.BorderSizePixel = 0
+    Sidebar.Parent = Main
+    registerTheme(Sidebar, "BackgroundColor3", "Surface")
+    corner(Sidebar, 14)
+    
+    -- Sidebar accent line
+    local AccentLine = Instance.new("Frame")
+    AccentLine.Size = UDim2.new(0, 2, 1, -20)
+    AccentLine.Position = UDim2.new(1, -2, 0.5, 0)
+    AccentLine.AnchorPoint = Vector2.new(1, 0.5)
+    AccentLine.BackgroundColor3 = Theme.Voltage
+    AccentLine.BorderSizePixel = 0
+    AccentLine.Parent = Sidebar
+    registerTheme(AccentLine, "BackgroundColor3", "Voltage")
+    corner(AccentLine, 2)
+    
+    -- ── Logo ──
+    local Logo = Instance.new("Frame")
+    Logo.Size = UDim2.new(1, 0, 0, 70)
+    Logo.BackgroundTransparency = 1
+    Logo.Parent = Sidebar
+    
+    local LogoIcon = makeIcon(Logo, SVG.bolt, UDim2.fromOffset(32, 32), Theme.Voltage)
+    LogoIcon.Position = UDim2.new(0, 16, 0.5, -16)
+    registerTheme(LogoIcon, "ImageColor3", "Voltage")
+    
+    local LogoText = Instance.new("TextLabel")
+    LogoText.Size = UDim2.new(1, -60, 0, 24)
+    LogoText.Position = UDim2.new(0, 56, 0, 12)
+    LogoText.BackgroundTransparency = 1
+    LogoText.Font = Enum.Font.GothamBold
+    LogoText.Text = "VOLTAGE"
+    LogoText.TextColor3 = Theme.Text
+    LogoText.TextSize = 18
+    LogoText.TextXAlignment = Enum.TextXAlignment.Left
+    LogoText.Parent = Logo
+    registerTheme(LogoText, "TextColor3", "Text")
+    
+    local LogoSub = Instance.new("TextLabel")
+    LogoSub.Size = UDim2.new(1, -60, 0, 16)
+    LogoSub.Position = UDim2.new(0, 56, 0, 36)
+    LogoSub.BackgroundTransparency = 1
+    LogoSub.Font = Enum.Font.Gotham
+    LogoSub.Text = "UI Framework v" .. Voltage.Version
+    LogoSub.TextColor3 = Theme.TextDim
+    LogoSub.TextSize = 11
+    LogoSub.TextXAlignment = Enum.TextXAlignment.Left
+    LogoSub.Parent = Logo
+    registerTheme(LogoSub, "TextColor3", "TextDim")
+    
+    -- ── Tab Navigation ──
+    local TabContainer = Instance.new("ScrollingFrame")
+    TabContainer.Size = UDim2.new(1, 0, 1, -70)
+    TabContainer.Position = UDim2.new(0, 0, 0, 70)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.BorderSizePixel = 0
+    TabContainer.ScrollBarThickness = 2
+    TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    TabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabContainer.Parent = Sidebar
+    registerTheme(TabContainer, "ScrollBarImageColor3", "VoltageDim")
+    pad(TabContainer, 6, 6, 6, 6)
+    
+    local TabLayout = Instance.new("UIListLayout")
+    TabLayout.Padding = UDim.new(0, 4)
+    TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TabLayout.Parent = TabContainer
+    
+    -- ── Content Area ──
+    local Content = Instance.new("Frame")
+    Content.Size = UDim2.new(1, -210, 1, -10)
+    Content.Position = UDim2.new(0, 205, 0, 5)
+    Content.BackgroundTransparency = 1
+    Content.Parent = Main
+    
+    -- ── Top Bar ──
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, 0, 0, 45)
+    TopBar.BackgroundTransparency = 1
+    TopBar.Parent = Content
+    
+    local TitleText = Instance.new("TextLabel")
+    TitleText.Size = UDim2.new(1, -120, 1, 0)
+    TitleText.Position = UDim2.new(0, 12, 0, 0)
+    TitleText.BackgroundTransparency = 1
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.Text = "Home"
+    TitleText.TextColor3 = Theme.Text
+    TitleText.TextSize = 20
+    TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    TitleText.Parent = TopBar
+    registerTheme(TitleText, "TextColor3", "Text")
+    
+    -- Title pulse line
+    local TitleLine = Instance.new("Frame")
+    TitleLine.Size = UDim2.new(0, 40, 0, 2)
+    TitleLine.Position = UDim2.new(0, 12, 1, -4)
+    TitleLine.BackgroundColor3 = Theme.Voltage
+    TitleLine.BorderSizePixel = 0
+    TitleLine.Parent = TopBar
+    registerTheme(TitleLine, "BackgroundColor3", "Voltage")
+    corner(TitleLine, 2)
+    
+    -- ── Window Controls ──
+    local Controls = Instance.new("Frame")
+    Controls.Size = UDim2.new(0, 90, 1, 0)
+    Controls.Position = UDim2.new(1, -90, 0, 0)
+    Controls.BackgroundTransparency = 1
+    Controls.Parent = TopBar
+    
+    local controlIcons = {
+        minimize = SVG.minimize,
+        maximize = SVG.maximize,
+        close = SVG.close,
     }
-    local TradeApp = Apps.TradeApp
-    local BackpackApp = Apps.BackpackApp
-    local HintApp = Apps.HintApp
-    local DialogApp = Apps.DialogApp
-    local TradeHistoryApp = Apps.TradeHistoryApp
-    local PlayerProfileApp = Apps.PlayerProfileApp
     
-    if not TradeApp then
-        notify('❌ Ошибка', 'TradeApp не найден!', 5)
-        return
-    end
-    
-    notify('✅ TradeApp', 'Найден!', 2)
-    
-    local NegotiationFrame = LocalPlayer.PlayerGui.TradeApp.Frame.NegotiationFrame
-    
-    local CONFIG = {
-        PARTNER_NAME = 'NomiKu0',
-        PARTNER_USER_ID = 987654321,
-        AUTO_ACCEPT_DELAY = 2.0,
-        AUTO_CONFIRM_DELAY = 18.0,
-        SPECTATOR_COUNT = 4,
-        SPECTATOR_VARIATION_MIN = -1,
-        SPECTATOR_VARIATION_MAX = 2,
-        AUTO_SPECTATE_ENABLED = false,
-        AUTO_SPECTATE_INTERVAL = 1.5,
-        AUTO_PARTNER = true,
-        NEGOTIATION_LOCK = 5,
-        CONFIRMATION_LOCK_PER_ITEM = 3,
-        SHOW_TRADE_REQUEST = true,
-        TRADE_REQUEST_DELAY = 0,
-        ADD_PET_REQUEST_DELAY = 0.5,
-        SPAWN_FAKE_PLAYER_WITH_RANDOM_PET = false,
-        FAKE_PLAYER_ACCEPT_TRADE_REQUEST = 2,
-        REMOVE_PARTNER_PETS_ON_CONFIRM = false,
-        VERIFIED_FRIENDS = {},
-        BOT_VALUE_MULTIPLIER = 1.3,
-        BOT_UPDATE_DELAY = 3.0,
-    }
-    
-    local fakePlayerIds = {}
-    _G.fakePlayerIds = fakePlayerIds
-    
-    local ORIGINAL_SPECTATOR_COUNT = CONFIG.SPECTATOR_COUNT
-    
-    local function getRandomSpectatorCount()
-        local variation = math.random(CONFIG.SPECTATOR_VARIATION_MIN, CONFIG.SPECTATOR_VARIATION_MAX)
-        local newCount = ORIGINAL_SPECTATOR_COUNT + variation
-        return math.max(0, newCount)
-    end
-    
-    -- ============================================
-    -- ЦЕНЫ ПИТОМЦЕВ
-    -- ============================================
-    local PetValues = {
-        ["Bat Dragon"] = {fr = 683.6, nfr = 1622.7, mfr = 5538.2},
-        ["Shadow Dragon"] = {fr = 560.8, nfr = 1124.5, mfr = 3099},
-        ["Giraffe"] = {fr = 361.4, nfr = 739.9, mfr = 2553.1},
-        ["Frost Dragon"] = {fr = 249.1, nfr = 452.2, mfr = 1151},
-        ["Owl"] = {fr = 198.5, nfr = 496.1, mfr = 1638.6},
-        ["Parrot"] = {fr = 157.4, nfr = 325.7, mfr = 904.2},
-        ["Crow"] = {fr = 139.9, nfr = 322.8, mfr = 1123.4},
-        ["Balloon Unicorn"] = {fr = 136.9, nfr = 440.4, mfr = 1636.7},
-        ["African Wild Dog"] = {fr = 127.7, nfr = 429.2, mfr = 1529},
-        ["Evil Unicorn"] = {fr = 90.4, nfr = 167.9, mfr = 572},
-        ["Blazing Lion"] = {fr = 84.6, nfr = 329.9, mfr = 1222.4},
-        ["Hedgehog"] = {fr = 54.6, nfr = 184.7, mfr = 741.3},
-        ["Dalmatian"] = {fr = 47.9, nfr = 147.5, mfr = 592.1},
-        ["Arctic Reindeer"] = {fr = 38.3, nfr = 82.5, mfr = 263.6},
-        ["Mini Pig"] = {fr = 35.4, nfr = 103.5, mfr = 374.4},
-        ["Hot Doggo"] = {fr = 32.3, nfr = 104.7, mfr = 390.9},
-        ["Cow"] = {fr = 29.5, nfr = 62.7, mfr = 184.3},
-        ["Strawberry Shortcake Bat Dragon"] = {fr = 26.8, nfr = 72.6, mfr = 279},
-        ["Chocolate Chip Bat Dragon"] = {fr = 24.1, nfr = 71.8, mfr = 285.5},
-        ["Peppermint Penguin"] = {fr = 22.9, nfr = 85.8, mfr = 329.2},
-        ["Sugar Glider"] = {fr = 22.8, nfr = 67.5, mfr = 247.1},
-        ["Turtle"] = {fr = 21.4, nfr = 44.6, mfr = 109.2},
-        ["Albino Monkey"] = {fr = 15.25, nfr = 50, mfr = 204},
-        ["Kangaroo"] = {fr = 15, nfr = 36, mfr = 101.5},
-        ["Elephant"] = {fr = 15, nfr = 47.5, mfr = 195},
-        ["Flamingo"] = {fr = 17.5, nfr = 71, mfr = 280},
-        ["Lion"] = {fr = 11, nfr = 40, mfr = 167},
-        ["Zombie Buffalo"] = {fr = 4.25, nfr = 21, mfr = 94},
-        ["Blue Dog"] = {fr = 12, nfr = 42, mfr = 162},
-        ["Pink Cat"] = {fr = 4.75, nfr = 20, mfr = 86},
-        ["Meerkat"] = {fr = 5.25, nfr = 26, mfr = 114},
-        ["Rhino"] = {fr = 1.5, nfr = 7, mfr = 35},
-        ["Hare"] = {fr = 4.5, nfr = 20.5, mfr = 87},
-        ["Sheeeeep"] = {fr = 5.5, nfr = 25, mfr = 113},
-        ["Goat"] = {fr = 6.75, nfr = 30, mfr = 136},
-        ["Lion Cub"] = {fr = 6.5, nfr = 29.5, mfr = 131},
-        ["Shark Puppy"] = {fr = 5.5, nfr = 27, mfr = 117},
-    }
-    
-    local function getPetValueByName(name, props)
-        local pet = PetValues[name]
-        if not pet then return 0 end
-        if props.mega_neon then return pet.mfr or 0 end
-        if props.neon then return pet.nfr or 0 end
-        return pet.fr or 0
-    end
-    
-    local function getPetTag(props)
-        if props.mega_neon then return "MFR" end
-        if props.neon then return "NFR" end
-        return "FR"
-    end
-    
-    local function getMyInventoryPets()
-        local pets = {}
-        local inv = ClientData.get('inventory')
-        if not inv or not inv.pets then return pets end
+    local ControlButtons = {}
+    local btnX = -10
+    for name, icon in pairs(controlIcons) do
+        btnX = btnX - 28
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.fromOffset(22, 22)
+        btn.Position = UDim2.new(1, btnX, 0.5, -11)
+        btn.BackgroundColor3 = Theme.Surface
+        btn.BackgroundTransparency = 0.5
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        btn.Parent = Controls
+        registerTheme(btn, "BackgroundColor3", "Surface")
+        corner(btn, 6)
         
-        for unique, data in pairs(inv.pets) do
-            if data.category == 'pets' then
-                local petInfo = InventoryDB.pets[data.id]
-                if petInfo and petInfo.name then
-                    local props = data.properties or {}
-                    local value = getPetValueByName(petInfo.name, props)
-                    if value > 0 then
-                        table.insert(pets, {
-                            unique = unique,
-                            id = data.id,
-                            kind = data.kind,
-                            name = petInfo.name,
-                            props = props,
-                            value = value,
-                            tag = getPetTag(props),
-                        })
-                    end
-                end
-            end
-        end
+        local img = makeIcon(btn, icon, UDim2.fromOffset(12, 12), Theme.TextDim)
+        img.Position = UDim2.new(0.5, -6, 0.5, -6)
+        registerTheme(img, "ImageColor3", "TextDim")
         
-        for i = #pets, 2, -1 do
-            local j = math.random(1, i)
-            pets[i], pets[j] = pets[j], pets[i]
-        end
-        
-        return pets
-    end
-    
-    local function selectPetsForBot(targetValue)
-        local myPets = getMyInventoryPets()
-        local botTarget = targetValue / CONFIG.BOT_VALUE_MULTIPLIER
-        
-        local sorted = {}
-        for _, pet in ipairs(myPets) do
-            table.insert(sorted, pet)
-        end
-        table.sort(sorted, function(a, b) return a.value > b.value end)
-        
-        for i = #sorted, 2, -1 do
-            local j = math.random(1, i)
-            sorted[i], sorted[j] = sorted[j], sorted[i]
-        end
-        
-        local selected = {}
-        local total = 0
-        local usedIndices = {}
-        
-        local attempts = 0
-        local maxAttempts = 100
-        
-        while attempts < maxAttempts and #selected < 10 do
-            attempts = attempts + 1
-            
-            local available = {}
-            for i, pet in ipairs(sorted) do
-                if not usedIndices[i] then
-                    table.insert(available, {index = i, pet = pet})
-                end
-            end
-            
-            if #available == 0 then break end
-            
-            local randomIndex = math.random(1, #available)
-            local choice = available[randomIndex]
-            local pet = choice.pet
-            local idx = choice.index
-            
-            if total + pet.value <= botTarget * 1.05 then
-                table.insert(selected, pet)
-                total = total + pet.value
-                usedIndices[idx] = true
-            end
-        end
-        
-        if total < botTarget * 0.7 then
-            for i, pet in ipairs(sorted) do
-                if not usedIndices[i] and total + pet.value <= botTarget * 1.1 then
-                    table.insert(selected, pet)
-                    total = total + pet.value
-                    usedIndices[i] = true
-                end
-            end
-        end
-        
-        if total < botTarget * 0.5 then
-            for i, pet in ipairs(sorted) do
-                if not usedIndices[i] then
-                    table.insert(selected, pet)
-                    total = total + pet.value
-                    usedIndices[i] = true
-                    break
-                end
-            end
-        end
-        
-        return selected, total
-    end
-    
-    -- ============================================
-    -- ПЛАШКА С ВАЛЮТОЙ
-    -- ============================================
-    local valueDisplay = nil
-    
-    local function createValueDisplay()
-        if valueDisplay then return end
-        
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "TradeValueDisplay"
-        screenGui.ResetOnSpawn = false
-        screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-        screenGui.Enabled = false
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 350, 0, 50)
-        frame.Position = UDim2.new(0.5, -175, 0, 20)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-        frame.BackgroundTransparency = 0.15
-        frame.BorderSizePixel = 0
-        frame.ZIndex = 10
-        frame.Parent = screenGui
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 12)
-        corner.Parent = frame
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(60, 60, 80)
-        stroke.Thickness = 1
-        stroke.Parent = frame
-        
-        local myLabel = Instance.new("TextLabel")
-        myLabel.Size = UDim2.new(0.48, 0, 1, 0)
-        myLabel.Position = UDim2.new(0.02, 0, 0, 0)
-        myLabel.BackgroundTransparency = 1
-        myLabel.Text = "💰 Вы: 0"
-        myLabel.TextColor3 = Color3.fromRGB(34, 197, 94)
-        myLabel.TextSize = 14
-        myLabel.Font = Enum.Font.GothamBold
-        myLabel.TextXAlignment = Enum.TextXAlignment.Center
-        myLabel.Parent = frame
-        
-        local divider = Instance.new("Frame")
-        divider.Size = UDim2.new(0, 1, 0.7, 0)
-        divider.Position = UDim2.new(0.5, -0.5, 0.15, 0)
-        divider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        divider.BorderSizePixel = 0
-        divider.Parent = frame
-        
-        local botLabel = Instance.new("TextLabel")
-        botLabel.Size = UDim2.new(0.48, 0, 1, 0)
-        botLabel.Position = UDim2.new(0.5, 0, 0, 0)
-        botLabel.BackgroundTransparency = 1
-        botLabel.Text = "🤖 Бот: 0"
-        botLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        botLabel.TextSize = 14
-        botLabel.Font = Enum.Font.GothamBold
-        botLabel.TextXAlignment = Enum.TextXAlignment.Center
-        botLabel.Parent = frame
-        
-        local statusLabel = Instance.new("TextLabel")
-        statusLabel.Size = UDim2.new(1, 0, 0, 16)
-        statusLabel.Position = UDim2.new(0, 0, 1, -16)
-        statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = "⏳ Ожидание изменений..."
-        statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        statusLabel.TextSize = 10
-        statusLabel.Font = Enum.Font.Gotham
-        statusLabel.TextXAlignment = Enum.TextXAlignment.Center
-        statusLabel.Parent = frame
-        
-        valueDisplay = {
-            gui = screenGui,
-            frame = frame,
-            myLabel = myLabel,
-            botLabel = botLabel,
-            statusLabel = statusLabel,
-            update = function(self, myTotal, botTotal, status)
-                self.myLabel.Text = "💰 Вы: " .. string.format("%.1f", myTotal)
-                self.botLabel.Text = "🤖 Бот: " .. string.format("%.1f", botTotal)
-                if status then
-                    self.statusLabel.Text = status
-                end
-                if not self.gui.Enabled then
-                    self.gui.Enabled = true
-                end
-            end,
-            setStatus = function(self, text)
-                self.statusLabel.Text = text
-            end,
-            hide = function(self)
-                self.gui.Enabled = false
-            end
-        }
-    end
-    
-    createValueDisplay()
-    
-    -- ============================================
-    -- ОБНОВЛЕНИЕ БОТА С ЗАДЕРЖКОЙ
-    -- ============================================
-    local updateTimer = nil
-    local pendingUpdate = false
-    
-    local function scheduleBotUpdate()
-        if updateTimer then
-            updateTimer:Cancel()
-            updateTimer = nil
-        end
-        
-        pendingUpdate = true
-        
-        if valueDisplay then
-            valueDisplay:setStatus("⏳ Подбор петов через 3с...")
-        end
-        
-        updateTimer = task.delay(CONFIG.BOT_UPDATE_DELAY, function()
-            if mockState.active and mockState.trade then
-                pendingUpdate = false
-                updateBotOffer()
-            end
-            updateTimer = nil
+        btn.MouseEnter:Connect(function()
+            tween(btn, {BackgroundTransparency = 0})
+            tween(img, {ImageColor3 = Theme.Text})
         end)
-    end
-    
-    local function updateBotOffer()
-        if not mockState.active or not mockState.trade then return
-        if not pendingUpdate then return end
-        
-        local myTotal = 0
-        for _, item in ipairs(mockState.trade.sender_offer.items) do
-            if item.category == 'pets' then
-                local petInfo = InventoryDB.pets[item.kind]
-                if petInfo and petInfo.name then
-                    local props = item.properties or {}
-                    local value = getPetValueByName(petInfo.name, props)
-                    myTotal = myTotal + value
-                end
-            end
-        end
-        mockState.myTotalValue = myTotal
-        
-        if myTotal == 0 then
-            mockState.trade.recipient_offer.items = {}
-            mockState.botSelectedPets = {}
-            mockState.botTotalValue = 0
-            TradeApp:_overwrite_local_trade_state(mockState.trade)
-            if valueDisplay then
-                valueDisplay:update(0, 0, "✅ Добавь петов в свой слот")
-            end
-            pendingUpdate = false
-            return
-        end
-        
-        local selected, total = selectPetsForBot(myTotal)
-        mockState.botSelectedPets = selected
-        mockState.botTotalValue = total
-        
-        local botItems = {}
-        for _, pet in ipairs(selected) do
-            table.insert(botItems, {
-                category = 'pets',
-                kind = pet.id,
-                unique = pet.unique .. '_bot_' .. tick() .. '_' .. math.random(1000, 9999),
-                properties = table.clone(pet.props),
-            })
-        end
-        
-        mockState.trade.recipient_offer.items = botItems
-        mockState.trade.sender_offer.negotiated = false
-        mockState.trade.recipient_offer.negotiated = false
-        mockState.trade.offer_version = mockState.trade.offer_version + 1
-        
-        TradeApp:_overwrite_local_trade_state(mockState.trade)
-        
-        if valueDisplay then
-            local status = "✅ Подобрано " .. #selected .. " петов"
-            valueDisplay:update(myTotal, total, status)
-        end
-        
-        pendingUpdate = false
-    end
-    
-    local mockState = {
-        active = false,
-        trade = nil,
-        isAddingItem = false,
-        partnerActionPending = false,
-        originalFunctions = {},
-        controlPanelOpen = false,
-        tradeCompleting = false,
-        scamWarningShown = true,
-        originalDialogFunction = nil,
-        blockedTradeRequests = {},
-        tradeHistory = {},
-        addedTradeIds = {},
-        pendingTradeRequest = false,
-        canShowTradeRequest = true,
-        tradeRequestBlocked = false,
-        removePartnerPetsOnConfirm = false,
-        partnerPetsBeforeConfirm = {},
-        isMockTradeDialog = false,
-        botSelectedPets = {},
-        botTotalValue = 0,
-        myTotalValue = 0,
-    }
-    
-    -- ============================================
-    -- ХУКИ НА ТРЕЙД
-    -- ============================================
-    local function hookTradeFunctions()
-        local original_add_item = TradeApp._add_item_to_my_offer
-        local original_remove_item = TradeApp._remove_item_from_my_offer
-        
-        TradeApp._add_item_to_my_offer = function(self)
-            if mockState.active and mockState.trade then
-                if mockState.isAddingItem then return end
-                mockState.isAddingItem = true
-                
-                local pickedItem = nil
-                pcall(function()
-                    pickedItem = BackpackApp:pick_item({ 
-                        keep_cached_scroll_positions_on_open = true, 
-                        allow_callback = function() return true end 
-                    })
-                end)
-                
-                if pickedItem then
-                    local alreadyInTrade = false
-                    for _, item in ipairs(mockState.trade.sender_offer.items) do 
-                        if item.unique == pickedItem.unique then 
-                            alreadyInTrade = true 
-                            break 
-                        end 
-                    end
-                    if not alreadyInTrade then
-                        table.insert(mockState.trade.sender_offer.items, pickedItem)
-                        mockState.trade.sender_offer.negotiated = false
-                        mockState.trade.recipient_offer.negotiated = false
-                        if mockState.trade.current_stage == 'confirmation' then
-                            mockState.trade.current_stage = 'negotiation'
-                            mockState.trade.sender_offer.confirmed = false
-                            mockState.trade.recipient_offer.confirmed = false
-                        end
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        self:_overwrite_local_trade_state(mockState.trade)
-                        self:_lock_trade_for_appropriate_time()
-                        
-                        pendingUpdate = true
-                        scheduleBotUpdate()
-                    end
-                end
-                mockState.isAddingItem = false
-            else
-                return original_add_item(self)
-            end
-        end
-        
-        TradeApp._remove_item_from_my_offer = function(self, item)
-            if mockState.active and mockState.trade then
-                for i, v in ipairs(mockState.trade.sender_offer.items) do
-                    if v.unique == item.unique then
-                        table.remove(mockState.trade.sender_offer.items, i)
-                        mockState.trade.sender_offer.negotiated = false
-                        mockState.trade.recipient_offer.negotiated = false
-                        if mockState.trade.current_stage == 'confirmation' then
-                            mockState.trade.current_stage = 'negotiation'
-                            mockState.trade.recipient_offer.negotiated = false
-                            mockState.trade.sender_offer.confirmed = false
-                            mockState.trade.recipient_offer.confirmed = false
-                        end
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        self:_overwrite_local_trade_state(mockState.trade)
-                        self:_lock_trade_for_appropriate_time()
-                        
-                        pendingUpdate = true
-                        scheduleBotUpdate()
-                        break
-                    end
-                end
-            else
-                return original_remove_item(self, item)
-            end
-        end
-        
-        local original_change = TradeApp._change_local_trade_state
-        TradeApp._change_local_trade_state = function(self, changes)
-            local result = original_change(self, changes)
-            if mockState.active and mockState.trade then
-                if changes and changes.sender_offer and changes.sender_offer.items then
-                    pendingUpdate = true
-                    scheduleBotUpdate()
-                end
-            end
-            return result
-        end
-    end
-    
-    hookTradeFunctions()
-    
-    local function storeOriginalFunctions()
-        local funcs = {
-            '_get_local_trade_state', '_overwrite_local_trade_state',
-            '_get_my_offer', '_get_partner_offer', '_get_my_player', '_get_partner',
-            '_get_current_trade_stage', '_on_accept_pressed', '_on_confirm_pressed',
-            '_on_unaccept_pressed', '_decline_trade', '_lock_trade_for_appropriate_time', '_get_lock_time',
-            'refresh_all', '_evaluate_trade_fairness',
-        }
-        for _, funcName in ipairs(funcs) do
-            if TradeApp[funcName] then
-                mockState.originalFunctions[funcName] = TradeApp[funcName]
-            end
-        end
-    end
-    
-    storeOriginalFunctions()
-    
-    local function createMockPartner(player)
-        local partnerName = player and player.Name or CONFIG.PARTNER_NAME
-        local partnerDisplayName = player and player.DisplayName or CONFIG.PARTNER_NAME
-        local partnerUserId = player and player.UserId or CONFIG.PARTNER_USER_ID
-        
-        local mockPlayer = {
-            Name = partnerName,
-            DisplayName = partnerDisplayName,
-            UserId = partnerUserId,
-            ClassName = 'Player',
-            Character = nil,
-            Team = nil,
-            TeamColor = BrickColor.new('White'),
-            Neutral = true,
-            AccountAge = 365,
-            MembershipType = Enum.MembershipType.None,
-            CharacterAdded = Instance.new('BindableEvent'),
-            CharacterRemoving = Instance.new('BindableEvent'),
-        }
-        
-        return setmetatable(mockPlayer, {
-            __index = function(t, k)
-                if k == 'Parent' then return Players end
-                if k == 'IsA' then 
-                    return function(self, className) 
-                        return className == 'Player' or className == 'Instance'
-                    end 
-                end
-                if k == 'GetAttribute' then
-                    return function(self, attr)
-                        return nil
-                    end
-                end
-                if k == 'FindFirstChild' then
-                    return function(self, name)
-                        return nil
-                    end
-                end
-                if k == 'WaitForChild' then
-                    return function(self, name, timeout)
-                        return nil
-                    end
-                end
-                return rawget(t, k)
-            end,
-            __tostring = function() return partnerName end,
-            __eq = function(a, b)
-                if type(b) == 'table' then
-                    return rawget(a, 'UserId') == rawget(b, 'UserId')
-                end
-                return false
-            end,
-        })
-    end
-    
-    local mockPartner = createMockPartner()
-    
-    local function createMockTrade(realPlayer)
-        local partner = realPlayer and createMockPartner(realPlayer) or mockPartner
-        return {
-            trade_id = 'MOCK_' .. tick(),
-            sender = LocalPlayer,
-            recipient = partner,
-            sender_offer = { items = {}, player_name = LocalPlayer.Name, negotiated = false, confirmed = false },
-            recipient_offer = { items = {}, player_name = CONFIG.PARTNER_NAME, negotiated = false, confirmed = false },
-            current_stage = 'negotiation',
-            offer_version = 1,
-            sender_has_trade_license = true,
-            recipient_has_trade_license = true,
-            busy_indicators = {},
-            subscriber_count = CONFIG.SPECTATOR_COUNT,
-        }
-    end
-    
-    local function createTradeHistoryRecord(trade)
-        return {
-            trade_id = trade.trade_id,
-            timestamp = os.time(),
-            sender_user_id = LocalPlayer.UserId,
-            sender_name = LocalPlayer.Name,
-            sender_items = TableUtil.deep_copy(trade.sender_offer.items),
-            recipient_user_id = trade.recipient.UserId,
-            recipient_name = CONFIG.PARTNER_NAME,
-            recipient_items = TableUtil.deep_copy(trade.recipient_offer.items),
-            reported = false,
-            reverted = nil,
-        }
-    end
-    
-    local function appendToTradeHistory(tradeRecord)
-        if mockState.addedTradeIds[tradeRecord.trade_id] then return end
-        mockState.addedTradeIds[tradeRecord.trade_id] = true
-        table.insert(mockState.tradeHistory, tradeRecord)
-    end
-    
-    local function hookTradeHistoryFunctions()
-        if not TradeHistoryApp then return end
-
-        TradeHistoryApp._get_trade_history = function(self, useCache)
-            local history = mockState.originalGetTradeHistory(self, useCache)
-            local combined, seenIds = {}, {}
-            if history then
-                for _, realTrade in ipairs(history) do
-                    if not seenIds[realTrade.trade_id] then
-                        table.insert(combined, realTrade)
-                        seenIds[realTrade.trade_id] = true
-                    end
-                end
-            end
-            for _, mockTrade in ipairs(mockState.tradeHistory) do
-                if not seenIds[mockTrade.trade_id] then
-                    table.insert(combined, mockTrade)
-                    seenIds[mockTrade.trade_id] = true
-                end
-            end
-            self.cached_trade_history = combined
-            return combined
-        end
-
-        TradeHistoryApp.report_scam = function(self, tradeData)
-            if tradeData and string.find(tostring(tradeData.trade_id), 'MOCK_') then
-                self.UIManager.set_app_visibility(self.ClassName, false)
-                local response1 = self.UIManager.apps.DialogApp:dialog({
-                    dialog_type = 'ReportScamDialog',
-                    suspect_name = CONFIG.PARTNER_NAME,
-                    placeholder_text = 'What happened? (Optional)',
-                    max_length = 500,
-                    use_utf8_length = true,
-                    left = 'Cancel',
-                    right = 'Report',
-                })
-                self.UIManager.set_app_visibility(self.ClassName, true)
-                if response1 == 'Report' then
-                    for _, record in ipairs(mockState.tradeHistory) do
-                        if record.trade_id == tradeData.trade_id then
-                            record.reported = true
-                            break
-                        end
-                    end
-                    self.UIManager.apps.DialogApp:dialog({ text = 'Report submitted for review.', button = 'Close', yields = false })
-                end
-                if self.instance.Frame.Visible then self:_refresh() else self:_clear_scrolling_frame() end
-                return
-            end
-            return mockState.originalReportScam(self, tradeData)
-        end
-    end
-    
-    hookTradeHistoryFunctions()
-    
-    local function addPetToPartnerOffer(petName, flags)
-        if not mockState.active or not mockState.trade then return false, 'No active mock trade' end
-        if mockState.trade.current_stage == 'confirmation' then return false, 'Cannot modify during confirmation' end
-        if #mockState.trade.recipient_offer.items >= 18 then return end
-
-        for category_name, category_table in pairs(InventoryDB) do
-            if category_name == 'pets' then
-                for id, item in pairs(category_table) do
-                    if item.name == petName then
-                        local petItem = {
-                            category = 'pets',
-                            kind = id,
-                            unique = HttpService:GenerateGUID(),
-                            properties = { flyable = flags.F, rideable = flags.R, neon = flags.N, mega_neon = flags.M, age = 1 },
-                        }
-                        table.insert(mockState.trade.recipient_offer.items, petItem)
-                        mockState.trade.sender_offer.negotiated = false
-                        mockState.trade.recipient_offer.negotiated = false
-                        if mockState.trade.current_stage == 'confirmation' then
-                            mockState.trade.current_stage = 'negotiation'
-                            mockState.trade.sender_offer.confirmed = false
-                            mockState.trade.recipient_offer.confirmed = false
-                        end
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        TradeApp:_overwrite_local_trade_state(mockState.trade)
-                        if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
-                        if TradeApp._render_message_in_trade_chat then
-                            TradeApp:_render_message_in_trade_chat(nil, string.format('%s added %s.', CONFIG.PARTNER_NAME, petName), true)
-                        end
-                        return true, 'Pet added successfully'
-                    end
-                end
-            end
-        end
-        return false, 'Pet not found'
-    end
-    
-    local function makePartnerAccept()
-        if mockState.active and mockState.trade then
-            if mockState.trade.current_stage == 'negotiation' then
-                if not mockState.trade.recipient_offer.negotiated then
-                    mockState.trade.recipient_offer.negotiated = true
-                    if mockState.trade.sender_offer.negotiated then
-                        mockState.trade.current_stage = 'confirmation'
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        TradeApp:_overwrite_local_trade_state(mockState.trade)
-                        if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
-                        if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
-                    else
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        TradeApp:_overwrite_local_trade_state(mockState.trade)
-                    end
-                end
-            elseif mockState.trade.current_stage == 'confirmation' then
-                if not mockState.trade.recipient_offer.confirmed then
-                    mockState.trade.recipient_offer.confirmed = true
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    TradeApp:_overwrite_local_trade_state(mockState.trade)
-                    if mockState.trade.sender_offer.confirmed and not mockState.tradeCompleting then
-                        mockState.tradeCompleting = true
-                        if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
-                        task.wait(3)
-                        local historyRecord = createTradeHistoryRecord(mockState.trade)
-                        appendToTradeHistory(historyRecord)
-                        mockState.active = false
-                        mockState.trade = nil
-                        mockState.tradeCompleting = false
-                        mockState.scamWarningShown = true
-                        mockState.canShowTradeRequest = true
-                        mockState.tradeRequestBlocked = false
-                        UIManager.set_app_visibility('TradeApp', false)
-                        task.wait(0.1)
-                        if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
-                        if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
-                        if valueDisplay then valueDisplay:hide() end
-                        if updateTimer then updateTimer:Cancel(); updateTimer = nil end
-                        pendingUpdate = false
-                        notify('✅ Трейд завершен!', 'Успешно!', 4)
-                    end
-                end
-            end
-        end
-    end
-    
-    local function partnerAutoAction()
-        if not mockState.active or not mockState.trade or mockState.partnerActionPending then return end
-        mockState.partnerActionPending = true
-
-        while TradeApp.lock_countdown and TradeApp.lock_countdown.is_going and TradeApp.lock_countdown:is_going() do
-            task.wait(0.1)
-        end
-
-        if mockState.trade.current_stage == 'negotiation' then
-            task.wait(CONFIG.AUTO_ACCEPT_DELAY)
-            if mockState.active and mockState.trade then
-                mockState.trade.recipient_offer.negotiated = true
-                if mockState.trade.sender_offer.negotiated then
-                    mockState.trade.current_stage = 'confirmation'
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    TradeApp:_overwrite_local_trade_state(mockState.trade)
-                    if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
-                    if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
-                    notify('🤖 Бот принял!', 'Переход к подтверждению...', 2)
-                else
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    TradeApp:_overwrite_local_trade_state(mockState.trade)
-                    notify('🤖 Бот ждет твоего Accept', '', 2)
-                end
-            end
-        elseif mockState.trade.current_stage == 'confirmation' then
-            task.wait(CONFIG.AUTO_CONFIRM_DELAY)
-            if mockState.active and mockState.trade then
-                mockState.trade.recipient_offer.confirmed = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                TradeApp:_overwrite_local_trade_state(mockState.trade)
-                notify('🤖 Бот подтвердил!', 'Ты подтверди?', 2)
-            end
-        end
-        mockState.partnerActionPending = false
-    end
-    
-    local function hookMainTradeFunctions()
-        TradeApp._get_local_trade_state = function(self)
-            if mockState.active and mockState.trade then return TableUtil.deep_copy(mockState.trade) end
-            return mockState.originalFunctions._get_local_trade_state(self)
-        end
-
-        TradeApp._overwrite_local_trade_state = function(self, newState)
-            if mockState.active then
-                if newState then
-                    mockState.trade = newState
-                    self.local_trade_state = newState
-                    if mockState.trade then mockState.trade.subscriber_count = CONFIG.SPECTATOR_COUNT end
-                    if self._on_local_trade_state_changed then self:_on_local_trade_state_changed(newState, newState) end
-                    if self.refresh_all then self:refresh_all() end
-                else
-                    mockState.trade = nil
-                    mockState.active = false
-                    mockState.scamWarningShown = false
-                    mockState.canShowTradeRequest = true
-                    mockState.tradeRequestBlocked = false
-                    self.local_trade_state = nil
-                    if valueDisplay then valueDisplay:hide() end
-                    if updateTimer then updateTimer:Cancel(); updateTimer = nil end
-                    pendingUpdate = false
-                end
-            else
-                return mockState.originalFunctions._overwrite_local_trade_state(self, newState)
-            end
-        end
-
-        TradeApp._get_my_offer = function(self)
-            local state = self:_get_local_trade_state()
-            if mockState.active and state then
-                if LocalPlayer == state.sender then return state.sender_offer, 'sender_offer' else return state.recipient_offer, 'recipient_offer' end
-            end
-            return mockState.originalFunctions._get_my_offer(self)
-        end
-
-        TradeApp._get_partner_offer = function(self)
-            local state = self:_get_local_trade_state()
-            if mockState.active and state then
-                if LocalPlayer == state.sender then return state.recipient_offer, 'recipient_offer' else return state.sender_offer, 'sender_offer' end
-            end
-            return mockState.originalFunctions._get_partner_offer(self)
-        end
-
-        TradeApp._get_my_player = function(self)
-            if mockState.active and mockState.trade then return LocalPlayer end
-            return mockState.originalFunctions._get_my_player(self)
-        end
-
-        TradeApp._get_partner = function(self)
-            if mockState.active and mockState.trade then return mockState.trade.recipient end
-            return mockState.originalFunctions._get_partner(self)
-        end
-
-        TradeApp._get_current_trade_stage = function(self)
-            if mockState.active and mockState.trade then return mockState.trade.current_stage end
-            return mockState.originalFunctions._get_current_trade_stage(self)
-        end
-
-        TradeApp._change_local_trade_state = function(self, changes)
-            if mockState.active then
-                local function recursiveMerge(target, source)
-                    for k, v in pairs(source) do
-                        if type(v) == 'table' and target[k] and type(target[k]) == 'table' then recursiveMerge(target[k], v) else target[k] = v end
-                    end
-                    return target
-                end
-                self:_overwrite_local_trade_state(recursiveMerge(self:_get_local_trade_state(), changes))
-            else
-                return mockState.originalFunctions._change_local_trade_state(self, changes)
-            end
-        end
-
-        TradeApp._get_lock_time = function(self)
-            if mockState.active and mockState.trade then
-                if self:_get_current_trade_stage() == 'negotiation' then return CONFIG.NEGOTIATION_LOCK
-                else return math.clamp(CONFIG.CONFIRMATION_LOCK_PER_ITEM * (#mockState.trade.sender_offer.items + #mockState.trade.recipient_offer.items), 5, 15) end
-            end
-            return mockState.originalFunctions._get_lock_time(self)
-        end
-
-        TradeApp._lock_trade_for_appropriate_time = function(self)
-            if mockState.active then
-                if self.lock_countdown then self.lock_countdown:stop() self.lock_countdown:set_duration(self:_get_lock_time()) self.lock_countdown:start() end
-            else
-                return mockState.originalFunctions._lock_trade_for_appropriate_time(self)
-            end
-        end
-
-        TradeApp._on_accept_pressed = function(self)
-            if mockState.active and mockState.trade then
-                if mockState.trade.sender_offer.negotiated then
-                    mockState.trade.sender_offer.negotiated = false
-                    mockState.trade.offer_version = mockState.trade.offer_version + 1
-                    self:_overwrite_local_trade_state(mockState.trade)
-                else
-                    mockState.trade.sender_offer.negotiated = true
-                    if mockState.trade.recipient_offer.negotiated then
-                        mockState.trade.current_stage = 'confirmation'
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        self:_overwrite_local_trade_state(mockState.trade)
-                        if TradeApp._evaluate_trade_fairness then TradeApp:_evaluate_trade_fairness() end
-                        if TradeApp._lock_trade_for_appropriate_time then TradeApp:_lock_trade_for_appropriate_time() end
-                        notify('✅ Ты принял!', 'Бот тоже примет', 2)
-                    else
-                        mockState.trade.offer_version = mockState.trade.offer_version + 1
-                        self:_overwrite_local_trade_state(mockState.trade)
-                        notify('✅ Ты принял!', 'Ждем бота...', 2)
-                    end
-                end
-                if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.negotiated and mockState.trade.sender_offer.negotiated then task.spawn(partnerAutoAction) end
-            else
-                return mockState.originalFunctions._on_accept_pressed(self)
-            end
-        end
-
-        TradeApp._on_confirm_pressed = function(self)
-            if mockState.active and mockState.trade then
-                if mockState.removePartnerPetsOnConfirm then removePartnerPetsVisually() end
-                
-                if CONFIG.AUTO_PARTNER and not mockState.trade.recipient_offer.confirmed then
-                    task.spawn(partnerAutoAction)
-                end
-                
-                while not mockState.trade.recipient_offer.confirmed do
-                    task.wait(0.1)
-                end
-                
-                mockState.trade.sender_offer.confirmed = true
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                self:_overwrite_local_trade_state(mockState.trade)
-                
-                if mockState.trade.sender_offer.confirmed and mockState.trade.recipient_offer.confirmed and not mockState.tradeCompleting then
-                    mockState.tradeCompleting = true
-                    if TradeApp._set_confirmation_arrow_rotating then TradeApp:_set_confirmation_arrow_rotating(true) end
-                    task.wait(3)
-                    local historyRecord = createTradeHistoryRecord(mockState.trade)
-                    appendToTradeHistory(historyRecord)
-                    mockState.active = false
-                    mockState.trade = nil
-                    mockState.tradeCompleting = false
-                    mockState.scamWarningShown = true
-                    mockState.canShowTradeRequest = true
-                    mockState.tradeRequestBlocked = false
-                    UIManager.set_app_visibility('TradeApp', false)
-                    task.wait(0.1)
-                    if HintApp then HintApp:hint({ text = 'The trade was successful!', length = 5, overridable = true }) end
-                    if TradeHistoryApp and UIManager.is_visible('TradeHistoryApp') then TradeHistoryApp:_refresh() end
-                    if valueDisplay then valueDisplay:hide() end
-                    if updateTimer then updateTimer:Cancel(); updateTimer = nil end
-                    pendingUpdate = false
-                    notify('✅ Трейд завершен!', 'Успешно!', 4)
-                end
-            else
-                return mockState.originalFunctions._on_confirm_pressed(self)
-            end
-        end
-
-        TradeApp._on_unaccept_pressed = function(self)
-            if mockState.active and mockState.trade then
-                mockState.trade.sender_offer.negotiated = false
-                if mockState.trade.current_stage == 'confirmation' then
-                    mockState.trade.current_stage = 'negotiation'
-                    mockState.trade.recipient_offer.negotiated = false
-                    mockState.trade.sender_offer.confirmed = false
-                    mockState.trade.recipient_offer.confirmed = false
-                end
-                mockState.trade.offer_version = mockState.trade.offer_version + 1
-                self:_overwrite_local_trade_state(mockState.trade)
-            else
-                return mockState.originalFunctions._on_unaccept_pressed(self)
-            end
-        end
-
-        TradeApp._decline_trade = function(self, silent)
-            if mockState.active then
-                if self.lock_countdown then self.lock_countdown:stop() end
-                mockState.active = false
-                mockState.trade = nil
-                mockState.isAddingItem = false
-                mockState.partnerActionPending = false
-                mockState.tradeCompleting = false
-                mockState.scamWarningShown = false
-                mockState.canShowTradeRequest = true
-                mockState.tradeRequestBlocked = false
-                self:_overwrite_local_trade_state(nil)
-                UIManager.set_app_visibility('TradeApp', false)
-                if BackpackApp.reset_hidden_item_tag then BackpackApp:reset_hidden_item_tag('TradeApp') end
-                if valueDisplay then valueDisplay:hide() end
-                if updateTimer then updateTimer:Cancel(); updateTimer = nil end
-                pendingUpdate = false
-                notify('❌ Трейд отменен', '', 3)
-            else
-                return mockState.originalFunctions._decline_trade(self, silent)
-            end
-        end
-
-        TradeApp._evaluate_trade_fairness = function(self)
-            if mockState.active and mockState.trade and not mockState.scamWarningShown then
-                local myItems = #mockState.trade.sender_offer.items
-                local partnerItems = #mockState.trade.recipient_offer.items
-                if myItems > 0 and partnerItems == 0 then
-                    mockState.scamWarningShown = true
-                    if DialogApp then
-                        DialogApp:dialog({ text = 'This trade seems unbalanced. Be careful - you could be getting scammed.', button = 'Next', yields = false })
-                        DialogApp:dialog({ text = 'Any items lost to scams WILL NOT be returned. Be sure before you accept!', button = 'I understand', yields = false })
-                    end
-                end
-            else
-                return mockState.originalFunctions._evaluate_trade_fairness(self)
-            end
-        end
-    end
-    
-    hookMainTradeFunctions()
-    
-    local function startMockTradeDirectly()
-        if mockState.active then return end
-        
-        local success, err = pcall(function()
-            mockState.active = false
-            mockState.trade = nil
-            mockState.isAddingItem = false
-            mockState.partnerActionPending = false
-            mockState.tradeCompleting = false
-            mockState.scamWarningShown = true
-            mockState.tradeRequestBlocked = true
-            mockState.blockedTradeRequests = {}
-            mockState.pendingTradeRequest = false
-            mockState.botSelectedPets = {}
-            mockState.botTotalValue = 0
-            mockState.myTotalValue = 0
-            pendingUpdate = false
-            if updateTimer then updateTimer:Cancel(); updateTimer = nil end
-            
-            mockState.trade = createMockTrade()
-            mockState.active = true
-            
-            pcall(function() UIManager.set_app_visibility('TradeApp', false) end)
-            task.wait(0.05)
-            
-            pcall(function() TradeApp:_overwrite_local_trade_state(mockState.trade) end)
-            task.wait(0.05)
-            
-            pcall(function() UIManager.set_app_visibility('TradeApp', true) end)
-            
-            pcall(function()
-                if TradeApp._show_intro_message then
-                    TradeApp:_show_intro_message()
-                end
-            end)
-            
-            task.wait(0.05)
-            pcall(function() 
-                if TradeApp.refresh_all then 
-                    TradeApp:refresh_all() 
-                end 
-            end)
-            
-            if valueDisplay then
-                valueDisplay:update(0, 0, "✅ Добавь петов в свой слот")
-            end
-            
-            notify('✅ Трейд открыт!', 'Добавь петов в свой слот', 3)
-            
-            task.wait(10.0)
-            makePartnerAccept()
-            notify('🤖 Бот принял трейд!', 'Теперь подтверждай', 3)
-        end)
-        
-        if not success and HintApp then
-            HintApp:hint({ text = 'Error starting trade: ' .. tostring(err), length = 5, overridable = true })
-            notify('❌ Ошибка', tostring(err), 5)
-        end
-    end
-    
-    local function showTradeRequest()
-        if mockState.pendingTradeRequest or mockState.active then
-            return
-        end
-        mockState.pendingTradeRequest = true
-        mockState.canShowTradeRequest = false
-        task.wait(CONFIG.TRADE_REQUEST_DELAY)
-        if not mockState.pendingTradeRequest or mockState.active then
-            mockState.pendingTradeRequest = false
-            mockState.canShowTradeRequest = true
-            return
-        end
-        
-        local name = CONFIG.PARTNER_NAME
-        local trade_request_table = { 
-            ["text"] = name .. " sent you a trade request", 
-            ["left"] = "Decline", 
-            ["right"] = "Accept",
-            ["yields"] = true
-        } 
-        
-        mockState.isMockTradeDialog = true
-        
-        local dialogResult
-        local success, err = pcall(function()
-            if mockState.originalDialogFunction then
-                dialogResult = mockState.originalDialogFunction(DialogApp, trade_request_table)
-            else
-                dialogResult = DialogApp:dialog(trade_request_table)
+        btn.MouseLeave:Connect(function()
+            if name ~= "close" then
+                tween(btn, {BackgroundTransparency = 0.5})
+                tween(img, {ImageColor3 = Theme.TextDim})
             end
         end)
         
-        mockState.isMockTradeDialog = false
-        mockState.pendingTradeRequest = false
-        
-        if success and dialogResult and (dialogResult == "Accept" or dialogResult == "right") then
-            startMockTradeDirectly()
-        else
-            mockState.canShowTradeRequest = true
-            notify('❌ Трейд отклонен', '', 2)
-        end
-    end
-    
-    local function hookTradeRequestEvent()
-        local tradeRequestEvent = RouterClient.get_event('TradeAPI/TradeRequestReceived')
-        if tradeRequestEvent then
-            local originalConnections = getconnections(tradeRequestEvent.OnClientEvent)
-            for _, connection in pairs(originalConnections) do connection:Disable() end
-            tradeRequestEvent.OnClientEvent:Connect(function(requestingPlayer)
-                if mockState.active or mockState.tradeRequestBlocked then
-                    table.insert(mockState.blockedTradeRequests, { player = requestingPlayer, timestamp = tick() })
-                    return
-                end
-                for _, connection in pairs(originalConnections) do
-                    if connection.Function then connection.Function(requestingPlayer) end
-                end
+        if name == "close" then
+            btn.MouseEnter:Connect(function()
+                tween(btn, {BackgroundColor3 = Theme.Error})
+                tween(img, {ImageColor3 = Color3.new(1, 1, 1)})
+            end)
+            btn.MouseLeave:Connect(function()
+                tween(btn, {BackgroundColor3 = Theme.Surface, BackgroundTransparency = 0.5})
+                tween(img, {ImageColor3 = Theme.TextDim})
+            end)
+            btn.MouseButton1Click:Connect(function()
+                tween(UIScale, {Scale = 0}, 0.3, Enum.EasingStyle.Back)
+                tween(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Quart)
+                task.wait(0.35)
+                ScreenGui:Destroy()
+            end)
+        elseif name == "minimize" then
+            btn.MouseButton1Click:Connect(function()
+                local currentSize = Main.Size
+                tween(Main, {Size = UDim2.fromOffset(currentSize.X.Offset, 45)}, 0.3, Enum.EasingStyle.Quart)
+                tween(Content, {Size = UDim2.new(1, -210, 0, 0)}, 0.3, Enum.EasingStyle.Quart)
+                tween(Sidebar, {Size = UDim2.new(0, 200, 0, 0)}, 0.3, Enum.EasingStyle.Quart)
+                task.wait(0.35)
+                tween(Main, {Size = UDim2.fromOffset(currentSize.X.Offset, currentSize.Y.Offset)}, 0.3, Enum.EasingStyle.Quart)
+                tween(Content, {Size = UDim2.new(1, -210, 1, -10)}, 0.3, Enum.EasingStyle.Quart)
+                tween(Sidebar, {Size = UDim2.new(0, 200, 1, 0)}, 0.3, Enum.EasingStyle.Quart)
             end)
         end
+        
+        ControlButtons[name] = btn
     end
     
-    local function hookDialogApp()
-        if not DialogApp or not DialogApp.dialog then return end
-        mockState.originalDialogFunction = DialogApp.dialog
-        DialogApp.dialog = function(self, dialogData)
-            if dialogData and dialogData.text and string.find(dialogData.text, 'has expired!') then return 'Okay' end
-            
-            if mockState.isMockTradeDialog then
-                return mockState.originalDialogFunction(self, dialogData)
-            end
-            
-            if dialogData and dialogData.header and type(dialogData.header) == 'table' and dialogData.header.text == 'Verified Friend' then
-                return mockState.originalDialogFunction(self, dialogData)
-            end
-            
-            if dialogData and dialogData.handle == 'trade_request' then
-                if mockState.pendingTradeRequest or mockState.active or mockState.tradeRequestBlocked then return 'Decline' end
-            end
-            
-            return mockState.originalDialogFunction(self, dialogData)
-        end
-    end
+    -- ── Content Pages ──
+    local PageContainer = Instance.new("Frame")
+    PageContainer.Size = UDim2.new(1, 0, 1, -50)
+    PageContainer.Position = UDim2.new(0, 0, 0, 50)
+    PageContainer.BackgroundTransparency = 1
+    PageContainer.ClipsDescendants = true
+    PageContainer.Parent = Content
     
-    hookDialogApp()
-    hookTradeRequestEvent()
+    local Pages = {}
+    local CurrentTab = nil
     
-    function updatePartnerFromUsername(username)
-        local success, userId = pcall(function() return Players:GetUserIdFromNameAsync(username) end)
-        if success and userId then
-            CONFIG.PARTNER_USER_ID = userId
-            CONFIG.PARTNER_NAME = username
-            mockPartner = createMockPartner()
-            return true
-        else
-            CONFIG.PARTNER_NAME = username
-            mockPartner = createMockPartner()
-            return false
-        end
-    end
-    
-    local function getRandomPlayerFromServer()
-        local players = Players:GetPlayers()
-        local filtered = {}
+    -- ── Tab System ──
+    local function createTab(config)
+        config = config or {}
+        local name = config.Name or "Tab"
+        local icon = config.Icon or SVG.bolt
         
-        for _, player in ipairs(players) do
-            if player ~= LocalPlayer and not fakePlayerIds[player.UserId] then
-                table.insert(filtered, player)
-            end
-        end
+        -- Tab Button
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Size = UDim2.new(1, 0, 0, 40)
+        TabBtn.BackgroundTransparency = 1
+        TabBtn.Text = ""
+        TabBtn.AutoButtonColor = false
+        TabBtn.Parent = TabContainer
+        corner(TabBtn, 8)
         
-        if #filtered == 0 then
-            return {
-                Name = CONFIG.PARTNER_NAME,
-                DisplayName = CONFIG.PARTNER_NAME,
-                UserId = CONFIG.PARTNER_USER_ID,
-                Character = nil,
-            }
-        end
+        -- Tab Icon
+        local TabIcon = makeIcon(TabBtn, icon, UDim2.fromOffset(18, 18), Theme.TextDim)
+        TabIcon.Position = UDim2.new(0, 12, 0.5, -9)
+        registerTheme(TabIcon, "ImageColor3", "TextDim")
         
-        local randomPlayer = filtered[math.random(1, #filtered)]
+        -- Tab Label
+        local TabLabel = Instance.new("TextLabel")
+        TabLabel.Size = UDim2.new(1, -40, 1, 0)
+        TabLabel.Position = UDim2.new(0, 38, 0, 0)
+        TabLabel.BackgroundTransparency = 1
+        TabLabel.Font = Enum.Font.Gotham
+        TabLabel.Text = name
+        TabLabel.TextColor3 = Theme.TextDim
+        TabLabel.TextSize = 13
+        TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TabLabel.Parent = TabBtn
+        registerTheme(TabLabel, "TextColor3", "TextDim")
         
-        return {
-            Name = randomPlayer.Name,
-            DisplayName = randomPlayer.DisplayName,
-            UserId = randomPlayer.UserId,
-            Character = randomPlayer.Character,
+        -- Tab indicator
+        local Indicator = Instance.new("Frame")
+        Indicator.Size = UDim2.new(0, 3, 1, -12)
+        Indicator.Position = UDim2.new(0, 0, 0.5, 0)
+        Indicator.AnchorPoint = Vector2.new(0, 0.5)
+        Indicator.BackgroundColor3 = Theme.Voltage
+        Indicator.BackgroundTransparency = 1
+        Indicator.BorderSizePixel = 0
+        Indicator.Parent = TabBtn
+        registerTheme(Indicator, "BackgroundColor3", "Voltage")
+        corner(Indicator, 2)
+        
+        -- Tab Content
+        local TabContent = Instance.new("ScrollingFrame")
+        TabContent.Size = UDim2.new(1, 0, 1, 0)
+        TabContent.BackgroundTransparency = 1
+        TabContent.BorderSizePixel = 0
+        TabContent.ScrollBarThickness = 2
+        TabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        TabContent.Visible = false
+        TabContent.Parent = PageContainer
+        registerTheme(TabContent, "ScrollBarImageColor3", "VoltageDim")
+        pad(TabContent, 10, 10, 20, 10)
+        
+        local ContentLayout = Instance.new("UIListLayout")
+        ContentLayout.Padding = UDim.new(0, 8)
+        ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        ContentLayout.Parent = TabContent
+        
+        -- Tab Data
+        local TabData = {
+            Name = name,
+            Button = TabBtn,
+            Label = TabLabel,
+            Icon = TabIcon,
+            Indicator = Indicator,
+            Content = TabContent,
+            Layout = ContentLayout,
+            Sections = {},
         }
-    end
-    
-    local function copyCharacterAppearance(fromCharacter, toCharacter)
-        if not fromCharacter or not toCharacter then return end
         
-        for _, part in ipairs(fromCharacter:GetChildren()) do
-            if part:IsA('BasePart') or part:IsA('Accessory') or part:IsA('Shirt') or part:IsA('Pants') or part:IsA('Hat') then
-                local newPart = part:Clone()
-                newPart.Parent = toCharacter
+        -- Tab Click
+        TabBtn.MouseButton1Click:Connect(function()
+            Voltage:SelectTab(TabData)
+        end)
+        
+        -- Hover Effects
+        TabBtn.MouseEnter:Connect(function()
+            if CurrentTab ~= TabData then
+                tween(TabBtn, {BackgroundTransparency = 0.8})
+                tween(TabLabel, {TextColor3 = Theme.Text})
+                tween(TabIcon, {ImageColor3 = Theme.Text})
             end
-        end
-        
-        local fromHumanoid = fromCharacter:FindFirstChild('Humanoid')
-        local toHumanoid = toCharacter:FindFirstChild('Humanoid')
-        if fromHumanoid and toHumanoid then
-            toHumanoid.WalkSpeed = fromHumanoid.WalkSpeed
-            toHumanoid.JumpPower = fromHumanoid.JumpPower
-            toHumanoid.MaxHealth = fromHumanoid.MaxHealth
-            toHumanoid.Health = fromHumanoid.Health
-        end
-    end
-    
-    local function copyAnimations(fromCharacter, toCharacter)
-        if not fromCharacter or not toCharacter then return end
-        
-        local fromHumanoid = fromCharacter:FindFirstChild('Humanoid')
-        local toHumanoid = toCharacter:FindFirstChild('Humanoid')
-        if not fromHumanoid or not toHumanoid then return end
-        
-        local fromAnimator = fromHumanoid:FindFirstChild('Animator')
-        local toAnimator = toHumanoid:FindFirstChild('Animator')
-        if not fromAnimator or not toAnimator then return end
-        
-        for _, track in ipairs(fromAnimator:GetPlayingAnimationTracks()) do
-            local newTrack = toAnimator:LoadAnimation(track.Animation)
-            newTrack.Looped = track.Looped
-            newTrack:Play()
-        end
-    end
-    
-    local function updateData(key, action)
-        local data = ClientData.get(key)
-        local clonedData = table.clone(data)
-        ClientData.predict(key, action(clonedData))
-    end
-    
-    -- ============================================
-    -- СПАВН ФЕЙКОВОГО ИГРОКА
-    -- ============================================
-    local function CreateFakePlayerCharacter(partner_name, partner_id)
-        fakePlayerIds[partner_id] = true
-        _G.fakePlayerIds[partner_id] = true
-
-        local folder_fake = Instance.new('Folder')
-        folder_fake.Name = 'fake_folder_' .. partner_name
-        folder_fake.Parent = workspace
-
-        local randomData = getRandomPlayerFromServer()
-        if randomData and randomData.Name then
-            partner_name = randomData.Name
-            partner_id = randomData.UserId
-            CONFIG.PARTNER_NAME = randomData.Name
-            CONFIG.PARTNER_USER_ID = randomData.UserId
-            notify('🎭 Скопирован', randomData.Name, 2)
-        end
-
-        local character = Players:CreateHumanoidModelFromUserId(partner_id)
-        
-        if randomData and randomData.Character then
-            copyCharacterAppearance(randomData.Character, character)
-            copyAnimations(randomData.Character, character)
-        end
-        
-        local playerCharacter = LocalPlayer.Character
-        if playerCharacter and playerCharacter:FindFirstChild('HumanoidRootPart') then
-            character:SetPrimaryPartCFrame(playerCharacter.HumanoidRootPart.CFrame * CFrame.new(math.random(-8, 8), 0, math.random(-8, 8)))
-        end
-        local humanoid = character:WaitForChild('Humanoid')
-        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-        humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-        humanoid.HealthDisplayDistance = 0
-        character.Parent = folder_fake
-
-        pcall(function() UIManager.apps.PlayerNameApp:add_npc_id(character, partner_name) end)
-
-        local Part = character:FindFirstChild('HumanoidRootPart')
-        if Part then
-            local InteractionsEngine = load('InteractionsEngine')
-            local emptyFunc = function() end
-            pcall(function()
-                InteractionsEngine:register({
-                    text = partner_name, part = Part,
-                    on_selected = {
-                        { text = 'Profile', on_selected = function() pcall(PlayerProfileApp.open_player_profile_for_user_id, partner_id) end },
-                        { text = 'Trade', on_selected = function()
-                            pcall(function()
-                                task.spawn(function()
-                                    pcall(function()
-                                        if HintApp then HintApp:hint({ text = 'Trade request sent to ' .. partner_name, length = 3, overridable = true }) end
-                                    end)
-                                end)
-                                task.wait(CONFIG.FAKE_PLAYER_ACCEPT_TRADE_REQUEST)
-                                updatePartnerFromUsername(partner_name)
-                                startMockTradeDirectly()
-                            end)
-                        end },
-                        { text = 'Give Item...', on_selected = emptyFunc },
-                        { text = 'Mute', on_selected = emptyFunc },
-                    },
-                })
-            end)
-        end
-
-        table.insert(FakePlayers, folder_fake)
-        folder_fake:SetAttribute('IsFakePlayer', true)
-        folder_fake:SetAttribute('PartnerName', partner_name)
-        folder_fake:SetAttribute('PartnerId', partner_id)
-        
-        return true
-    end
-    
-    local FakePlayers = {}
-    
-    -- ============================================
-    -- СПАВНЕР ПИТОМЦЕВ В ИНВЕНТАРЬ
-    -- ============================================
-    local function spawnPets()
-        notify('🔄 Спавн', 'Петов в инвентарь...', 2)
-        
-        local petSpawnerSuccess, petSpawnerErr = pcall(function()
-            local _KindDB = require(ReplicatedStorage.Fsys).load('KindDB')
-            
-            local function addPetToInventory(kind, properties)
-                local unique = HttpService:GenerateGUID(false)
-                local petData = nil
-                
-                updateData('inventory', function(inv)
-                    local newInv = table.clone(inv)
-                    if not newInv.pets then newInv.pets = {} end
-                    
-                    petData = {
-                        unique = unique,
-                        category = 'pets',
-                        id = kind,
-                        kind = _KindDB[kind].kind,
-                        newness_order = 0,
-                        properties = properties,
-                    }
-                    newInv.pets[unique] = petData
-                    return newInv
-                end)
-                
-                return petData
+        end)
+        TabBtn.MouseLeave:Connect(function()
+            if CurrentTab ~= TabData then
+                tween(TabBtn, {BackgroundTransparency = 1})
+                tween(TabLabel, {TextColor3 = Theme.TextDim})
+                tween(TabIcon, {ImageColor3 = Theme.TextDim})
             end
+        end)
+        
+        -- Section Builder
+        local function createSection(sectionConfig)
+            sectionConfig = sectionConfig or {}
+            local sectionName = sectionConfig.Name or "Section"
+            local side = sectionConfig.Side or "left"
             
-            local function GetPetIdByName(petName)
-                for id, data in pairs(InventoryDB.pets) do
-                    if data.name and data.name:lower() == petName:lower() then return id end
-                    if id:lower() == petName:lower() then return id end
-                end
-                return nil
-            end
+            -- Section Frame
+            local Section = Instance.new("Frame")
+            Section.Size = UDim2.new(1, 0, 0, 0)
+            Section.BackgroundTransparency = 1
+            Section.AutomaticSize = Enum.AutomaticSize.Y
+            Section.Parent = TabContent
             
-            local availablePets = {}
-            for name, data in pairs(PetValues) do
-                local id = GetPetIdByName(name)
-                if id then
-                    table.insert(availablePets, {
-                        id = id,
-                        name = name,
-                        fr = data.fr,
-                        nfr = data.nfr,
-                        mfr = data.mfr
-                    })
-                end
-            end
+            local SectionHeader = Instance.new("Frame")
+            SectionHeader.Size = UDim2.new(1, 0, 0, 32)
+            SectionHeader.BackgroundTransparency = 1
+            SectionHeader.Parent = Section
             
-            if #availablePets == 0 then
-                notify('❌ Ошибка', 'Нет петов для спавна!', 3)
-                return
-            end
+            local SectionTitle = Instance.new("TextLabel")
+            SectionTitle.Size = UDim2.new(1, -20, 1, 0)
+            SectionTitle.Position = UDim2.new(0, 4, 0, 0)
+            SectionTitle.BackgroundTransparency = 1
+            SectionTitle.Font = Enum.Font.GothamBold
+            SectionTitle.Text = string.upper(sectionName)
+            SectionTitle.TextColor3 = Theme.TextDim
+            SectionTitle.TextSize = 11
+            SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.Parent = SectionHeader
+            registerTheme(SectionTitle, "TextColor3", "TextDim")
             
-            local ageNames = {
-                [1] = "Reborn", [2] = "Sparkle", [3] = "Twinkle", [4] = "Flare",
-                [5] = "Luminous", [6] = "Sunshine", [7] = "Full Grown", [8] = "Post Teen",
-                [9] = "Teen", [10] = "Pre Teen", [11] = "Junior", [12] = "Newborn",
+            local SectionDivider = Instance.new("Frame")
+            SectionDivider.Size = UDim2.new(1, -20, 0, 1)
+            SectionDivider.Position = UDim2.new(0, 4, 1, -1)
+            SectionDivider.BackgroundColor3 = Theme.Border
+            SectionDivider.BorderSizePixel = 0
+            SectionDivider.Parent = SectionHeader
+            registerTheme(SectionDivider, "BackgroundColor3", "Border")
+            
+            local SectionContent = Instance.new("Frame")
+            SectionContent.Size = UDim2.new(1, 0, 0, 0)
+            SectionContent.BackgroundTransparency = 1
+            SectionContent.AutomaticSize = Enum.AutomaticSize.Y
+            SectionContent.Parent = Section
+            
+            local SectionLayout = Instance.new("UIListLayout")
+            SectionLayout.Padding = UDim.new(0, 6)
+            SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            SectionLayout.Parent = SectionContent
+            
+            local SectionAPI = {
+                _section = Section,
+                _content = SectionContent,
+                _layout = SectionLayout,
+                _name = sectionName,
+                _side = side,
+                _elements = {},
             }
             
-            for i = #availablePets, 2, -1 do
-                local j = math.random(1, i)
-                availablePets[i], availablePets[j] = availablePets[j], availablePets[i]
-            end
-            
-            local petCount = math.random(10, 15)
-            local targetMin = 4500
-            local targetMax = 6000
-            local currentValue = 0
-            local spawnedPets = {}
-            local attempts = 0
-            local maxAttempts = 300
-            
-            while #spawnedPets < petCount and attempts < maxAttempts do
-                attempts = attempts + 1
-                local randomIndex = math.random(1, #availablePets)
-                local pet = availablePets[randomIndex]
+            -- ── Toggle ──
+            function SectionAPI:Toggle(config)
+                config = config or {}
+                local name = config.Name or "Toggle"
+                local flag = config.Flag or name
+                local default = config.Default or false
+                local callback = config.Callback or function() end
+                local desc = config.Description or ""
                 
-                local age = math.random(1, 12)
-                local ageName = ageNames[age] or "Unknown"
+                local hasDesc = desc ~= ""
+                local height = hasDesc and 52 or 32
                 
-                local variantType
-                local price
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, height)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
                 
-                if pet.mfr < 100 then
-                    variantType = "MFR"
-                    price = pet.mfr
-                else
-                    local variants = {
-                        {name = "FR", price = pet.fr},
-                        {name = "NFR", price = pet.nfr},
-                        {name = "MFR", price = pet.mfr},
-                    }
-                    local chosen = variants[math.random(1, 3)]
-                    variantType = chosen.name
-                    price = chosen.price
+                -- Toggle Container
+                local ToggleContainer = Instance.new("TextButton")
+                ToggleContainer.Size = UDim2.new(1, 0, 1, 0)
+                ToggleContainer.BackgroundTransparency = 1
+                ToggleContainer.Text = ""
+                ToggleContainer.AutoButtonColor = false
+                ToggleContainer.Parent = Frame
+                
+                -- Label
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -70, 0, 18)
+                Label.Position = UDim2.new(0, 0, 0, hasDesc and 2 or 7)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = ToggleContainer
+                registerTheme(Label, "TextColor3", "Text")
+                
+                if hasDesc then
+                    local Desc = Instance.new("TextLabel")
+                    Desc.Size = UDim2.new(1, -70, 0, 16)
+                    Desc.Position = UDim2.new(0, 0, 0, 20)
+                    Desc.BackgroundTransparency = 1
+                    Desc.Font = Enum.Font.Gotham
+                    Desc.Text = desc
+                    Desc.TextColor3 = Theme.TextDim
+                    Desc.TextSize = 11
+                    Desc.TextXAlignment = Enum.TextXAlignment.Left
+                    Desc.Parent = ToggleContainer
+                    registerTheme(Desc, "TextColor3", "TextDim")
                 end
                 
-                if price <= 0 then
-                    price = pet.fr
-                    if price <= 0 then price = pet.nfr end
-                    if price <= 0 then price = pet.mfr end
-                    if price <= 0 then
-                        task.wait(0.05)
-                        continue
-                    end
+                -- Toggle Switch
+                local Switch = Instance.new("Frame")
+                Switch.Size = UDim2.new(0, 40, 0, 20)
+                Switch.Position = UDim2.new(1, -44, 0.5, -10)
+                Switch.BackgroundColor3 = Theme.Element
+                Switch.BorderSizePixel = 0
+                Switch.Parent = ToggleContainer
+                registerTheme(Switch, "BackgroundColor3", "Element")
+                corner(Switch, 10)
+                
+                local SwitchKnob = Instance.new("Frame")
+                SwitchKnob.Size = UDim2.new(0, 16, 0, 16)
+                SwitchKnob.Position = UDim2.new(0, 2, 0.5, -8)
+                SwitchKnob.BackgroundColor3 = Color3.new(1, 1, 1)
+                SwitchKnob.BorderSizePixel = 0
+                SwitchKnob.Parent = Switch
+                corner(SwitchKnob, 8)
+                
+                local State = default
+                
+                local function setState(value, fire)
+                    State = value
+                    local pos = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                    tween(SwitchKnob, {Position = pos}, 0.15)
+                    tween(Switch, {BackgroundColor3 = value and Theme.Voltage or Theme.Element}, 0.15)
+                    Flags[flag] = value
+                    if fire then pcall(callback, value) end
                 end
                 
-                local petData = {
-                    pet_trick_level = 0,
-                    rideable = true,
-                    flyable = true,
-                    friendship_level = 0,
-                    age = age,
-                    ailments_completed = 0,
-                    rp_name = '',
+                setState(default, false)
+                
+                ToggleContainer.MouseButton1Click:Connect(function()
+                    setState(not State, true)
+                end)
+                
+                -- Register flag setter
+                FlagSetters[flag] = function(value)
+                    setState(value, true)
+                end
+                
+                -- API
+                local api = {
+                    Set = function(value) setState(value, true) end,
+                    Get = function() return State end,
+                    Toggle = function() setState(not State, true) end,
                 }
                 
-                if variantType == "MFR" then
-                    petData.mega_neon = true
-                elseif variantType == "NFR" then
-                    petData.neon = true
-                end
-                
-                local success, result = pcall(function()
-                    return addPetToInventory(pet.id, petData)
-                end)
-                
-                if success and result then
-                    currentValue = currentValue + price
-                    table.insert(spawnedPets, pet.name .. " (" .. variantType .. ", " .. ageName .. ")")
-                    
-                    pcall(function()
-                        StarterGui:SetCore('SendNotification', {
-                            Title = '✅ Спавн!',
-                            Text = pet.name .. ' (' .. variantType .. ', ' .. ageName .. ')',
-                            Duration = 2,
-                        })
-                    end)
-                end
-                
-                task.wait(0.08)
-                
-                if currentValue >= targetMin and #spawnedPets >= 10 then
-                    break
-                end
+                table.insert(SectionAPI._elements, api)
+                return api
             end
             
-            if #spawnedPets > 0 then
-                notify('✅ Спавнено', #spawnedPets .. ' петов | Сумма: ' .. string.format('%.1f', currentValue), 4)
-            else
-                notify('❌ Ошибка', 'Не спавнено ни одного пета!', 3)
+            -- ── Button ──
+            function SectionAPI:Button(config)
+                config = config or {}
+                local name = config.Name or "Button"
+                local callback = config.Callback or function() end
+                local desc = config.Description or ""
+                
+                local hasDesc = desc ~= ""
+                local height = hasDesc and 48 or 32
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, height)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local Button = Instance.new("TextButton")
+                Button.Size = UDim2.new(1, 0, 1, 0)
+                Button.BackgroundColor3 = Theme.Element
+                Button.Text = ""
+                Button.AutoButtonColor = false
+                Button.Parent = Frame
+                registerTheme(Button, "BackgroundColor3", "Element")
+                corner(Button, 8)
+                
+                -- Button content
+                local Container = Instance.new("Frame")
+                Container.Size = UDim2.new(1, -16, 1, 0)
+                Container.Position = UDim2.new(0, 8, 0, 0)
+                Container.BackgroundTransparency = 1
+                Container.Parent = Button
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -24, 0, 18)
+                Label.Position = UDim2.new(0, 0, 0, hasDesc and 4 or 7)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamBold
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Container
+                registerTheme(Label, "TextColor3", "Text")
+                
+                if hasDesc then
+                    local Desc = Instance.new("TextLabel")
+                    Desc.Size = UDim2.new(1, -24, 0, 14)
+                    Desc.Position = UDim2.new(0, 0, 0, 22)
+                    Desc.BackgroundTransparency = 1
+                    Desc.Font = Enum.Font.Gotham
+                    Desc.Text = desc
+                    Desc.TextColor3 = Theme.TextDim
+                    Desc.TextSize = 11
+                    Desc.TextXAlignment = Enum.TextXAlignment.Left
+                    Desc.Parent = Container
+                    registerTheme(Desc, "TextColor3", "TextDim")
+                end
+                
+                -- Arrow
+                local Arrow = makeIcon(Container, SVG.chevron_right, UDim2.fromOffset(14, 14), Theme.TextDim)
+                Arrow.Position = UDim2.new(1, -2, 0.5, -7)
+                registerTheme(Arrow, "ImageColor3", "TextDim")
+                
+                Button.MouseEnter:Connect(function()
+                    tween(Button, {BackgroundColor3 = Theme.ElementHover}, 0.15)
+                    tween(Arrow, {ImageColor3 = Theme.Text}, 0.15)
+                end)
+                Button.MouseLeave:Connect(function()
+                    tween(Button, {BackgroundColor3 = Theme.Element}, 0.15)
+                    tween(Arrow, {ImageColor3 = Theme.TextDim}, 0.15)
+                end)
+                Button.MouseButton1Click:Connect(function()
+                    tween(Button, {Size = UDim2.new(0.98, 0, 0.92, 0)}, 0.08)
+                    task.wait(0.1)
+                    tween(Button, {Size = UDim2.new(1, 0, 1, 0)}, 0.15, Enum.EasingStyle.Back)
+                    pcall(callback)
+                end)
+                
+                local api = { Press = function() pcall(callback) end }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── Slider ──
+            function SectionAPI:Slider(config)
+                config = config or {}
+                local name = config.Name or "Slider"
+                local flag = config.Flag or name
+                local min = config.Min or 0
+                local max = config.Max or 100
+                local default = config.Default or 50
+                local suffix = config.Suffix or ""
+                local decimals = config.Decimals or 0
+                local callback = config.Callback or function() end
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 48)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                -- Label row
+                local LabelRow = Instance.new("Frame")
+                LabelRow.Size = UDim2.new(1, 0, 0, 20)
+                LabelRow.BackgroundTransparency = 1
+                LabelRow.Parent = Frame
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -60, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = LabelRow
+                registerTheme(Label, "TextColor3", "Text")
+                
+                local ValueLabel = Instance.new("TextLabel")
+                ValueLabel.Size = UDim2.new(0, 50, 1, 0)
+                ValueLabel.Position = UDim2.new(1, -50, 0, 0)
+                ValueLabel.BackgroundTransparency = 1
+                ValueLabel.Font = Enum.Font.GothamBold
+                ValueLabel.Text = tostring(default) .. suffix
+                ValueLabel.TextColor3 = Theme.Voltage
+                ValueLabel.TextSize = 13
+                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                ValueLabel.Parent = LabelRow
+                registerTheme(ValueLabel, "TextColor3", "Voltage")
+                
+                -- Track
+                local Track = Instance.new("TextButton")
+                Track.Size = UDim2.new(1, 0, 0, 4)
+                Track.Position = UDim2.new(0, 0, 1, -8)
+                Track.BackgroundColor3 = Theme.Element
+                Track.Text = ""
+                Track.AutoButtonColor = false
+                Track.Parent = Frame
+                registerTheme(Track, "BackgroundColor3", "Element")
+                corner(Track, 2)
+                
+                local Fill = Instance.new("Frame")
+                Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+                Fill.BackgroundColor3 = Theme.Voltage
+                Fill.BorderSizePixel = 0
+                Fill.Parent = Track
+                registerTheme(Fill, "BackgroundColor3", "Voltage")
+                corner(Fill, 2)
+                
+                local Knob = Instance.new("Frame")
+                Knob.Size = UDim2.new(0, 14, 0, 14)
+                Knob.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
+                Knob.AnchorPoint = Vector2.new(0, 0.5)
+                Knob.BackgroundColor3 = Color3.new(1, 1, 1)
+                Knob.BorderSizePixel = 0
+                Knob.Parent = Track
+                corner(Knob, 7)
+                
+                local Value = default
+                local dragging = false
+                
+                local function setValue(v, fire)
+                    v = clamp(v, min, max)
+                    Value = round(v, decimals)
+                    local alpha = (Value - min) / (max - min)
+                    tween(Fill, {Size = UDim2.new(alpha, 0, 1, 0)}, 0.1)
+                    tween(Knob, {Position = UDim2.new(alpha, -7, 0.5, -7)}, 0.1)
+                    ValueLabel.Text = tostring(Value) .. suffix
+                    Flags[flag] = Value
+                    if fire then pcall(callback, Value) end
+                end
+                
+                setValue(default, false)
+                
+                local function updateSlider(input)
+                    local pos = input.Position.X
+                    local alpha = clamp((pos - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
+                    local v = min + (max - min) * alpha
+                    setValue(v, true)
+                end
+                
+                Track.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = true
+                        updateSlider(input)
+                    end
+                end)
+                
+                Track.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        updateSlider(input)
+                    end
+                end)
+                
+                FlagSetters[flag] = function(v) setValue(v, true) end
+                
+                local api = {
+                    Set = function(v) setValue(v, true) end,
+                    Get = function() return Value end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── Dropdown ──
+            function SectionAPI:Dropdown(config)
+                config = config or {}
+                local name = config.Name or "Dropdown"
+                local flag = config.Flag or name
+                local items = config.Items or {}
+                local default = config.Default or items[1] or ""
+                local callback = config.Callback or function() end
+                local multi = config.Multi or false
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 36)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local DropdownBtn = Instance.new("TextButton")
+                DropdownBtn.Size = UDim2.new(1, 0, 1, 0)
+                DropdownBtn.BackgroundColor3 = Theme.Element
+                DropdownBtn.Text = ""
+                DropdownBtn.AutoButtonColor = false
+                DropdownBtn.Parent = Frame
+                registerTheme(DropdownBtn, "BackgroundColor3", "Element")
+                corner(DropdownBtn, 8)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -50, 1, 0)
+                Label.Position = UDim2.new(0, 12, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = DropdownBtn
+                registerTheme(Label, "TextColor3", "Text")
+                
+                local ValueLabel = Instance.new("TextLabel")
+                ValueLabel.Size = UDim2.new(0, 100, 1, 0)
+                ValueLabel.Position = UDim2.new(1, -112, 0, 0)
+                ValueLabel.BackgroundTransparency = 1
+                ValueLabel.Font = Enum.Font.Gotham
+                ValueLabel.Text = tostring(default)
+                ValueLabel.TextColor3 = Theme.TextDim
+                ValueLabel.TextSize = 13
+                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                ValueLabel.Parent = DropdownBtn
+                registerTheme(ValueLabel, "TextColor3", "TextDim")
+                
+                local Arrow = makeIcon(DropdownBtn, SVG.chevron_down, UDim2.fromOffset(14, 14), Theme.TextDim)
+                Arrow.Position = UDim2.new(1, -24, 0.5, -7)
+                registerTheme(Arrow, "ImageColor3", "TextDim")
+                
+                -- Dropdown List
+                local List = Instance.new("ScrollingFrame")
+                List.Size = UDim2.new(1, -4, 0, 0)
+                List.Position = UDim2.new(0, 2, 0, 4)
+                List.BackgroundColor3 = Theme.Surface
+                List.BorderSizePixel = 0
+                List.ScrollBarThickness = 2
+                List.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                List.CanvasSize = UDim2.new(0, 0, 0, 0)
+                List.Visible = false
+                List.ClipsDescendants = true
+                List.Parent = DropdownBtn
+                registerTheme(List, "BackgroundColor3", "Surface")
+                registerTheme(List, "ScrollBarImageColor3", "VoltageDim")
+                corner(List, 8)
+                stroke(List, Theme.Border, 1, 0.5)
+                
+                local ListLayout = Instance.new("UIListLayout")
+                ListLayout.Padding = UDim.new(0, 2)
+                ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                ListLayout.Parent = List
+                
+                local isOpen = false
+                local selected = default
+                local selectedMulti = {}
+                
+                local function closeList()
+                    isOpen = false
+                    tween(Arrow, {Rotation = 0}, 0.15)
+                    tween(DropdownBtn, {Size = UDim2.new(1, 0, 0, 36)}, 0.15)
+                    task.wait(0.15)
+                    List.Visible = false
+                    List.Size = UDim2.new(1, -4, 0, 0)
+                end
+                
+                local function openList()
+                    isOpen = true
+                    List.Visible = true
+                    tween(Arrow, {Rotation = 180}, 0.15)
+                    local height = clamp(#items * 28 + 8, 0, 150)
+                    List.Size = UDim2.new(1, -4, 0, height)
+                    tween(DropdownBtn, {Size = UDim2.new(1, 0, 0, 36 + height + 4)}, 0.15)
+                end
+                
+                local function selectItem(item, fire)
+                    if multi then
+                        if selectedMulti[item] then
+                            selectedMulti[item] = nil
+                        else
+                            selectedMulti[item] = true
+                        end
+                        local list = {}
+                        for k, v in pairs(selectedMulti) do
+                            if v then table.insert(list, k) end
+                        end
+                        ValueLabel.Text = #list > 0 and table.concat(list, ", ") or "None"
+                        Flags[flag] = list
+                        if fire then pcall(callback, list) end
+                    else
+                        selected = item
+                        ValueLabel.Text = tostring(item)
+                        Flags[flag] = item
+                        if fire then pcall(callback, item) end
+                        closeList()
+                    end
+                end
+                
+                -- Build items
+                local itemButtons = {}
+                for _, item in ipairs(items) do
+                    local itemFrame = Instance.new("TextButton")
+                    itemFrame.Size = UDim2.new(1, -8, 0, 28)
+                    itemFrame.Position = UDim2.new(0, 4, 0, 0)
+                    itemFrame.BackgroundTransparency = 1
+                    itemFrame.Text = ""
+                    itemFrame.AutoButtonColor = false
+                    itemFrame.Parent = List
+                    
+                    local itemLabel = Instance.new("TextLabel")
+                    itemLabel.Size = UDim2.new(1, -20, 1, 0)
+                    itemLabel.Position = UDim2.new(0, 12, 0, 0)
+                    itemLabel.BackgroundTransparency = 1
+                    itemLabel.Font = Enum.Font.Gotham
+                    itemLabel.Text = tostring(item)
+                    itemLabel.TextColor3 = Theme.TextDim
+                    itemLabel.TextSize = 13
+                    itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    itemLabel.Parent = itemFrame
+                    registerTheme(itemLabel, "TextColor3", "TextDim")
+                    
+                    local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
+                    check.Position = UDim2.new(1, -18, 0.5, -6)
+                    check.ImageTransparency = 1
+                    registerTheme(check, "ImageColor3", "Voltage")
+                    
+                    itemFrame.MouseEnter:Connect(function()
+                        tween(itemFrame, {BackgroundTransparency = 0.85})
+                        tween(itemLabel, {TextColor3 = Theme.Text})
+                    end)
+                    itemFrame.MouseLeave:Connect(function()
+                        tween(itemFrame, {BackgroundTransparency = 1})
+                        tween(itemLabel, {TextColor3 = Theme.TextDim})
+                    end)
+                    itemFrame.MouseButton1Click:Connect(function()
+                        selectItem(item, true)
+                    end)
+                    
+                    itemButtons[item] = {frame = itemFrame, label = itemLabel, check = check}
+                end
+                
+                DropdownBtn.MouseButton1Click:Connect(function()
+                    if isOpen then
+                        closeList()
+                    else
+                        openList()
+                    end
+                end)
+                
+                -- Click outside to close
+                UserInputService.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        if isOpen then
+                            local pos = input.Position
+                            local abs = DropdownBtn.AbsolutePosition
+                            local size = DropdownBtn.AbsoluteSize
+                            if pos.X < abs.X or pos.X > abs.X + size.X or pos.Y < abs.Y or pos.Y > abs.Y + size.Y then
+                                closeList()
+                            end
+                        end
+                    end
+                end)
+                
+                -- Set initial value
+                if multi then
+                    if type(default) == "table" then
+                        for _, v in ipairs(default) do
+                            selectedMulti[v] = true
+                        end
+                        local list = {}
+                        for k, v in pairs(selectedMulti) do
+                            if v then table.insert(list, k) end
+                        end
+                        ValueLabel.Text = #list > 0 and table.concat(list, ", ") or "None"
+                    end
+                else
+                    selectItem(default, false)
+                end
+                
+                FlagSetters[flag] = function(v)
+                    if multi then
+                        selectedMulti = {}
+                        if type(v) == "table" then
+                            for _, item in ipairs(v) do
+                                selectedMulti[item] = true
+                            end
+                        end
+                        local list = {}
+                        for k, v2 in pairs(selectedMulti) do
+                            if v2 then table.insert(list, k) end
+                        end
+                        ValueLabel.Text = #list > 0 and table.concat(list, ", ") or "None"
+                        Flags[flag] = list
+                        pcall(callback, list)
+                    else
+                        selectItem(v, true)
+                    end
+                end
+                
+                local api = {
+                    Set = function(v)
+                        if multi then
+                            selectedMulti = {}
+                            if type(v) == "table" then
+                                for _, item in ipairs(v) do
+                                    selectedMulti[item] = true
+                                end
+                            end
+                            local list = {}
+                            for k, v2 in pairs(selectedMulti) do
+                                if v2 then table.insert(list, k) end
+                            end
+                            ValueLabel.Text = #list > 0 and table.concat(list, ", ") or "None"
+                            Flags[flag] = list
+                            pcall(callback, list)
+                        else
+                            selectItem(v, true)
+                        end
+                    end,
+                    Get = function()
+                        if multi then
+                            local list = {}
+                            for k, v in pairs(selectedMulti) do
+                                if v then table.insert(list, k) end
+                            end
+                            return list
+                        end
+                        return selected
+                    end,
+                    Refresh = function(newItems)
+                        for _, btn in pairs(itemButtons) do
+                            btn.frame:Destroy()
+                        end
+                        itemButtons = {}
+                        items = newItems or {}
+                        for _, item in ipairs(items) do
+                            local itemFrame = Instance.new("TextButton")
+                            itemFrame.Size = UDim2.new(1, -8, 0, 28)
+                            itemFrame.Position = UDim2.new(0, 4, 0, 0)
+                            itemFrame.BackgroundTransparency = 1
+                            itemFrame.Text = ""
+                            itemFrame.AutoButtonColor = false
+                            itemFrame.Parent = List
+                            
+                            local itemLabel = Instance.new("TextLabel")
+                            itemLabel.Size = UDim2.new(1, -20, 1, 0)
+                            itemLabel.Position = UDim2.new(0, 12, 0, 0)
+                            itemLabel.BackgroundTransparency = 1
+                            itemLabel.Font = Enum.Font.Gotham
+                            itemLabel.Text = tostring(item)
+                            itemLabel.TextColor3 = Theme.TextDim
+                            itemLabel.TextSize = 13
+                            itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+                            itemLabel.Parent = itemFrame
+                            registerTheme(itemLabel, "TextColor3", "TextDim")
+                            
+                            local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
+                            check.Position = UDim2.new(1, -18, 0.5, -6)
+                            check.ImageTransparency = 1
+                            registerTheme(check, "ImageColor3", "Voltage")
+                            
+                            itemFrame.MouseEnter:Connect(function()
+                                tween(itemFrame, {BackgroundTransparency = 0.85})
+                                tween(itemLabel, {TextColor3 = Theme.Text})
+                            end)
+                            itemFrame.MouseLeave:Connect(function()
+                                tween(itemFrame, {BackgroundTransparency = 1})
+                                tween(itemLabel, {TextColor3 = Theme.TextDim})
+                            end)
+                            itemFrame.MouseButton1Click:Connect(function()
+                                selectItem(item, true)
+                            end)
+                            
+                            itemButtons[item] = {frame = itemFrame, label = itemLabel, check = check}
+                        end
+                    end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── ColorPicker ──
+            function SectionAPI:ColorPicker(config)
+                config = config or {}
+                local name = config.Name or "Color"
+                local flag = config.Flag or name
+                local default = config.Default or Theme.Voltage
+                local alpha = config.Alpha or 1
+                local callback = config.Callback or function() end
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 32)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local ColorBtn = Instance.new("TextButton")
+                ColorBtn.Size = UDim2.new(1, 0, 1, 0)
+                ColorBtn.BackgroundColor3 = Theme.Element
+                ColorBtn.Text = ""
+                ColorBtn.AutoButtonColor = false
+                ColorBtn.Parent = Frame
+                registerTheme(ColorBtn, "BackgroundColor3", "Element")
+                corner(ColorBtn, 8)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -60, 1, 0)
+                Label.Position = UDim2.new(0, 12, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = ColorBtn
+                registerTheme(Label, "TextColor3", "Text")
+                
+                local Preview = Instance.new("Frame")
+                Preview.Size = UDim2.new(0, 28, 0, 18)
+                Preview.Position = UDim2.new(1, -40, 0.5, -9)
+                Preview.BackgroundColor3 = default
+                Preview.BorderSizePixel = 0
+                Preview.Parent = ColorBtn
+                registerTheme(Preview, "BackgroundColor3", "Voltage")
+                corner(Preview, 6)
+                stroke(Preview, Theme.Border, 1, 0.5)
+                
+                -- ColorPicker popup
+                local Popup = Instance.new("Frame")
+                Popup.Size = UDim2.new(0, 240, 0, 200)
+                Popup.Position = UDim2.new(1, -240, 0, 32)
+                Popup.BackgroundColor3 = Theme.Surface
+                Popup.BorderSizePixel = 0
+                Popup.Visible = false
+                Popup.ZIndex = 10
+                Popup.Parent = ColorBtn
+                registerTheme(Popup, "BackgroundColor3", "Surface")
+                corner(Popup, 10)
+                stroke(Popup, Theme.Border, 1, 0.5)
+                
+                -- Wheel
+                local Wheel = Instance.new("ImageLabel")
+                Wheel.Size = UDim2.new(0, 120, 0, 120)
+                Wheel.Position = UDim2.new(0, 12, 0, 12)
+                Wheel.BackgroundColor3 = Color3.new(1, 1, 1)
+                Wheel.Image = "rbxassetid://4155801252"
+                Wheel.Parent = Popup
+                corner(Wheel, 60)
+                
+                local WheelDot = Instance.new("Frame")
+                WheelDot.Size = UDim2.new(0, 8, 0, 8)
+                WheelDot.Position = UDim2.fromScale(0.5, 0.5)
+                WheelDot.AnchorPoint = Vector2.new(0.5, 0.5)
+                WheelDot.BackgroundColor3 = Color3.new(1, 1, 1)
+                WheelDot.BorderSizePixel = 0
+                WheelDot.Parent = Wheel
+                corner(WheelDot, 4)
+                stroke(WheelDot, Color3.new(0, 0, 0), 1, 0.3)
+                
+                -- Hue slider
+                local HueBar = Instance.new("Frame")
+                HueBar.Size = UDim2.new(1, -24, 0, 10)
+                HueBar.Position = UDim2.new(0, 12, 1, -32)
+                HueBar.BackgroundColor3 = Color3.new(1, 1, 1)
+                HueBar.BorderSizePixel = 0
+                HueBar.Parent = Popup
+                corner(HueBar, 5)
+                
+                local HueGrad = Instance.new("UIGradient")
+                HueGrad.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+                }
+                HueGrad.Parent = HueBar
+                
+                local HueDot = Instance.new("Frame")
+                HueDot.Size = UDim2.new(0, 6, 1, 2)
+                HueDot.Position = UDim2.new(0.5, -3, 0.5, -1)
+                HueDot.AnchorPoint = Vector2.new(0, 0.5)
+                HueDot.BackgroundColor3 = Color3.new(1, 1, 1)
+                HueDot.BorderSizePixel = 0
+                HueDot.Parent = HueBar
+                corner(HueDot, 2)
+                stroke(HueDot, Color3.new(0, 0, 0), 1, 0.3)
+                
+                -- Alpha slider
+                local AlphaBar = Instance.new("Frame")
+                AlphaBar.Size = UDim2.new(1, -24, 0, 10)
+                AlphaBar.Position = UDim2.new(0, 12, 1, -18)
+                AlphaBar.BackgroundColor3 = Color3.new(1, 1, 1)
+                AlphaBar.BorderSizePixel = 0
+                AlphaBar.Parent = Popup
+                corner(AlphaBar, 5)
+                
+                local AlphaCheck = Instance.new("ImageLabel")
+                AlphaCheck.Size = UDim2.new(1, 0, 1, 0)
+                AlphaCheck.BackgroundTransparency = 1
+                AlphaCheck.Image = "rbxassetid://18274452449"
+                AlphaCheck.ScaleType = Enum.ScaleType.Tile
+                AlphaCheck.TileSize = UDim2.new(0, 6, 0, 6)
+                AlphaCheck.Parent = AlphaBar
+                
+                local AlphaFill = Instance.new("Frame")
+                AlphaFill.Size = UDim2.new(alpha, 0, 1, 0)
+                AlphaFill.BackgroundColor3 = default
+                AlphaFill.BorderSizePixel = 0
+                AlphaFill.Parent = AlphaBar
+                registerTheme(AlphaFill, "BackgroundColor3", "Voltage")
+                corner(AlphaFill, 5)
+                
+                local AlphaDot = Instance.new("Frame")
+                AlphaDot.Size = UDim2.new(0, 6, 1, 2)
+                AlphaDot.Position = UDim2.new(alpha, -3, 0.5, -1)
+                AlphaDot.AnchorPoint = Vector2.new(0, 0.5)
+                AlphaDot.BackgroundColor3 = Color3.new(1, 1, 1)
+                AlphaDot.BorderSizePixel = 0
+                AlphaDot.Parent = AlphaBar
+                corner(AlphaDot, 2)
+                stroke(AlphaDot, Color3.new(0, 0, 0), 1, 0.3)
+                
+                local color = default
+                local hue, sat, val = Color3.toHSV(default)
+                local alphaVal = alpha
+                local isOpen = false
+                
+                local function updateColor()
+                    color = Color3.fromHSV(hue, sat, val)
+                    Preview.BackgroundColor3 = color
+                    AlphaFill.BackgroundColor3 = color
+                    Wheel.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+                    WheelDot.Position = UDim2.fromScale(sat, 1 - val)
+                    HueDot.Position = UDim2.new(hue, -3, 0.5, -1)
+                    AlphaDot.Position = UDim2.new(alphaVal, -3, 0.5, -1)
+                    Flags[flag] = {Color = color, Alpha = alphaVal}
+                    pcall(callback, color, alphaVal)
+                end
+                
+                local function openPopup()
+                    isOpen = true
+                    Popup.Visible = true
+                    Popup.Size = UDim2.new(0, 0, 0, 200)
+                    tween(Popup, {Size = UDim2.new(0, 240, 0, 200)}, 0.25, Enum.EasingStyle.Back)
+                end
+                
+                local function closePopup()
+                    isOpen = false
+                    tween(Popup, {Size = UDim2.new(0, 0, 0, 0)}, 0.15)
+                    task.wait(0.15)
+                    Popup.Visible = false
+                end
+                
+                ColorBtn.MouseButton1Click:Connect(function()
+                    if isOpen then closePopup() else openPopup() end
+                end)
+                
+                -- Wheel dragging
+                local wheelDragging = false
+                Wheel.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        wheelDragging = true
+                    end
+                end)
+                Wheel.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        wheelDragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if wheelDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        local pos = input.Position
+                        local abs = Wheel.AbsolutePosition
+                        local size = Wheel.AbsoluteSize
+                        local dx = (pos.X - abs.X - size.X / 2) / (size.X / 2)
+                        local dy = (pos.Y - abs.Y - size.Y / 2) / (size.Y / 2)
+                        local dist = math.sqrt(dx * dx + dy * dy)
+                        if dist > 1 then
+                            dx = dx / dist
+                            dy = dy / dist
+                            dist = 1
+                        end
+                        sat = (dx + 1) / 2
+                        val = 1 - (dy + 1) / 2
+                        updateColor()
+                    end
+                end)
+                
+                -- Hue dragging
+                local hueDragging = false
+                HueBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        hueDragging = true
+                    end
+                end)
+                HueBar.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        hueDragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if hueDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        local pos = input.Position
+                        local abs = HueBar.AbsolutePosition
+                        local size = HueBar.AbsoluteSize
+                        hue = clamp((pos.X - abs.X) / size.X, 0, 1)
+                        updateColor()
+                    end
+                end)
+                
+                -- Alpha dragging
+                local alphaDragging = false
+                AlphaBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        alphaDragging = true
+                    end
+                end)
+                AlphaBar.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        alphaDragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if alphaDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        local pos = input.Position
+                        local abs = AlphaBar.AbsolutePosition
+                        local size = AlphaBar.AbsoluteSize
+                        alphaVal = clamp((pos.X - abs.X) / size.X, 0, 1)
+                        updateColor()
+                    end
+                end)
+                
+                updateColor()
+                
+                FlagSetters[flag] = function(c, a)
+                    if c then
+                        hue, sat, val = Color3.toHSV(c)
+                        if a ~= nil then alphaVal = a end
+                        updateColor()
+                    end
+                end
+                
+                local api = {
+                    Set = function(c, a)
+                        if c then
+                            hue, sat, val = Color3.toHSV(c)
+                            if a ~= nil then alphaVal = a end
+                            updateColor()
+                        end
+                    end,
+                    Get = function() return color, alphaVal end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── Keybind ──
+            function SectionAPI:Keybind(config)
+                config = config or {}
+                local name = config.Name or "Keybind"
+                local flag = config.Flag or name
+                local default = config.Default or Enum.KeyCode.E
+                local mode = config.Mode or "Toggle"
+                local callback = config.Callback or function() end
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 32)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local KeyBtn = Instance.new("TextButton")
+                KeyBtn.Size = UDim2.new(1, 0, 1, 0)
+                KeyBtn.BackgroundColor3 = Theme.Element
+                KeyBtn.Text = ""
+                KeyBtn.AutoButtonColor = false
+                KeyBtn.Parent = Frame
+                registerTheme(KeyBtn, "BackgroundColor3", "Element")
+                corner(KeyBtn, 8)
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -120, 1, 0)
+                Label.Position = UDim2.new(0, 12, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = KeyBtn
+                registerTheme(Label, "TextColor3", "Text")
+                
+                local KeyDisplay = Instance.new("TextLabel")
+                KeyDisplay.Size = UDim2.new(0, 80, 1, 0)
+                KeyDisplay.Position = UDim2.new(1, -90, 0, 0)
+                KeyDisplay.BackgroundTransparency = 1
+                KeyDisplay.Font = Enum.Font.GothamBold
+                KeyDisplay.Text = tostring(default):gsub("Enum.KeyCode.", "")
+                KeyDisplay.TextColor3 = Theme.Voltage
+                KeyDisplay.TextSize = 12
+                KeyDisplay.TextXAlignment = Enum.TextXAlignment.Right
+                KeyDisplay.Parent = KeyBtn
+                registerTheme(KeyDisplay, "TextColor3", "Voltage")
+                
+                local currentKey = default
+                local isListening = false
+                local keyState = false
+                
+                local function setKey(key, fire)
+                    currentKey = key
+                    KeyDisplay.Text = tostring(key):gsub("Enum.KeyCode.", "")
+                    Flags[flag] = {Key = currentKey, Mode = mode, State = keyState}
+                    if fire then pcall(callback, keyState) end
+                end
+                
+                KeyBtn.MouseButton1Click:Connect(function()
+                    if isListening then return end
+                    isListening = true
+                    KeyDisplay.Text = "..."
+                    KeyDisplay.TextColor3 = Theme.Pulse
+                    
+                    local conn
+                    conn = UserInputService.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Keyboard then
+                            if input.KeyCode ~= Enum.KeyCode.Unknown then
+                                setKey(input.KeyCode, true)
+                                isListening = false
+                                conn:Disconnect()
+                                KeyDisplay.TextColor3 = Theme.Voltage
+                            end
+                        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+                            setKey(Enum.UserInputType.MouseButton1, true)
+                            isListening = false
+                            conn:Disconnect()
+                            KeyDisplay.TextColor3 = Theme.Voltage
+                        end
+                    end)
+                end)
+                
+                UserInputService.InputBegan:Connect(function(input)
+                    if isListening then return end
+                    if input.KeyCode == currentKey or input.UserInputType == currentKey then
+                        if mode == "Toggle" then
+                            keyState = not keyState
+                            pcall(callback, keyState)
+                        elseif mode == "Hold" then
+                            keyState = true
+                            pcall(callback, true)
+                        end
+                    end
+                end)
+                
+                UserInputService.InputEnded:Connect(function(input)
+                    if isListening then return end
+                    if mode == "Hold" and (input.KeyCode == currentKey or input.UserInputType == currentKey) then
+                        keyState = false
+                        pcall(callback, false)
+                    end
+                end)
+                
+                FlagSetters[flag] = function(v)
+                    if type(v) == "table" then
+                        if v.Key then setKey(v.Key, false) end
+                        if v.Mode then mode = v.Mode end
+                        if v.State ~= nil then keyState = v.State end
+                    else
+                        setKey(v, false)
+                    end
+                end
+                
+                local api = {
+                    Set = function(k) setKey(k, true) end,
+                    Get = function() return currentKey, keyState end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── TextBox ──
+            function SectionAPI:TextBox(config)
+                config = config or {}
+                local name = config.Name or "Input"
+                local flag = config.Flag or name
+                local default = config.Default or ""
+                local placeholder = config.Placeholder or "Type here..."
+                local callback = config.Callback or function() end
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 48)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, 0, 0, 18)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = name
+                Label.TextColor3 = Theme.Text
+                Label.TextSize = 13
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+                registerTheme(Label, "TextColor3", "Text")
+                
+                local Input = Instance.new("TextBox")
+                Input.Size = UDim2.new(1, 0, 0, 24)
+                Input.Position = UDim2.new(0, 0, 1, -24)
+                Input.BackgroundColor3 = Theme.Element
+                Input.Text = default
+                Input.PlaceholderText = placeholder
+                Input.PlaceholderColor3 = Theme.TextDim
+                Input.TextColor3 = Theme.Text
+                Input.Font = Enum.Font.Gotham
+                Input.TextSize = 13
+                Input.TextXAlignment = Enum.TextXAlignment.Left
+                Input.ClearTextOnFocus = false
+                Input.Parent = Frame
+                registerTheme(Input, "BackgroundColor3", "Element")
+                registerTheme(Input, "TextColor3", "Text")
+                corner(Input, 6)
+                pad(Input, 0, 0, 0, 8)
+                
+                Input.FocusLost:Connect(function()
+                    Flags[flag] = Input.Text
+                    pcall(callback, Input.Text)
+                end)
+                
+                FlagSetters[flag] = function(v)
+                    Input.Text = tostring(v)
+                    Flags[flag] = v
+                    pcall(callback, v)
+                end
+                
+                local api = {
+                    Set = function(v) Input.Text = tostring(v); Flags[flag] = v; pcall(callback, v) end,
+                    Get = function() return Input.Text end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── Label ──
+            function SectionAPI:Label(config)
+                config = config or {}
+                local text = config.Text or "Label"
+                local color = config.Color or Theme.TextDim
+                
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 24)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = SectionContent
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, -12, 1, 0)
+                Label.Position = UDim2.new(0, 4, 0, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.Gotham
+                Label.Text = text
+                Label.TextColor3 = color
+                Label.TextSize = 12
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+                registerTheme(Label, "TextColor3", "TextDim")
+                
+                local api = {
+                    Set = function(t) Label.Text = t end,
+                }
+                table.insert(SectionAPI._elements, api)
+                return api
+            end
+            
+            -- ── Divider ──
+            function SectionAPI:Divider()
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, -20, 0, 1)
+                Frame.Position = UDim2.new(0, 10, 0, 4)
+                Frame.BackgroundColor3 = Theme.Border
+                Frame.BorderSizePixel = 0
+                Frame.Parent = SectionContent
+                registerTheme(Frame, "BackgroundColor3", "Border")
+            end
+            
+            return SectionAPI
+        end
+        
+        -- Store sections
+        TabData.CreateSection = createSection
+        
+        -- Add to pages
+        Pages[name] = TabData
+        table.insert(TabData.Sections, TabData)
+        
+        -- Auto-select first tab
+        if not CurrentTab then
+            Voltage:SelectTab(TabData)
+        end
+        
+        return {
+            Tab = TabData,
+            Section = createSection,
+        }
+    end
+    
+    -- ── Select Tab ──
+    function Voltage:SelectTab(tab)
+        if CurrentTab == tab then return end
+        
+        -- Deactivate current
+        if CurrentTab then
+            tween(CurrentTab.Button, {BackgroundTransparency = 1})
+            tween(CurrentTab.Label, {TextColor3 = Theme.TextDim})
+            tween(CurrentTab.Icon, {ImageColor3 = Theme.TextDim})
+            tween(CurrentTab.Indicator, {BackgroundTransparency = 1})
+            CurrentTab.Content.Visible = false
+        end
+        
+        -- Activate new
+        CurrentTab = tab
+        tween(tab.Button, {BackgroundTransparency = 0.85})
+        tween(tab.Label, {TextColor3 = Theme.Text})
+        tween(tab.Icon, {ImageColor3 = Theme.Voltage})
+        tween(tab.Indicator, {BackgroundTransparency = 0})
+        tab.Content.Visible = true
+        
+        -- Update title
+        TitleText.Text = tab.Name
+        
+        -- Animate title line
+        TitleLine.Size = UDim2.new(0, 0, 0, 2)
+        tween(TitleLine, {Size = UDim2.new(0, 60, 0, 2)}, 0.4, Enum.EasingStyle.Back)
+    end
+    
+    -- ── Window Controls ──
+    function Voltage:SetTitle(text)
+        TitleText.Text = text
+    end
+    
+    function Voltage:SetSize(w, h)
+        tween(Main, {Size = UDim2.fromOffset(w, h)}, 0.3, Enum.EasingStyle.Quart)
+    end
+    
+    function Voltage:GetSize()
+        return Main.Size
+    end
+    
+    -- ── SpeedHack Integration ──
+    local speedSection = nil
+    
+    function Voltage:AddSpeedHackTab(config)
+        config = config or {}
+        local tabName = config.TabName or "Speed"
+        local tabIcon = config.TabIcon or SVG.speed
+        
+        local tab = self:Tab({Name = tabName, Icon = tabIcon})
+        local section = tab:Section({Name = "SpeedHack", Side = "left"})
+        
+        -- Speed toggle
+        local speedToggle = section:Toggle({
+            Name = "Enable SpeedHack",
+            Flag = "SpeedHackEnabled",
+            Default = false,
+            Callback = function(value)
+                SpeedHack:Toggle(value)
+            end
+        })
+        
+        -- Speed slider
+        local speedSlider = section:Slider({
+            Name = "Speed Multiplier",
+            Flag = "SpeedHackMultiplier",
+            Min = 0.5,
+            Max = 10,
+            Default = 2,
+            Suffix = "x",
+            Decimals = 1,
+            Callback = function(value)
+                SpeedHack:SetSpeed(value)
+            end
+        })
+        
+        -- Status label
+        local statusLabel = section:Label({
+            Text = "Status: Disabled",
+            Color = Theme.TextDim,
+        })
+        
+        -- Auto-update status
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                if SpeedHack.enabled then
+                    statusLabel:Set("Status: Enabled (" .. SpeedHack.speed .. "x)")
+                else
+                    statusLabel:Set("Status: Disabled")
+                end
             end
         end)
         
-        if not petSpawnerSuccess then
-            notify('❌ Ошибка спавнера', tostring(petSpawnerErr), 5)
+        -- Info
+        section:Divider()
+        section:Label({
+            Text = "SpeedHack modifies your character's movement speed",
+            Color = Theme.TextDim,
+        })
+        section:Label({
+            Text = "and can be toggled with the keybind above.",
+            Color = Theme.TextDim,
+        })
+        
+        return speedToggle, speedSlider
+    end
+    
+    -- ── Notification System ──
+    local NotificationContainer = Instance.new("Frame")
+    NotificationContainer.Size = UDim2.new(0, 320, 1, -40)
+    NotificationContainer.Position = UDim2.new(1, -340, 0, 20)
+    NotificationContainer.BackgroundTransparency = 1
+    NotificationContainer.ZIndex = 1000
+    NotificationContainer.Parent = ScreenGui
+    
+    local NotifLayout = Instance.new("UIListLayout")
+    NotifLayout.Padding = UDim.new(0, 8)
+    NotifLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    NotifLayout.Parent = NotificationContainer
+    
+    function Voltage:Notify(title, text, duration, type)
+        duration = duration or 3
+        type = type or "info"
+        
+        local colors = {
+            info = Theme.Voltage,
+            success = Theme.Success,
+            warning = Theme.Warning,
+            error = Theme.Error,
+        }
+        local accent = colors[type] or Theme.Voltage
+        
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(1, 0, 0, 54)
+        card.BackgroundColor3 = Theme.Surface
+        card.BackgroundTransparency = 0.1
+        card.Parent = NotificationContainer
+        registerTheme(card, "BackgroundColor3", "Surface")
+        corner(card, 10)
+        stroke(card, Theme.Border, 1, 0.5)
+        
+        local accentBar = Instance.new("Frame")
+        accentBar.Size = UDim2.new(0, 3, 1, -12)
+        accentBar.Position = UDim2.new(0, 4, 0.5, 0)
+        accentBar.AnchorPoint = Vector2.new(0, 0.5)
+        accentBar.BackgroundColor3 = accent
+        accentBar.BorderSizePixel = 0
+        accentBar.Parent = card
+        corner(accentBar, 2)
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -20, 0, 20)
+        titleLabel.Position = UDim2.new(0, 14, 0, 6)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Text = title
+        titleLabel.TextColor3 = Theme.Text
+        titleLabel.TextSize = 14
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.Parent = card
+        registerTheme(titleLabel, "TextColor3", "Text")
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, -20, 0, 20)
+        textLabel.Position = UDim2.new(0, 14, 0, 28)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Font = Enum.Font.Gotham
+        textLabel.Text = text
+        textLabel.TextColor3 = Theme.TextDim
+        textLabel.TextSize = 12
+        textLabel.TextXAlignment = Enum.TextXAlignment.Left
+        textLabel.TextWrapped = true
+        textLabel.Parent = card
+        registerTheme(textLabel, "TextColor3", "TextDim")
+        
+        -- Progress bar
+        local progress = Instance.new("Frame")
+        progress.Size = UDim2.new(1, 0, 0, 2)
+        progress.Position = UDim2.new(0, 0, 1, -2)
+        progress.BackgroundColor3 = accent
+        progress.BorderSizePixel = 0
+        progress.Parent = card
+        corner(progress, 2)
+        
+        tween(progress, {Size = UDim2.new(0, 0, 0, 2)}, TweenInfo.new(duration, Enum.EasingStyle.Linear))
+        
+        task.delay(duration, function()
+            tween(card, {BackgroundTransparency = 1}, 0.3)
+            tween(card, {Size = UDim2.new(1, 0, 0, 0)}, 0.3)
+            task.wait(0.35)
+            card:Destroy()
+        end)
+    end
+    
+    -- ── Keybind Handler ──
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == keybind then
+            local vis = not Main.Visible
+            Main.Visible = vis
+            if vis then
+                tween(UIScale, {Scale = 1}, 0.3, Enum.EasingStyle.Back)
+                tween(Main, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Quart)
+            else
+                tween(UIScale, {Scale = 0}, 0.3, Enum.EasingStyle.Back)
+                tween(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Quart)
+                task.wait(0.35)
+                Main.Visible = false
+            end
         end
-    end
-    
-    -- ============================================
-    -- ЗАПУСК
-    -- ============================================
-    notify('🎭 Спавн бота', 'Создаю фейк-игрока...', 2)
-    
-    local success, err = pcall(function()
-        CreateFakePlayerCharacter(CONFIG.PARTNER_NAME, CONFIG.PARTNER_USER_ID)
     end)
     
-    if success then
-        notify('✅ Бот создан!', 'Кликни на него -> Trade', 4)
-    else
-        notify('❌ Ошибка', tostring(err), 5)
-    end
+    -- ── Window API ──
+    local windowAPI = {
+        ScreenGui = ScreenGui,
+        Main = Main,
+        Tab = function(config) return createTab(config) end,
+        SetTitle = Voltage.SetTitle,
+        SetSize = Voltage.SetSize,
+        GetSize = Voltage.GetSize,
+        Notify = Voltage.Notify,
+        SaveConfig = Voltage.SaveConfig,
+        LoadConfig = Voltage.LoadConfig,
+        AddSpeedHackTab = Voltage.AddSpeedHackTab,
+        SpeedHack = SpeedHack,
+        Theme = Theme,
+        Flags = Flags,
+        FlagSetters = FlagSetters,
+    }
     
-    -- Запускаем спавнер петов
-    task.spawn(function()
-        task.wait(3)
-        spawnPets()
-    end)
+    table.insert(Voltage._windows, windowAPI)
+    return windowAPI
 end
 
--- Запускаем main
-local success, err = pcall(main)
-if not success then
-    notify('❌ КРИТИЧЕСКАЯ ОШИБКА', tostring(err), 10)
-end
+-- ═══════════════════════════════════════════════════════════════════════
+-- LOAD CONFIG
+-- ═══════════════════════════════════════════════════════════════════════
 
-notify('✅ Готово!', 'Скрипт запущен!', 3)
+task.spawn(function()
+    task.wait(0.1)
+    Voltage:LoadConfig()
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- RETURN
+-- ═══════════════════════════════════════════════════════════════════════
+
+getgenv().Voltage = Voltage
+return Voltage
