@@ -2,18 +2,7 @@
     ═══════════════════════════════════════════════════════════════════════
     VOLTAGE UI v2.0
     ───────────────────────────────────────────────────────────────────────
-    A next-generation UI library combining the best features from
-    multiple libraries with a unique pulse/voltage aesthetic.
-    
-    Features:
-    • Pulse & Voltage Theming with animated gradients
-    • Complete component suite (Toggle, Slider, Dropdown, etc.)
-    • Advanced config system with auto-save
-    • Blur/Glass effects (acrylic)
-    • Mobile-optimized
-    • SVG icons (no emojis)
-    • SpeedHack integrated
-    • And much more...
+    FIXED: ImageColor3 nil error
     ═══════════════════════════════════════════════════════════════════════
 --]]
 
@@ -127,23 +116,12 @@ local Theme = {
 }
 
 local themeElements = {}
-local accentGradients = {}
 
 local function registerTheme(obj, prop, key)
     table.insert(themeElements, {obj = obj, prop = prop, key = key})
-    obj[prop] = Theme[key]
-end
-
-local function createGradient(obj, color1, color2, rotation)
-    local grad = Instance.new("UIGradient")
-    grad.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, color1),
-        ColorSequenceKeypoint.new(1, color2)
-    }
-    grad.Rotation = rotation or 135
-    grad.Parent = obj
-    table.insert(accentGradients, grad)
-    return grad
+    if Theme[key] then
+        obj[prop] = Theme[key]
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
@@ -191,9 +169,12 @@ local function makeIcon(parent, icon, size, color)
     img.Size = size or UDim2.fromOffset(18, 18)
     img.BackgroundTransparency = 1
     img.Image = icon
-    img.ImageColor3 = color or Theme.Text
+    if color then
+        img.ImageColor3 = color
+    else
+        img.ImageColor3 = Theme.Text
+    end
     img.Parent = parent
-    if color then registerTheme(img, "ImageColor3", color) end
     return img
 end
 
@@ -258,8 +239,6 @@ local SpeedHack = {
     enabled = false,
     speed = 2.0,
     connections = {},
-    originalNetwork = nil,
-    originalPhysics = nil,
 }
 
 function SpeedHack:Toggle(state)
@@ -281,31 +260,15 @@ end
 function SpeedHack:Enable()
     if self.enabled then return end
     self.enabled = true
-    
-    -- Store original values
-    self.originalNetwork = game:GetService("RunService").Stepped
-    self.originalPhysics = game:GetService("RunService").Heartbeat
-    
-    -- Apply speed
     self:ApplySpeed()
     
-    -- Hook RunService
-    local conn = RunService.Heartbeat:Connect(function(dt)
+    local conn = RunService.Heartbeat:Connect(function()
         if self.enabled then
-            game:GetService("RunService").Stepped:Wait()
-            game:GetService("RunService").Heartbeat:Wait()
+            -- Keep speed applied
+            self:ApplySpeed()
         end
     end)
     table.insert(self.connections, conn)
-    
-    -- Modify character walk speed if possible
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = hum.WalkSpeed * self.speed
-        end
-    end
 end
 
 function SpeedHack:Disable()
@@ -317,7 +280,6 @@ function SpeedHack:Disable()
     end
     self.connections = {}
     
-    -- Reset character speed
     local char = LocalPlayer.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -328,7 +290,6 @@ function SpeedHack:Disable()
 end
 
 function SpeedHack:ApplySpeed()
-    -- Apply to character
     local char = LocalPlayer.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -348,14 +309,7 @@ local Voltage = {
     SpeedHack = SpeedHack,
     Version = "2.0.0",
     _windows = {},
-    _tabs = {},
-    _sections = {},
-    _elements = {},
 }
-
--- ═══════════════════════════════════════════════════════════════════════
--- CONFIG METHODS (defined before Window so they're available)
--- ═══════════════════════════════════════════════════════════════════════
 
 function Voltage:SaveConfig()
     saveConfig()
@@ -372,7 +326,6 @@ end
 function Voltage:Window(config)
     config = config or {}
     local title = config.Title or "Voltage UI"
-    local icon = config.Icon or SVG.bolt
     local keybind = config.Keybind or Enum.KeyCode.RightControl
     local width = config.Width or 820
     local height = config.Height or 580
@@ -471,7 +424,6 @@ function Voltage:Window(config)
     
     local LogoIcon = makeIcon(Logo, SVG.bolt, UDim2.fromOffset(32, 32), Theme.Voltage)
     LogoIcon.Position = UDim2.new(0, 16, 0.5, -16)
-    registerTheme(LogoIcon, "ImageColor3", "Voltage")
     
     local LogoText = Instance.new("TextLabel")
     LogoText.Size = UDim2.new(1, -60, 0, 24)
@@ -563,7 +515,6 @@ function Voltage:Window(config)
         close = SVG.close,
     }
     
-    local ControlButtons = {}
     local btnX = -10
     for name, icon in pairs(controlIcons) do
         btnX = btnX - 28
@@ -580,7 +531,6 @@ function Voltage:Window(config)
         
         local img = makeIcon(btn, icon, UDim2.fromOffset(12, 12), Theme.TextDim)
         img.Position = UDim2.new(0.5, -6, 0.5, -6)
-        registerTheme(img, "ImageColor3", "TextDim")
         
         btn.MouseEnter:Connect(function()
             tween(btn, {BackgroundTransparency = 0})
@@ -620,8 +570,6 @@ function Voltage:Window(config)
                 tween(Sidebar, {Size = UDim2.new(0, 200, 1, 0)}, 0.3, Enum.EasingStyle.Quart)
             end)
         end
-        
-        ControlButtons[name] = btn
     end
     
     -- ── Content Pages ──
@@ -653,7 +601,6 @@ function Voltage:Window(config)
         -- Tab Icon
         local TabIcon = makeIcon(TabBtn, icon, UDim2.fromOffset(18, 18), Theme.TextDim)
         TabIcon.Position = UDim2.new(0, 12, 0.5, -9)
-        registerTheme(TabIcon, "ImageColor3", "TextDim")
         
         -- Tab Label
         local TabLabel = Instance.new("TextLabel")
@@ -735,7 +682,6 @@ function Voltage:Window(config)
         local function createSection(sectionConfig)
             sectionConfig = sectionConfig or {}
             local sectionName = sectionConfig.Name or "Section"
-            local side = sectionConfig.Side or "left"
             
             -- Section Frame
             local Section = Instance.new("Frame")
@@ -780,14 +726,7 @@ function Voltage:Window(config)
             SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
             SectionLayout.Parent = SectionContent
             
-            local SectionAPI = {
-                _section = Section,
-                _content = SectionContent,
-                _layout = SectionLayout,
-                _name = sectionName,
-                _side = side,
-                _elements = {},
-            }
+            local SectionAPI = {}
             
             -- ── Toggle ──
             function SectionAPI:Toggle(config)
@@ -806,7 +745,6 @@ function Voltage:Window(config)
                 Frame.BackgroundTransparency = 1
                 Frame.Parent = SectionContent
                 
-                -- Toggle Container
                 local ToggleContainer = Instance.new("TextButton")
                 ToggleContainer.Size = UDim2.new(1, 0, 1, 0)
                 ToggleContainer.BackgroundTransparency = 1
@@ -814,7 +752,6 @@ function Voltage:Window(config)
                 ToggleContainer.AutoButtonColor = false
                 ToggleContainer.Parent = Frame
                 
-                -- Label
                 local Label = Instance.new("TextLabel")
                 Label.Size = UDim2.new(1, -70, 0, 18)
                 Label.Position = UDim2.new(0, 0, 0, hasDesc and 2 or 7)
@@ -841,7 +778,6 @@ function Voltage:Window(config)
                     registerTheme(Desc, "TextColor3", "TextDim")
                 end
                 
-                -- Toggle Switch
                 local Switch = Instance.new("Frame")
                 Switch.Size = UDim2.new(0, 40, 0, 20)
                 Switch.Position = UDim2.new(1, -44, 0.5, -10)
@@ -876,20 +812,15 @@ function Voltage:Window(config)
                     setState(not State, true)
                 end)
                 
-                -- Register flag setter
                 FlagSetters[flag] = function(value)
                     setState(value, true)
                 end
                 
-                -- API
-                local api = {
+                return {
                     Set = function(value) setState(value, true) end,
                     Get = function() return State end,
                     Toggle = function() setState(not State, true) end,
                 }
-                
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── Button ──
@@ -916,7 +847,6 @@ function Voltage:Window(config)
                 registerTheme(Button, "BackgroundColor3", "Element")
                 corner(Button, 8)
                 
-                -- Button content
                 local Container = Instance.new("Frame")
                 Container.Size = UDim2.new(1, -16, 1, 0)
                 Container.Position = UDim2.new(0, 8, 0, 0)
@@ -949,10 +879,8 @@ function Voltage:Window(config)
                     registerTheme(Desc, "TextColor3", "TextDim")
                 end
                 
-                -- Arrow
                 local Arrow = makeIcon(Container, SVG.chevron_right, UDim2.fromOffset(14, 14), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -2, 0.5, -7)
-                registerTheme(Arrow, "ImageColor3", "TextDim")
                 
                 Button.MouseEnter:Connect(function()
                     tween(Button, {BackgroundColor3 = Theme.ElementHover}, 0.15)
@@ -969,9 +897,7 @@ function Voltage:Window(config)
                     pcall(callback)
                 end)
                 
-                local api = { Press = function() pcall(callback) end }
-                table.insert(SectionAPI._elements, api)
-                return api
+                return { Press = function() pcall(callback) end }
             end
             
             -- ── Slider ──
@@ -991,7 +917,6 @@ function Voltage:Window(config)
                 Frame.BackgroundTransparency = 1
                 Frame.Parent = SectionContent
                 
-                -- Label row
                 local LabelRow = Instance.new("Frame")
                 LabelRow.Size = UDim2.new(1, 0, 0, 20)
                 LabelRow.BackgroundTransparency = 1
@@ -1020,7 +945,6 @@ function Voltage:Window(config)
                 ValueLabel.Parent = LabelRow
                 registerTheme(ValueLabel, "TextColor3", "Voltage")
                 
-                -- Track
                 local Track = Instance.new("TextButton")
                 Track.Size = UDim2.new(1, 0, 0, 4)
                 Track.Position = UDim2.new(0, 0, 1, -8)
@@ -1092,12 +1016,10 @@ function Voltage:Window(config)
                 
                 FlagSetters[flag] = function(v) setValue(v, true) end
                 
-                local api = {
+                return {
                     Set = function(v) setValue(v, true) end,
                     Get = function() return Value end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── Dropdown ──
@@ -1150,9 +1072,7 @@ function Voltage:Window(config)
                 
                 local Arrow = makeIcon(DropdownBtn, SVG.chevron_down, UDim2.fromOffset(14, 14), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -24, 0.5, -7)
-                registerTheme(Arrow, "ImageColor3", "TextDim")
                 
-                -- Dropdown List
                 local List = Instance.new("ScrollingFrame")
                 List.Size = UDim2.new(1, -4, 0, 0)
                 List.Position = UDim2.new(0, 2, 0, 4)
@@ -1245,7 +1165,6 @@ function Voltage:Window(config)
                     local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
                     check.Position = UDim2.new(1, -18, 0.5, -6)
                     check.ImageTransparency = 1
-                    registerTheme(check, "ImageColor3", "Voltage")
                     
                     itemFrame.MouseEnter:Connect(function()
                         tween(itemFrame, {BackgroundTransparency = 0.85})
@@ -1270,7 +1189,6 @@ function Voltage:Window(config)
                     end
                 end)
                 
-                -- Click outside to close
                 UserInputService.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         if isOpen then
@@ -1284,7 +1202,6 @@ function Voltage:Window(config)
                     end
                 end)
                 
-                -- Set initial value
                 if multi then
                     if type(default) == "table" then
                         for _, v in ipairs(default) do
@@ -1320,7 +1237,7 @@ function Voltage:Window(config)
                     end
                 end
                 
-                local api = {
+                return {
                     Set = function(v)
                         if multi then
                             selectedMulti = {}
@@ -1380,7 +1297,6 @@ function Voltage:Window(config)
                             local check = makeIcon(itemFrame, SVG.check, UDim2.fromOffset(12, 12), Theme.Voltage)
                             check.Position = UDim2.new(1, -18, 0.5, -6)
                             check.ImageTransparency = 1
-                            registerTheme(check, "ImageColor3", "Voltage")
                             
                             itemFrame.MouseEnter:Connect(function()
                                 tween(itemFrame, {BackgroundTransparency = 0.85})
@@ -1398,8 +1314,6 @@ function Voltage:Window(config)
                         end
                     end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── ColorPicker ──
@@ -1447,7 +1361,6 @@ function Voltage:Window(config)
                 corner(Preview, 6)
                 stroke(Preview, Theme.Border, 1, 0.5)
                 
-                -- ColorPicker popup
                 local Popup = Instance.new("Frame")
                 Popup.Size = UDim2.new(0, 240, 0, 200)
                 Popup.Position = UDim2.new(1, -240, 0, 32)
@@ -1460,7 +1373,6 @@ function Voltage:Window(config)
                 corner(Popup, 10)
                 stroke(Popup, Theme.Border, 1, 0.5)
                 
-                -- Wheel
                 local Wheel = Instance.new("ImageLabel")
                 Wheel.Size = UDim2.new(0, 120, 0, 120)
                 Wheel.Position = UDim2.new(0, 12, 0, 12)
@@ -1479,7 +1391,6 @@ function Voltage:Window(config)
                 corner(WheelDot, 4)
                 stroke(WheelDot, Color3.new(0, 0, 0), 1, 0.3)
                 
-                -- Hue slider
                 local HueBar = Instance.new("Frame")
                 HueBar.Size = UDim2.new(1, -24, 0, 10)
                 HueBar.Position = UDim2.new(0, 12, 1, -32)
@@ -1510,7 +1421,6 @@ function Voltage:Window(config)
                 corner(HueDot, 2)
                 stroke(HueDot, Color3.new(0, 0, 0), 1, 0.3)
                 
-                -- Alpha slider
                 local AlphaBar = Instance.new("Frame")
                 AlphaBar.Size = UDim2.new(1, -24, 0, 10)
                 AlphaBar.Position = UDim2.new(0, 12, 1, -18)
@@ -1580,7 +1490,6 @@ function Voltage:Window(config)
                     if isOpen then closePopup() else openPopup() end
                 end)
                 
-                -- Wheel dragging
                 local wheelDragging = false
                 Wheel.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1612,7 +1521,6 @@ function Voltage:Window(config)
                     end
                 end)
                 
-                -- Hue dragging
                 local hueDragging = false
                 HueBar.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1635,7 +1543,6 @@ function Voltage:Window(config)
                     end
                 end)
                 
-                -- Alpha dragging
                 local alphaDragging = false
                 AlphaBar.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1668,7 +1575,7 @@ function Voltage:Window(config)
                     end
                 end
                 
-                local api = {
+                return {
                     Set = function(c, a)
                         if c then
                             hue, sat, val = Color3.toHSV(c)
@@ -1678,8 +1585,6 @@ function Voltage:Window(config)
                     end,
                     Get = function() return color, alphaVal end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── Keybind ──
@@ -1795,12 +1700,10 @@ function Voltage:Window(config)
                     end
                 end
                 
-                local api = {
+                return {
                     Set = function(k) setKey(k, true) end,
                     Get = function() return currentKey, keyState end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── TextBox ──
@@ -1857,12 +1760,10 @@ function Voltage:Window(config)
                     pcall(callback, v)
                 end
                 
-                local api = {
+                return {
                     Set = function(v) Input.Text = tostring(v); Flags[flag] = v; pcall(callback, v) end,
                     Get = function() return Input.Text end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── Label ──
@@ -1888,11 +1789,9 @@ function Voltage:Window(config)
                 Label.Parent = Frame
                 registerTheme(Label, "TextColor3", "TextDim")
                 
-                local api = {
+                return {
                     Set = function(t) Label.Text = t end,
                 }
-                table.insert(SectionAPI._elements, api)
-                return api
             end
             
             -- ── Divider ──
@@ -1909,14 +1808,10 @@ function Voltage:Window(config)
             return SectionAPI
         end
         
-        -- Store sections
         TabData.CreateSection = createSection
         
-        -- Add to pages
         Pages[name] = TabData
-        table.insert(TabData.Sections, TabData)
         
-        -- Auto-select first tab
         if not CurrentTab then
             Voltage:SelectTab(TabData)
         end
@@ -1931,7 +1826,6 @@ function Voltage:Window(config)
     function Voltage:SelectTab(tab)
         if CurrentTab == tab then return end
         
-        -- Deactivate current
         if CurrentTab then
             tween(CurrentTab.Button, {BackgroundTransparency = 1})
             tween(CurrentTab.Label, {TextColor3 = Theme.TextDim})
@@ -1940,7 +1834,6 @@ function Voltage:Window(config)
             CurrentTab.Content.Visible = false
         end
         
-        -- Activate new
         CurrentTab = tab
         tween(tab.Button, {BackgroundTransparency = 0.85})
         tween(tab.Label, {TextColor3 = Theme.Text})
@@ -1948,39 +1841,20 @@ function Voltage:Window(config)
         tween(tab.Indicator, {BackgroundTransparency = 0})
         tab.Content.Visible = true
         
-        -- Update title
         TitleText.Text = tab.Name
-        
-        -- Animate title line
         TitleLine.Size = UDim2.new(0, 0, 0, 2)
         tween(TitleLine, {Size = UDim2.new(0, 60, 0, 2)}, 0.4, Enum.EasingStyle.Back)
     end
     
-    -- ── Window Controls ──
-    function Voltage:SetTitle(text)
-        TitleText.Text = text
-    end
-    
-    function Voltage:SetSize(w, h)
-        tween(Main, {Size = UDim2.fromOffset(w, h)}, 0.3, Enum.EasingStyle.Quart)
-    end
-    
-    function Voltage:GetSize()
-        return Main.Size
-    end
-    
     -- ── SpeedHack Integration ──
-    local speedSection = nil
-    
     function Voltage:AddSpeedHackTab(config)
         config = config or {}
         local tabName = config.TabName or "Speed"
         local tabIcon = config.TabIcon or SVG.speed
         
-        local tab = self:Tab({Name = tabName, Icon = tabIcon})
-        local section = tab:Section({Name = "SpeedHack", Side = "left"})
+        local tab = createTab({Name = tabName, Icon = tabIcon})
+        local section = tab:Section({Name = "SpeedHack"})
         
-        -- Speed toggle
         local speedToggle = section:Toggle({
             Name = "Enable SpeedHack",
             Flag = "SpeedHackEnabled",
@@ -1990,7 +1864,6 @@ function Voltage:Window(config)
             end
         })
         
-        -- Speed slider
         local speedSlider = section:Slider({
             Name = "Speed Multiplier",
             Flag = "SpeedHackMultiplier",
@@ -2004,33 +1877,37 @@ function Voltage:Window(config)
             end
         })
         
-        -- Status label
-        local statusLabel = section:Label({
+        section:Label({
             Text = "Status: Disabled",
             Color = Theme.TextDim,
         })
         
-        -- Auto-update status
         task.spawn(function()
             while true do
                 task.wait(0.5)
                 if SpeedHack.enabled then
-                    statusLabel:Set("Status: Enabled (" .. SpeedHack.speed .. "x)")
+                    -- Update status
+                    for _, child in ipairs(section._content:GetChildren()) do
+                        if child:IsA("TextLabel") and child.Text:find("Status:") then
+                            child.Text = "Status: Enabled (" .. SpeedHack.speed .. "x)"
+                        end
+                    end
                 else
-                    statusLabel:Set("Status: Disabled")
+                    for _, child in ipairs(section._content:GetChildren()) do
+                        if child:IsA("TextLabel") and child.Text:find("Status:") then
+                            child.Text = "Status: Disabled"
+                        end
+                    end
                 end
             end
         end)
         
-        -- Info
         section:Divider()
         section:Label({
             Text = "SpeedHack modifies your character's movement speed",
-            Color = Theme.TextDim,
         })
         section:Label({
-            Text = "and can be toggled with the keybind above.",
-            Color = Theme.TextDim,
+            Text = "and can be toggled with the toggle above.",
         })
         
         return speedToggle, speedSlider
@@ -2106,7 +1983,6 @@ function Voltage:Window(config)
         textLabel.Parent = card
         registerTheme(textLabel, "TextColor3", "TextDim")
         
-        -- Progress bar
         local progress = Instance.new("Frame")
         progress.Size = UDim2.new(1, 0, 0, 2)
         progress.Position = UDim2.new(0, 0, 1, -2)
@@ -2146,10 +2022,8 @@ function Voltage:Window(config)
     local windowAPI = {
         ScreenGui = ScreenGui,
         Main = Main,
-        Tab = function(config) return createTab(config) end,
-        SetTitle = Voltage.SetTitle,
-        SetSize = Voltage.SetSize,
-        GetSize = Voltage.GetSize,
+        Tab = createTab,
+        SetTitle = function(text) TitleText.Text = text end,
         Notify = Voltage.Notify,
         SaveConfig = Voltage.SaveConfig,
         LoadConfig = Voltage.LoadConfig,
