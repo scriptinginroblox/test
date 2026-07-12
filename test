@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- VOLTAGE UI v3.0 — Premium Design
+-- VOLTAGE UI v3.0 — PREMIUM DESIGN (Fixed)
 -- ═══════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -12,10 +12,10 @@ local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- ═══════════════════════════════════════════════════════════════════════
--- SVG ICONS
+-- ICONS (рабочие ID)
 -- ═══════════════════════════════════════════════════════════════════════
 
-local SVG = {
+local Icons = {
     home = "rbxassetid://106516475571358",
     bolt = "rbxassetid://107984937203270",
     settings = "rbxassetid://103508310304799",
@@ -40,7 +40,7 @@ local SVG = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════
--- THEME — Красивые цвета
+-- THEME — Красивые цвета как в лучших UI
 -- ═══════════════════════════════════════════════════════════════════════
 
 local Theme = {
@@ -61,7 +61,7 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════
--- UTILITIES
+-- UTILITIES (FIXED)
 -- ═══════════════════════════════════════════════════════════════════════
 
 local function tween(obj, props, time)
@@ -117,12 +117,11 @@ local function round(n, d)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- CONFIG SYSTEM
+-- CONFIG
 -- ═══════════════════════════════════════════════════════════════════════
 
 local CONFIG_FOLDER = "VoltageUI"
 local CONFIG_PATH = CONFIG_FOLDER .. "/config.json"
-
 if not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
 
 local Flags = {}
@@ -225,7 +224,7 @@ end
 local Voltage = {
     Flags = Flags,
     Theme = Theme,
-    SVG = SVG,
+    Icons = Icons,
     SpeedHack = SpeedHack,
     Version = "3.0.0",
 }
@@ -234,14 +233,14 @@ function Voltage:SaveConfig() saveConfig() end
 function Voltage:LoadConfig() loadConfig() end
 
 -- ═══════════════════════════════════════════════════════════════════════
--- WINDOW — Красивый и компактный
+-- WINDOW
 -- ═══════════════════════════════════════════════════════════════════════
 
 function Voltage:Window(config)
     config = config or {}
     local title = config.Title or "Voltage"
     local keybind = config.Keybind or Enum.KeyCode.RightControl
-    local width = 560  -- Компактный размер
+    local width = 560
     local height = 400
     
     if CoreGui:FindFirstChild("VoltageUI") then
@@ -256,7 +255,7 @@ function Voltage:Window(config)
     ScreenGui.DisplayOrder = 999
     ScreenGui.Parent = CoreGui
     
-    -- MAIN FRAME
+    -- MAIN
     local Main = Instance.new("Frame")
     Main.Name = "Main"
     Main.Size = UDim2.fromOffset(0, 0)
@@ -270,20 +269,6 @@ function Voltage:Window(config)
     corner(Main, 12)
     stroke(Main, Theme.Border, 1.5)
     
-    -- GLOW
-    local Glow = Instance.new("ImageLabel")
-    Glow.Size = UDim2.new(1, 60, 1, 60)
-    Glow.Position = UDim2.new(0.5, -30, 0.5, -30)
-    Glow.AnchorPoint = Vector2.new(0.5, 0.5)
-    Glow.BackgroundTransparency = 1
-    Glow.Image = "rbxassetid://18245826428"
-    Glow.ImageColor3 = Theme.Accent
-    Glow.ImageTransparency = 0.88
-    Glow.ScaleType = Enum.ScaleType.Slice
-    Glow.SliceCenter = Rect.new(Vector2.new(20, 20), Vector2.new(80, 80))
-    Glow.ZIndex = 0
-    Glow.Parent = Main
-    
     local UIScale = Instance.new("UIScale")
     UIScale.Scale = 0
     UIScale.Parent = Main
@@ -293,7 +278,7 @@ function Voltage:Window(config)
         tween(Main, {BackgroundTransparency = 0, Size = UDim2.fromOffset(width, height)}, 0.35)
     end)
     
-    -- ── TOP BAR ──
+    -- TOP BAR
     local TopBar = Instance.new("Frame")
     TopBar.Size = UDim2.new(1, 0, 0, 48)
     TopBar.BackgroundColor3 = Theme.Surface
@@ -301,7 +286,6 @@ function Voltage:Window(config)
     TopBar.Parent = Main
     corner(TopBar, 12)
     
-    -- Accent line
     local AccentLine = Instance.new("Frame")
     AccentLine.Size = UDim2.new(1, 0, 0, 2)
     AccentLine.Position = UDim2.new(0, 0, 1, -2)
@@ -309,8 +293,7 @@ function Voltage:Window(config)
     AccentLine.BorderSizePixel = 0
     AccentLine.Parent = TopBar
     
-    -- Logo
-    local Logo = makeIcon(TopBar, SVG.bolt, UDim2.fromOffset(22, 22), Theme.Accent)
+    local Logo = makeIcon(TopBar, Icons.bolt, UDim2.fromOffset(22, 22), Theme.Accent)
     Logo.Position = UDim2.new(0, 12, 0.5, -11)
     
     local TitleText = Instance.new("TextLabel")
@@ -324,7 +307,6 @@ function Voltage:Window(config)
     TitleText.TextXAlignment = Enum.TextXAlignment.Left
     TitleText.Parent = TopBar
     
-    -- Close button
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.fromOffset(28, 28)
     CloseBtn.Position = UDim2.new(1, -36, 0.5, -14)
@@ -333,7 +315,7 @@ function Voltage:Window(config)
     CloseBtn.AutoButtonColor = false
     CloseBtn.Parent = TopBar
     
-    local CloseIcon = makeIcon(CloseBtn, SVG.close, UDim2.fromOffset(14, 14), Theme.TextDim)
+    local CloseIcon = makeIcon(CloseBtn, Icons.close, UDim2.fromOffset(14, 14), Theme.TextDim)
     CloseIcon.Position = UDim2.new(0.5, -7, 0.5, -7)
     
     CloseBtn.MouseEnter:Connect(function()
@@ -349,7 +331,7 @@ function Voltage:Window(config)
         ScreenGui:Destroy()
     end)
     
-    -- ── TAB BAR ──
+    -- TAB BAR
     local TabBar = Instance.new("Frame")
     TabBar.Size = UDim2.new(1, 0, 0, 36)
     TabBar.Position = UDim2.new(0, 0, 0, 48)
@@ -363,7 +345,7 @@ function Voltage:Window(config)
     TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
     TabLayout.Parent = TabBar
     
-    -- ── CONTENT ──
+    -- CONTENT
     local Content = Instance.new("Frame")
     Content.Size = UDim2.new(1, -16, 1, -94)
     Content.Position = UDim2.new(0, 8, 0, 86)
@@ -386,16 +368,15 @@ function Voltage:Window(config)
     ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     ContentLayout.Parent = PageContainer
     
-    -- ── TABS ──
+    -- TABS
     local CurrentTab = nil
     local TabData = {}
     
     function Voltage:Tab(config)
         config = config or {}
         local name = config.Name or "Tab"
-        local icon = config.Icon or SVG.home
+        local icon = config.Icon or Icons.home
         
-        -- Tab Button
         local Btn = Instance.new("TextButton")
         Btn.Size = UDim2.new(0, 0, 1, -4)
         Btn.BackgroundTransparency = 1
@@ -405,11 +386,9 @@ function Voltage:Window(config)
         Btn.AutomaticSize = Enum.AutomaticSize.X
         pad(Btn, 0, 10, 0, 10)
         
-        -- Icon
         local TabIcon = makeIcon(Btn, icon, UDim2.fromOffset(16, 16), Theme.TextDim)
         TabIcon.Position = UDim2.new(0, 0, 0.5, -8)
         
-        -- Label
         local TabLabel = Instance.new("TextLabel")
         TabLabel.Size = UDim2.new(0, 0, 1, 0)
         TabLabel.Position = UDim2.new(0, 22, 0, 0)
@@ -422,7 +401,6 @@ function Voltage:Window(config)
         TabLabel.AutomaticSize = Enum.AutomaticSize.X
         TabLabel.Parent = Btn
         
-        -- Indicator
         local Indicator = Instance.new("Frame")
         Indicator.Size = UDim2.new(1, -12, 0, 2)
         Indicator.Position = UDim2.new(0, 6, 1, -2)
@@ -432,7 +410,6 @@ function Voltage:Window(config)
         Indicator.Parent = Btn
         corner(Indicator, 2)
         
-        -- Content Container
         local Container = Instance.new("Frame")
         Container.Size = UDim2.new(1, 0, 0, 0)
         Container.BackgroundTransparency = 1
@@ -445,7 +422,6 @@ function Voltage:Window(config)
         ContainerLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ContainerLayout.Parent = Container
         
-        -- Hover
         Btn.MouseEnter:Connect(function()
             if CurrentTab ~= Btn then
                 tween(TabIcon, {ImageColor3 = Theme.Text})
@@ -459,7 +435,6 @@ function Voltage:Window(config)
             end
         end)
         
-        -- Click
         Btn.MouseButton1Click:Connect(function()
             if CurrentTab == Btn then return end
             
@@ -478,11 +453,8 @@ function Voltage:Window(config)
             tween(TabLabel, {TextColor3 = Theme.Text})
             tween(Indicator, {BackgroundTransparency = 0})
             Container.Visible = true
-            
-            Task = function() end
         end)
         
-        -- Store
         TabData[Btn] = {
             Icon = TabIcon,
             Label = TabLabel,
@@ -492,7 +464,6 @@ function Voltage:Window(config)
             Btn = Btn,
         }
         
-        -- Auto-select first
         if not CurrentTab then
             CurrentTab = Btn
             tween(TabIcon, {ImageColor3 = Theme.Accent})
@@ -501,7 +472,7 @@ function Voltage:Window(config)
             Container.Visible = true
         end
         
-        -- ── SECTION ──
+        -- SECTION
         local function createSection(sectionConfig)
             sectionConfig = sectionConfig or {}
             local sectionName = sectionConfig.Name or "Section"
@@ -512,7 +483,6 @@ function Voltage:Window(config)
             Section.AutomaticSize = Enum.AutomaticSize.Y
             Section.Parent = Container
             
-            -- Header
             local Header = Instance.new("Frame")
             Header.Size = UDim2.new(1, 0, 0, 26)
             Header.BackgroundTransparency = 1
@@ -536,7 +506,6 @@ function Voltage:Window(config)
             Divider.BorderSizePixel = 0
             Divider.Parent = Header
             
-            -- Content
             local SectionContent = Instance.new("Frame")
             SectionContent.Size = UDim2.new(1, 0, 0, 0)
             SectionContent.BackgroundTransparency = 1
@@ -550,7 +519,7 @@ function Voltage:Window(config)
             
             local API = {}
             
-            -- ── TOGGLE ──
+            -- TOGGLE
             function API:Toggle(config)
                 config = config or {}
                 local name = config.Name or "Toggle"
@@ -621,7 +590,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── BUTTON ──
+            -- BUTTON
             function API:Button(config)
                 config = config or {}
                 local name = config.Name or "Button"
@@ -675,7 +644,7 @@ function Voltage:Window(config)
                     Desc.Parent = Btn
                 end
                 
-                local Arrow = makeIcon(Btn, SVG.chevron_right, UDim2.fromOffset(12, 12), Theme.TextDim)
+                local Arrow = makeIcon(Btn, Icons.chevron_right, UDim2.fromOffset(12, 12), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -16, 0.5, -6)
                 
                 Btn.MouseButton1Click:Connect(function()
@@ -688,7 +657,7 @@ function Voltage:Window(config)
                 return { Press = function() pcall(callback) end }
             end
             
-            -- ── SLIDER ──
+            -- SLIDER
             function API:Slider(config)
                 config = config or {}
                 local name = config.Name or "Slider"
@@ -804,7 +773,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── DROPDOWN ──
+            -- DROPDOWN
             function API:Dropdown(config)
                 config = config or {}
                 local name = config.Name or "Dropdown"
@@ -848,7 +817,7 @@ function Voltage:Window(config)
                 ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
                 ValueLabel.Parent = Btn
                 
-                local Arrow = makeIcon(Btn, SVG.chevron_down, UDim2.fromOffset(12, 12), Theme.TextDim)
+                local Arrow = makeIcon(Btn, Icons.chevron_down, UDim2.fromOffset(12, 12), Theme.TextDim)
                 Arrow.Position = UDim2.new(1, -14, 0.5, -6)
                 
                 local List = Instance.new("ScrollingFrame")
@@ -995,7 +964,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── KEYBIND ──
+            -- KEYBIND
             function API:Keybind(config)
                 config = config or {}
                 local name = config.Name or "Keybind"
@@ -1104,7 +1073,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── TEXTBOX ──
+            -- TEXTBOX
             function API:TextBox(config)
                 config = config or {}
                 local name = config.Name or "Input"
@@ -1161,7 +1130,7 @@ function Voltage:Window(config)
                 }
             end
             
-            -- ── LABEL ──
+            -- LABEL
             function API:Label(config)
                 config = config or {}
                 local text = config.Text or "Label"
@@ -1185,7 +1154,7 @@ function Voltage:Window(config)
                 return { Set = function(t) Label.Text = t end }
             end
             
-            -- ── DIVIDER ──
+            -- DIVIDER
             function API:Divider()
                 local Frame = Instance.new("Frame")
                 Frame.Size = UDim2.new(1, -16, 0, 1)
@@ -1204,11 +1173,11 @@ function Voltage:Window(config)
         }
     end
     
-    -- ── SpeedHack Tab ──
+    -- SPEEDHACK TAB
     function Voltage:AddSpeedHackTab(config)
         config = config or {}
         local tabName = config.TabName or "Speed"
-        local tabIcon = config.TabIcon or SVG.speed
+        local tabIcon = config.TabIcon or Icons.speed
         
         local tab = Voltage:Tab({Name = tabName, Icon = tabIcon})
         local section = tab:Section({Name = "SpeedHack"})
@@ -1250,7 +1219,7 @@ function Voltage:Window(config)
         return section
     end
     
-    -- ── Notifications ──
+    -- NOTIFICATIONS
     local NotifContainer = Instance.new("Frame")
     NotifContainer.Size = UDim2.new(0, 280, 1, -40)
     NotifContainer.Position = UDim2.new(1, -300, 0, 20)
@@ -1333,7 +1302,7 @@ function Voltage:Window(config)
         end)
     end
     
-    -- ── Keybind ──
+    -- KEYBIND
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == keybind then
             Main.Visible = not Main.Visible
@@ -1362,15 +1331,11 @@ function Voltage:Window(config)
         AddSpeedHackTab = Voltage.AddSpeedHackTab,
         SpeedHack = SpeedHack,
         Theme = Theme,
-        SVG = SVG,
+        Icons = Icons,
         Flags = Flags,
         FlagSetters = FlagSetters,
     }
 end
-
--- ═══════════════════════════════════════════════════════════════════════
--- EXPORT
--- ═══════════════════════════════════════════════════════════════════════
 
 getgenv().Voltage = Voltage
 return Voltage
