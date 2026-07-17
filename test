@@ -1,8 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - Премиум библиотека
--- Стиль: Желто-оранжевая гамма + пульсация
--- Иконки: Только SVG (rbxassetid)
--- Структура: Window → Page → SubPage → Section → Elements
+-- PULSE UI - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -40,41 +37,23 @@ gethui = gethui or function() return CoreGui end
 -- ИКОНКИ (ТОЛЬКО SVG)
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
-    -- Навигация
     home = "rbxassetid://98755624629571",
     settings = "rbxassetid://80758916183665",
     menu = "rbxassetid://77021539815611",
     search = "rbxassetid://121018724060431",
     close = "rbxassetid://76001605964586",
     minimize = "rbxassetid://94817928404736",
-    maximize = "rbxassetid://11422141677",
-    
-    -- Стрелки
     ["chevron-down"] = "rbxassetid://109535175596957",
     ["chevron-up"] = "rbxassetid://117264500851637",
     ["chevron-left"] = "rbxassetid://129113930144228",
     ["chevron-right"] = "rbxassetid://105723602996553",
-    
-    -- Статусы
     check = "rbxassetid://129443092324752",
     cross = "rbxassetid://128493668118280",
     warning = "rbxassetid://109326270213910",
     info = "rbxassetid://124560466474914",
-    
-    -- Файлы
     folder = "rbxassetid://109080612832751",
     save = "rbxassetid://126116963775616",
     trash = "rbxassetid://106723740584310",
-    
-    -- Категории
-    combat = "rbxassetid://124448418211665",
-    visuals = "rbxassetid://100033680381365",
-    player = "rbxassetid://98376828270066",
-    teleport = "rbxassetid://132511743665753",
-    auto = "rbxassetid://102881251417484",
-    bell = "rbxassetid://97392696311902",
-    
-    -- Прочее
     pulse = "rbxassetid://135014211526638",
     palette = "rbxassetid://81372281623830",
     key = "rbxassetid://96510194465420",
@@ -91,13 +70,13 @@ local Icons = {
     pencil = "rbxassetid://76590960968733",
     plus = "rbxassetid://133137619535544",
     minus = "rbxassetid://118026365011536",
-    coin = "rbxassetid://137192358434940",
-    shield = "rbxassetid://110987169760162",
-    sword = "rbxassetid://124448418211665",
+    combat = "rbxassetid://124448418211665",
+    eye = "rbxassetid://100033680381365",
+    teleport = "rbxassetid://132511743665753",
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ТЕМА (Желто-оранжевая)
+-- ТЕМА
 -- ═══════════════════════════════════════════════════════════════════
 local Theme = {
     Background = Color3.fromRGB(14, 11, 8),
@@ -107,27 +86,28 @@ local Theme = {
     ElementHover = Color3.fromRGB(40, 33, 26),
     Accent1 = Color3.fromRGB(255, 180, 50),
     Accent2 = Color3.fromRGB(255, 145, 20),
-    Accent3 = Color3.fromRGB(255, 200, 80),
     Text = Color3.fromRGB(255, 248, 240),
     TextDim = Color3.fromRGB(190, 175, 160),
     TextDark = Color3.fromRGB(130, 120, 110),
     Outline = Color3.fromRGB(45, 38, 32),
-    Success = Color3.fromRGB(100, 230, 100),
     Danger = Color3.fromRGB(255, 80, 80),
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТЫ
+-- ШРИФТЫ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = Enum.Font.SourceSans
-local FontBold = Enum.Font.SourceSansBold
+local FontEnum = Enum.Font.SourceSans
+local FontBoldEnum = Enum.Font.SourceSansBold
+
+local FontObj = nil
+local FontBoldObj = nil
 
 pcall(function()
-    Font = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    FontObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
 pcall(function()
-    FontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    FontBoldObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════
@@ -146,8 +126,6 @@ local PulseUI = {
     IsMobile = IsMobile,
     Theme = Theme,
     Icons = Icons,
-    Font = Font,
-    FontBold = FontBold,
     ScreenGui = nil,
     PulseObjects = {},
     PulseConnections = {},
@@ -165,18 +143,14 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- БАЗОВЫЕ ФУНКЦИИ
+    -- ФУНКЦИЯ СОЗДАНИЯ (БЕЗ FONTFACE)
     -- ═══════════════════════════════════════════════════════════════
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                pcall(function() Inst.FontFace = Library.Font end)
-            end
-            if not Inst.FontFace then
-                pcall(function() Inst.Font = Library.Font end)
-            end
+            -- Используем только Font (Enum), без FontFace
+            Inst.Font = FontEnum
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -285,7 +259,7 @@ do
     if PulseConnection then table.insert(Library.PulseConnections, PulseConnection) end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ДРАГ И РЕСАЙЗ
+    -- ДРАГ
     -- ═══════════════════════════════════════════════════════════════
     function Library:MakeDraggable(Obj)
         local Inst = Obj.Instance or Obj
@@ -336,7 +310,7 @@ do
         local Title = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Title or "Notification",
-            FontFace = Library.FontBold,
+            Font = FontBoldEnum,
             TextSize = 15,
             TextColor3 = Theme.Text,
             BackgroundTransparency = 1,
@@ -344,7 +318,7 @@ do
         local Desc = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Description or "",
-            FontFace = Library.Font,
+            Font = FontEnum,
             TextSize = 13,
             TextColor3 = Theme.TextDim,
             BackgroundTransparency = 1,
@@ -457,7 +431,7 @@ do
         local LogoText = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "PULSE",
-            FontFace = Library.FontBold,
+            Font = FontBoldEnum,
             TextSize = 20,
             TextColor3 = Theme.Accent1,
             Position = UDim2.new(0, 56, 0.5, -4),
@@ -467,7 +441,7 @@ do
         local LogoSub = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "UI",
-            FontFace = Library.Font,
+            Font = FontEnum,
             TextSize = 11,
             TextColor3 = Theme.TextDim,
             Position = UDim2.new(0, 56, 0.5, 10),
@@ -486,7 +460,7 @@ do
         local PageTitle = Library:Create("TextLabel", {
             Parent = TopBar.Instance,
             Text = "Главная",
-            FontFace = Library.FontBold,
+            Font = FontBoldEnum,
             TextSize = 18,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 20, 0.5, 0),
@@ -553,7 +527,7 @@ do
         }
 
         -- ═══════════════════════════════════════════════════════════
-        -- ДОБАВЛЕНИЕ ВКЛАДКИ
+        -- ВКЛАДКА
         -- ═══════════════════════════════════════════════════════════
         function Window:AddTab(Params)
             Params = Params or {}
@@ -563,10 +537,8 @@ do
                 Icon = Params.Icon or Icons.menu,
                 Active = false,
                 SubTabs = {},
-                ActiveSubTab = nil,
             }
 
-            -- Кнопка вкладки
             local Button = Library:Create("TextButton", {
                 Parent = TabList.Instance,
                 Size = UDim2.new(1, 0, 0, 38),
@@ -588,7 +560,7 @@ do
             local Text = Library:Create("TextLabel", {
                 Parent = Button.Instance,
                 Text = Tab.Name,
-                FontFace = Library.Font,
+                Font = FontEnum,
                 TextSize = 14,
                 TextColor3 = Theme.TextDim,
                 Position = UDim2.new(0, 38, 0.5, 0),
@@ -605,7 +577,6 @@ do
             })
             Library:Create("UICorner", {Parent = AccentLine.Instance, CornerRadius = UDim.new(1, 0)})
 
-            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -643,7 +614,7 @@ do
             Button.Instance.MouseButton1Click:Connect(Activate)
 
             -- ═══════════════════════════════════════════════════════
-            -- СУБВКЛАДКИ
+            -- СУБВКЛАДКА
             -- ═══════════════════════════════════════════════════════
             function Tab:AddSubTab(SubParams)
                 SubParams = SubParams or {}
@@ -654,7 +625,6 @@ do
                     Active = false,
                 }
 
-                -- Кнопка субвкладки
                 local SubButton = Library:Create("TextButton", {
                     Parent = Page.Instance,
                     Size = UDim2.new(1, 0, 0, 32),
@@ -676,7 +646,7 @@ do
                 local SubText = Library:Create("TextLabel", {
                     Parent = SubButton.Instance,
                     Text = SubTab.Name,
-                    FontFace = Library.Font,
+                    Font = FontEnum,
                     TextSize = 13,
                     TextColor3 = Theme.TextDim,
                     Position = UDim2.new(0, 36, 0.5, 0),
@@ -684,7 +654,6 @@ do
                     BackgroundTransparency = 1,
                 })
 
-                -- Контейнер для элементов субвкладки
                 local SubContainer = Library:Create("ScrollingFrame", {
                     Parent = Page.Instance,
                     Position = UDim2.new(0, 0, 0, 36),
@@ -701,9 +670,7 @@ do
                 Library:Create("UIPadding", {Parent = SubContainer.Instance, PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8)})
 
                 local function ActivateSub()
-                    if Tab.ActiveSubTab then
-                        Tab.ActiveSubTab.DeactivateSub()
-                    end
+                    if Tab.ActiveSubTab then Tab.ActiveSubTab.DeactivateSub() end
                     SubTab.Active = true
                     Tab.ActiveSubTab = SubTab
                     SubButton.Instance.BackgroundTransparency = 0
@@ -723,7 +690,6 @@ do
 
                 SubTab.ActivateSub = ActivateSub
                 SubTab.DeactivateSub = DeactivateSub
-                SubTab.Container = SubContainer
 
                 SubButton.Instance.MouseButton1Click:Connect(ActivateSub)
 
@@ -746,7 +712,6 @@ do
                     Library:Create("UICorner", {Parent = Section.Instance, CornerRadius = UDim.new(0, 8)})
                     Library:Create("UIStroke", {Parent = Section.Instance, Color = Theme.Outline, Thickness = 1})
 
-                    -- Заголовок
                     local Header = Library:Create("Frame", {
                         Parent = Section.Instance,
                         Size = UDim2.new(1, 0, 0, 36),
@@ -756,7 +721,7 @@ do
                     local HeaderText = Library:Create("TextLabel", {
                         Parent = Header.Instance,
                         Text = Params.Name or "Section",
-                        FontFace = Library.FontBold,
+                        Font = FontBoldEnum,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 14, 0.5, 0),
@@ -774,7 +739,6 @@ do
                     Library:Create("UICorner", {Parent = PulseDot.Instance, CornerRadius = UDim.new(1, 0)})
                     Library:AddPulse(PulseDot, 0.3)
 
-                    -- Контент
                     local Content = Library:Create("Frame", {
                         Parent = Section.Instance,
                         Position = UDim2.new(0, 0, 0, 36),
@@ -799,10 +763,8 @@ do
                 end
 
                 -- ═══════════════════════════════════════════════════
-                -- ЭЛЕМЕНТЫ
-                -- ═══════════════════════════════════════════════════
-                
                 -- TOGGLE
+                -- ═══════════════════════════════════════════════════
                 function SubTab:Toggle(Params)
                     Params = Params or {}
 
@@ -822,7 +784,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        FontFace = Library.Font,
+                        Font = FontEnum,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 0, 0.5, 0),
@@ -873,7 +835,9 @@ do
                     return Element
                 end
 
+                -- ═══════════════════════════════════════════════════
                 -- BUTTON
+                -- ═══════════════════════════════════════════════════
                 function SubTab:Button(Params)
                     Params = Params or {}
 
@@ -894,7 +858,7 @@ do
                         BorderSizePixel = 0,
                         Text = Element.Name,
                         TextColor3 = Theme.Text,
-                        FontFace = Library.FontBold,
+                        Font = FontBoldEnum,
                         TextSize = 14,
                     })
                     Library:Create("UICorner", {Parent = Button.Instance, CornerRadius = UDim.new(0, 6)})
@@ -916,7 +880,9 @@ do
                     return Element
                 end
 
+                -- ═══════════════════════════════════════════════════
                 -- SLIDER
+                -- ═══════════════════════════════════════════════════
                 function SubTab:Slider(Params)
                     Params = Params or {}
 
@@ -940,7 +906,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        FontFace = Library.Font,
+                        Font = FontEnum,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 0, 0, 0),
@@ -949,7 +915,7 @@ do
                     local ValueLabel = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = tostring(Element.Default) .. Element.Suffix,
-                        FontFace = Library.FontBold,
+                        Font = FontBoldEnum,
                         TextSize = 14,
                         TextColor3 = Theme.Accent1,
                         AnchorPoint = Vector2.new(1, 0),
@@ -1020,7 +986,9 @@ do
                     return Element
                 end
 
+                -- ═══════════════════════════════════════════════════
                 -- LABEL
+                -- ═══════════════════════════════════════════════════
                 function SubTab:Label(Params)
                     Params = Params or {}
 
@@ -1036,7 +1004,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        FontFace = Params.Bold and Library.FontBold or Library.Font,
+                        Font = Params.Bold and FontBoldEnum or FontEnum,
                         TextSize = Params.Size or 14,
                         TextColor3 = Params.Dim and Theme.TextDim or Theme.Text,
                         Position = UDim2.new(0, 0, 0.5, 0),
