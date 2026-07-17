@@ -1,7 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V2 - Премиальная библиотека интерфейсов
--- Дизайн: Желто-оранжевая гамма с неоновой пульсацией
--- Версия: 2.0
+-- PULSE UI V2 - ИСПРАВЛЕННАЯ ВЕРСИЯ
+-- Исправлена пульсация для UIStroke
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -36,7 +35,7 @@ local IsMobile = UserInputService.TouchEnabled or false
 gethui = gethui or function() return CoreGui end
 
 -- ═══════════════════════════════════════════════════════════════════
--- ИКОНКИ (SVG)
+-- ИКОНКИ
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
     home = "rbxassetid://98755624629571",
@@ -76,7 +75,7 @@ local Icons = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ТЕМА (ПРЕМИУМ)
+-- ТЕМА
 -- ═══════════════════════════════════════════════════════════════════
 local Theme = {
     Background = Color3.fromRGB(14, 11, 8),
@@ -307,7 +306,7 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСАЦИЯ
+    -- ПУЛЬСАЦИЯ (ИСПРАВЛЕННАЯ)
     -- ═══════════════════════════════════════════════════════════════
 
     local PulseObjects = {}
@@ -315,10 +314,40 @@ do
     function Library:AddPulse(Obj, Intensity)
         Intensity = Intensity or 0.15
         local Inst = Obj.Instance or Obj
+        
+        -- Проверяем, можно ли применять пульсацию к этому объекту
+        local CanPulse = true
+        
+        -- UIStroke не имеет BackgroundColor3
+        if Inst:IsA("UIStroke") then
+            CanPulse = false
+            -- Для UIStroke используем Tween для прозрачности
+            Library:Connect(RunService.RenderStepped, function()
+                if Inst and Inst.Parent then
+                    local P = math.sin(tick() * Library.PulseSpeed) * 0.1 + 0.2
+                    Inst.Transparency = math.clamp(P, 0, 0.6)
+                end
+            end)
+            return
+        end
+        
+        -- Для ImageLabel пульсируем ImageColor3
+        if Inst:IsA("ImageLabel") or Inst:IsA("ImageButton") then
+            table.insert(PulseObjects, {
+                Object = Inst,
+                Intensity = Intensity,
+                OriginalColor = Inst.ImageColor3,
+                IsImage = true,
+            })
+            return
+        end
+        
+        -- Для всех остальных - BackgroundColor3
         table.insert(PulseObjects, {
             Object = Inst,
             Intensity = Intensity,
             OriginalColor = Inst.BackgroundColor3,
+            IsImage = false,
         })
     end
 
@@ -327,12 +356,21 @@ do
         for _, Data in pairs(PulseObjects) do
             if Data.Object and Data.Object.Parent then
                 local P = math.sin(Time * Library.PulseSpeed) * Data.Intensity
-                local C = Data.OriginalColor
-                Data.Object.BackgroundColor3 = Color3.new(
-                    math.clamp(C.R + P, 0, 1),
-                    math.clamp(C.G + P * 0.7, 0, 1),
-                    math.clamp(C.B + P * 0.3, 0, 1)
-                )
+                if Data.IsImage then
+                    local C = Data.OriginalColor
+                    Data.Object.ImageColor3 = Color3.new(
+                        math.clamp(C.R + P, 0, 1),
+                        math.clamp(C.G + P * 0.7, 0, 1),
+                        math.clamp(C.B + P * 0.3, 0, 1)
+                    )
+                else
+                    local C = Data.OriginalColor
+                    Data.Object.BackgroundColor3 = Color3.new(
+                        math.clamp(C.R + P, 0, 1),
+                        math.clamp(C.G + P * 0.7, 0, 1),
+                        math.clamp(C.B + P * 0.3, 0, 1)
+                    )
+                end
             end
         end
     end)
@@ -354,7 +392,7 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- Основной фрейм с неоновой обводкой
+        -- Основной фрейм
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -370,14 +408,13 @@ do
             CornerRadius = UDim.new(0, 14),
         })
 
-        -- Неоновая обводка
-        local GlowStroke = Library:Create("UIStroke", {
+        -- Обводка (без пульсации, просто стиль)
+        Library:Create("UIStroke", {
             Parent = MainFrame.Instance,
             Color = Theme.Accent1,
             Thickness = 2,
             Transparency = 0.3,
         })
-        Library:AddPulse(GlowStroke, 0.08)
 
         -- Сайдбар
         Sidebar = Library:Create("Frame", {
@@ -392,7 +429,6 @@ do
             CornerRadius = UDim.new(0, 14),
         })
 
-        -- Разделитель
         Library:Create("Frame", {
             Parent = Sidebar.Instance,
             AnchorPoint = Vector2.new(1, 0),
@@ -402,7 +438,7 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Логотип с пульсацией
+        -- Логотип
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 80),
@@ -571,7 +607,6 @@ do
                 Active = false,
             }
 
-            -- Кнопка вкладки
             local Button = Library:Create("TextButton", {
                 Parent = TabButtons.Instance,
                 Size = UDim2.new(1, 0, 0, 44),
@@ -621,7 +656,7 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
-            -- Страница вкладки
+            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -649,7 +684,6 @@ do
 
             Tab.ElementsContainer = ElementsContainer
 
-            -- Активация/деактивация
             function Tab:Activate()
                 if Window.ActiveTab then Window.ActiveTab:Deactivate() end
                 Tab.Active = true
@@ -704,7 +738,6 @@ do
                     Thickness = 1,
                 })
 
-                -- Заголовок секции с пульсирующим индикатором
                 local Header = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Size = UDim2.new(1, 0, 0, 44),
@@ -737,7 +770,6 @@ do
                 })
                 Library:AddPulse(PulseDot, 0.35)
 
-                -- Контент
                 local Content = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Position = UDim2.new(0, 0, 0, 44),
@@ -816,7 +848,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Свитч
         local Track = Library:Create("TextButton", {
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
@@ -831,14 +862,12 @@ do
             CornerRadius = UDim.new(1, 0),
         })
 
-        -- Обводка свитча
         local TrackStroke = Library:Create("UIStroke", {
             Parent = Track.Instance,
             Color = Theme.Outline,
             Thickness = 1,
         })
 
-        -- Круг
         local Knob = Library:Create("Frame", {
             Parent = Track.Instance,
             Size = UDim2.new(0, 18, 0, 18),
@@ -852,7 +881,6 @@ do
             CornerRadius = UDim.new(1, 0),
         })
 
-        -- Свечение при включении
         local Glow = Library:Create("Frame", {
             Parent = Track.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -930,14 +958,12 @@ do
             CornerRadius = UDim.new(0, 8),
         })
 
-        -- Градиентная обводка
         local Stroke = Library:Create("UIStroke", {
             Parent = Button.Instance,
             Color = Theme.Outline,
             Thickness = 1,
         })
 
-        -- Свечение при наведении
         local Glow = Library:Create("Frame", {
             Parent = Button.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -964,8 +990,6 @@ do
 
         Button.Instance.MouseButton1Click:Connect(function()
             Library:SafeCall(Element.Callback)
-
-            -- Эффект нажатия
             Button.Instance.BackgroundColor3 = Theme.Accent2
             task.wait(0.08)
             Button.Instance.BackgroundColor3 = Theme.Element
@@ -1058,7 +1082,6 @@ do
         })
         Library:AddPulse(Knob, 0.15)
 
-        -- Обводка кноба
         Library:Create("UIStroke", {
             Parent = Knob.Instance,
             Color = Theme.Background,
@@ -1109,7 +1132,7 @@ do
         return Element
     end
 
-    -- 📋 DROPDOWN
+    -- 📋 DROPDOWN (упрощенная версия)
     function Library:Dropdown(Params)
         Params = Params or {}
 
@@ -1180,7 +1203,6 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- Меню
         local Menu = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             Size = UDim2.new(0, 200, 0, 0),
@@ -1512,7 +1534,7 @@ do
         return Element
     end
 
-    -- 🎨 COLOR PICKER
+    -- 🎨 COLOR PICKER (упрощенная)
     function Library:ColorPicker(Params)
         Params = Params or {}
 
@@ -1562,7 +1584,6 @@ do
             Thickness = 1,
         })
 
-        -- Палитра
         local Palette = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             Size = UDim2.new(0, 240, 0, 220),
@@ -1606,7 +1627,6 @@ do
 
         ColorBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
 
-        -- Hue Bar
         local HueBar = Library:Create("Frame", {
             Parent = Palette.Instance,
             Position = UDim2.new(0, 10, 0, 10),
@@ -1882,8 +1902,7 @@ do
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Resizing = true
                 StartPos = Input.Position
-                StartSize = Inst.Size
-            end
+                StartSize = Inst.Size            end
         end)
 
         Library:Connect(UserInputService.InputEnded, function(Input)
@@ -1955,7 +1974,6 @@ do
             TextWrapped = true,
         })
 
-        -- Прогресс-бар
         local Progress = Library:Create("Frame", {
             Parent = Container.Instance,
             Size = UDim2.new(1, 0, 0, 2),
