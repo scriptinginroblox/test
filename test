@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+-- PULSE UI - РАБОЧАЯ ВЕРСИЯ (БЕЗ FONTFACE)
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -34,7 +34,7 @@ local IsMobile = UserInputService.TouchEnabled or false
 gethui = gethui or function() return CoreGui end
 
 -- ═══════════════════════════════════════════════════════════════════
--- ИКОНКИ (ТОЛЬКО SVG)
+-- ИКОНКИ
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
     home = "rbxassetid://98755624629571",
@@ -94,21 +94,10 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТЫ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+-- ШРИФТЫ (ТОЛЬКО ENUM, БЕЗ FONTFACE)
 -- ═══════════════════════════════════════════════════════════════════
-local FontEnum = Enum.Font.SourceSans
-local FontBoldEnum = Enum.Font.SourceSansBold
-
-local FontObj = nil
-local FontBoldObj = nil
-
-pcall(function()
-    FontObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-end)
-
-pcall(function()
-    FontBoldObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-end)
+local FONT = Enum.Font.SourceSans
+local FONT_BOLD = Enum.Font.SourceSansBold
 
 -- ═══════════════════════════════════════════════════════════════════
 -- БИБЛИОТЕКА
@@ -143,14 +132,13 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ (БЕЗ FONTFACE)
+    -- ФУНКЦИЯ СОЗДАНИЯ (БЕЗ FONTFACE!)
     -- ═══════════════════════════════════════════════════════════════
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            -- Используем только Font (Enum), без FontFace
-            Inst.Font = FontEnum
+            Inst.Font = FONT
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -310,7 +298,7 @@ do
         local Title = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Title or "Notification",
-            Font = FontBoldEnum,
+            Font = FONT_BOLD,
             TextSize = 15,
             TextColor3 = Theme.Text,
             BackgroundTransparency = 1,
@@ -318,7 +306,7 @@ do
         local Desc = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Description or "",
-            Font = FontEnum,
+            Font = FONT,
             TextSize = 13,
             TextColor3 = Theme.TextDim,
             BackgroundTransparency = 1,
@@ -431,7 +419,7 @@ do
         local LogoText = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "PULSE",
-            Font = FontBoldEnum,
+            Font = FONT_BOLD,
             TextSize = 20,
             TextColor3 = Theme.Accent1,
             Position = UDim2.new(0, 56, 0.5, -4),
@@ -441,7 +429,7 @@ do
         local LogoSub = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "UI",
-            Font = FontEnum,
+            Font = FONT,
             TextSize = 11,
             TextColor3 = Theme.TextDim,
             Position = UDim2.new(0, 56, 0.5, 10),
@@ -460,7 +448,7 @@ do
         local PageTitle = Library:Create("TextLabel", {
             Parent = TopBar.Instance,
             Text = "Главная",
-            Font = FontBoldEnum,
+            Font = FONT_BOLD,
             TextSize = 18,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 20, 0.5, 0),
@@ -517,7 +505,6 @@ do
             end
         end)
 
-        -- ОБЪЕКТ ОКНА
         local Window = {
             Tabs = {},
             ActiveTab = nil,
@@ -560,7 +547,7 @@ do
             local Text = Library:Create("TextLabel", {
                 Parent = Button.Instance,
                 Text = Tab.Name,
-                Font = FontEnum,
+                Font = FONT,
                 TextSize = 14,
                 TextColor3 = Theme.TextDim,
                 Position = UDim2.new(0, 38, 0.5, 0),
@@ -586,7 +573,7 @@ do
             })
 
             local function Activate()
-                if Window.ActiveTab then Window.ActiveTab.Deactivate() end
+                if Window.ActiveTab then Window.ActiveTab:Deactivate() end
                 Tab.Active = true
                 Window.ActiveTab = Tab
                 Button.Instance.BackgroundTransparency = 0
@@ -646,7 +633,7 @@ do
                 local SubText = Library:Create("TextLabel", {
                     Parent = SubButton.Instance,
                     Text = SubTab.Name,
-                    Font = FontEnum,
+                    Font = FONT,
                     TextSize = 13,
                     TextColor3 = Theme.TextDim,
                     Position = UDim2.new(0, 36, 0.5, 0),
@@ -670,7 +657,7 @@ do
                 Library:Create("UIPadding", {Parent = SubContainer.Instance, PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8)})
 
                 local function ActivateSub()
-                    if Tab.ActiveSubTab then Tab.ActiveSubTab.DeactivateSub() end
+                    if Tab.ActiveSubTab then Tab.ActiveSubTab:DeactivateSub() end
                     SubTab.Active = true
                     Tab.ActiveSubTab = SubTab
                     SubButton.Instance.BackgroundTransparency = 0
@@ -721,7 +708,7 @@ do
                     local HeaderText = Library:Create("TextLabel", {
                         Parent = Header.Instance,
                         Text = Params.Name or "Section",
-                        Font = FontBoldEnum,
+                        Font = FONT_BOLD,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 14, 0.5, 0),
@@ -784,7 +771,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        Font = FontEnum,
+                        Font = FONT,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 0, 0.5, 0),
@@ -858,7 +845,7 @@ do
                         BorderSizePixel = 0,
                         Text = Element.Name,
                         TextColor3 = Theme.Text,
-                        Font = FontBoldEnum,
+                        Font = FONT_BOLD,
                         TextSize = 14,
                     })
                     Library:Create("UICorner", {Parent = Button.Instance, CornerRadius = UDim.new(0, 6)})
@@ -906,7 +893,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        Font = FontEnum,
+                        Font = FONT,
                         TextSize = 14,
                         TextColor3 = Theme.Text,
                         Position = UDim2.new(0, 0, 0, 0),
@@ -915,7 +902,7 @@ do
                     local ValueLabel = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = tostring(Element.Default) .. Element.Suffix,
-                        Font = FontBoldEnum,
+                        Font = FONT_BOLD,
                         TextSize = 14,
                         TextColor3 = Theme.Accent1,
                         AnchorPoint = Vector2.new(1, 0),
@@ -1004,7 +991,7 @@ do
                     local Label = Library:Create("TextLabel", {
                         Parent = Container.Instance,
                         Text = Element.Name,
-                        Font = Params.Bold and FontBoldEnum or FontEnum,
+                        Font = Params.Bold and FONT_BOLD or FONT,
                         TextSize = Params.Size or 14,
                         TextColor3 = Params.Dim and Theme.TextDim or Theme.Text,
                         Position = UDim2.new(0, 0, 0.5, 0),
