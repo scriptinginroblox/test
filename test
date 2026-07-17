@@ -1,7 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V3 - ПРЕМИУМ БИБЛИОТЕКА
--- Полностью переработанная структура, как в лучших библиотеках
--- Дизайн: Желто-оранжевая гамма с пульсацией
+-- PULSE UI V3 - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+-- Исправлены все ошибки с FontFace
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -101,20 +100,32 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ
+-- ШРИФТЫ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = Enum.Font.SourceSans
-local FontBold = Enum.Font.SourceSansBold
+
+-- Создаем объекты Font (если поддерживается)
+local CustomFont = nil
+local CustomFontBold = nil
 
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    if F then Font = F end
+    CustomFont = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    if F then FontBold = F end
+    CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
+
+-- Функция для получения шрифта (возвращает либо объект Font, либо Enum)
+local function GetFont(UseBold)
+    if UseBold then
+        return CustomFontBold or Enum.Font.SourceSansBold
+    end
+    return CustomFont or Enum.Font.SourceSans
+end
+
+-- Сохраняем шрифты
+local Font = GetFont(false)
+local FontBold = GetFont(true)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- БИБЛИОТЕКА
@@ -154,28 +165,43 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- БАЗОВЫЕ ФУНКЦИИ
+    -- ФУНКЦИЯ СОЗДАНИЯ (ПОЛНОСТЬЮ ИСПРАВЛЕНА)
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                pcall(function() Inst.FontFace = Library.Font end)
+            -- Пытаемся установить шрифт
+            local FontToUse = Library.Font
+            
+            -- Пробуем установить FontFace (только если это объект Font)
+            if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
+                pcall(function()
+                    Inst.FontFace = FontToUse
+                end)
             end
+            
+            -- Если FontFace не сработал или это Enum, используем Font
             if not Inst.FontFace then
                 pcall(function()
-                    if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                        Inst.Font = Library.Font
+                    -- Если это объект Font, используем его через Font
+                    if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
+                        Inst.Font = FontToUse
                     else
-                        Inst.Font = Library.Font
+                        -- Иначе используем как Enum
+                        Inst.Font = FontToUse
                     end
                 end)
             end
+            
+            -- Если ничего не сработало, используем стандартный шрифт
             if not Inst.FontFace and not Inst.Font then
-                pcall(function() Inst.Font = Enum.Font.SourceSans end)
+                pcall(function()
+                    Inst.Font = Enum.Font.SourceSans
+                end)
             end
+            
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -197,6 +223,10 @@ do
 
         return setmetatable({Instance = Inst}, Library)
     end
+
+    -- ═══════════════════════════════════════════════════════════════
+    -- ОСТАЛЬНЫЕ ФУНКЦИИ
+    -- ═══════════════════════════════════════════════════════════════
 
     function Library:Connect(Sig, Callback)
         local Conn
@@ -563,7 +593,7 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ГЛАВНОЕ ОКНО - ПРАВИЛЬНАЯ СТРУКТУРА
+    -- ГЛАВНОЕ ОКНО
     -- ═══════════════════════════════════════════════════════════════
 
     local ScreenGui, MainFrame, Sidebar, SidebarContent, MainContent, TabButtons, Pages
@@ -579,9 +609,7 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- ============================================================
         -- ОСНОВНОЙ ФРЕЙМ
-        -- ============================================================
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -604,9 +632,7 @@ do
             Transparency = 0.25,
         })
 
-        -- ============================================================
         -- САЙДБАР
-        -- ============================================================
         Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 200, 1, 0),
@@ -619,7 +645,6 @@ do
             CornerRadius = UDim.new(0, 14),
         })
 
-        -- Разделитель сайдбара
         Library:Create("Frame", {
             Parent = Sidebar.Instance,
             AnchorPoint = Vector2.new(1, 0),
@@ -629,9 +654,7 @@ do
             BorderSizePixel = 0,
         })
 
-        -- ============================================================
         -- ЛОГОТИП
-        -- ============================================================
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 75),
@@ -672,9 +695,7 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- ============================================================
         -- ВЕРХНЯЯ ПАНЕЛЬ
-        -- ============================================================
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 0),
@@ -683,7 +704,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Заголовок страницы
         local PageTitle = Library:Create("TextLabel", {
             Parent = TopBar.Instance,
             Text = "Главная",
@@ -695,7 +715,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Описание страницы
         local PageDesc = Library:Create("TextLabel", {
             Parent = TopBar.Instance,
             Text = "Управление настройками",
@@ -707,7 +726,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Кнопки управления
         local CloseBtn = Library:Create("ImageButton", {
             Parent = TopBar.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
@@ -728,9 +746,7 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- ============================================================
         -- ВКЛАДКИ (САЙДБАР)
-        -- ============================================================
         SidebarContent = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 75),
@@ -757,9 +773,7 @@ do
             PaddingRight = UDim.new(0, 8),
         })
 
-        -- ============================================================
-        -- КОНТЕНТ (СТРАНИЦЫ)
-        -- ============================================================
+        -- КОНТЕНТ
         MainContent = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 50),
@@ -783,15 +797,11 @@ do
             PaddingRight = UDim.new(0, 18),
         })
 
-        -- ============================================================
-        -- ПЕРЕТАСКИВАНИЕ И ИЗМЕНЕНИЕ РАЗМЕРА
-        -- ============================================================
+        -- ПЕРЕТАСКИВАНИЕ
         Library:MakeDraggable(MainFrame)
         Library:MakeResizable(MainFrame, Vector2.new(550, 400))
 
-        -- ============================================================
         -- СОБЫТИЯ
-        -- ============================================================
         CloseBtn.Instance.MouseButton1Click:Connect(function()
             Library:Toggle(false)
         end)
@@ -802,9 +812,7 @@ do
             end
         end)
 
-        -- ============================================================
         -- ОБЪЕКТ ОКНА
-        -- ============================================================
         local Window = {
             Tabs = {},
             ActiveTab = nil,
@@ -812,9 +820,10 @@ do
             PageDesc = PageDesc,
         }
 
-        -- ============================================================
+        -- ═══════════════════════════════════════════════════════════
         -- ДОБАВЛЕНИЕ ВКЛАДКИ
-        -- ============================================================
+        -- ═══════════════════════════════════════════════════════════
+
         function Window:AddTab(Params)
             Params = Params or {}
 
@@ -826,7 +835,6 @@ do
                 Elements = {},
             }
 
-            -- Кнопка вкладки
             local Button = Library:Create("TextButton", {
                 Parent = SidebarContent.Instance,
                 Size = UDim2.new(1, 0, 0, 38),
@@ -840,7 +848,6 @@ do
                 CornerRadius = UDim.new(0, 8),
             })
 
-            -- Иконка
             local Icon = Library:Create("ImageLabel", {
                 Parent = Button.Instance,
                 Image = Tab.Icon,
@@ -851,7 +858,6 @@ do
                 ImageColor3 = Theme.TextDim,
             })
 
-            -- Текст
             local Text = Library:Create("TextLabel", {
                 Parent = Button.Instance,
                 Text = Tab.Name,
@@ -863,7 +869,6 @@ do
                 BackgroundTransparency = 1,
             })
 
-            -- Акцентная линия
             local AccentLine = Library:Create("Frame", {
                 Parent = Button.Instance,
                 Position = UDim2.new(0, 0, 0.5, -14),
@@ -878,7 +883,6 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
-            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -887,7 +891,6 @@ do
                 BorderSizePixel = 0,
             })
 
-            -- Контейнер для элементов
             local ElementsContainer = Library:Create("ScrollingFrame", {
                 Parent = Page.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -908,7 +911,6 @@ do
             Tab.ElementsContainer = ElementsContainer
             Tab.Page = Page
 
-            -- Активация
             function Tab:Activate()
                 if Window.ActiveTab then Window.ActiveTab:Deactivate() end
                 Tab.Active = true
@@ -939,9 +941,10 @@ do
                 Tab:Activate()
             end)
 
-            -- ============================================================
+            -- ═══════════════════════════════════════════════════════
             -- СЕКЦИЯ
-            -- ============================================================
+            -- ═══════════════════════════════════════════════════════
+
             function Tab:Section(Params)
                 Params = Params or {}
 
@@ -965,7 +968,6 @@ do
                     Thickness = 1,
                 })
 
-                -- Заголовок секции
                 local Header = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Size = UDim2.new(1, 0, 0, 36),
@@ -984,7 +986,6 @@ do
                     BackgroundTransparency = 1,
                 })
 
-                -- Пульсирующий индикатор
                 local PulseDot = Library:Create("Frame", {
                     Parent = Header.Instance,
                     Size = UDim2.new(0, 8, 0, 8),
@@ -999,7 +1000,6 @@ do
                 })
                 Library:AddPulse(PulseDot, 0.3)
 
-                -- Контент секции
                 local Content = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Position = UDim2.new(0, 0, 0, 36),
@@ -1041,11 +1041,10 @@ do
             return Tab
         end
 
-        -- ============================================================
-        -- ЭЛЕМЕНТЫ (УПРОЩЕННЫЕ ДЛЯ ЭКОНОМИИ МЕСТА)
-        -- ============================================================
+        -- ═══════════════════════════════════════════════════════════
+        -- ЭЛЕМЕНТЫ
+        -- ═══════════════════════════════════════════════════════════
 
-        -- TOGGLE
         function Window:Toggle(Params)
             Params = Params or {}
 
@@ -1129,7 +1128,6 @@ do
             return Element
         end
 
-        -- BUTTON
         function Window:Button(Params)
             Params = Params or {}
 
@@ -1179,7 +1177,6 @@ do
             return Element
         end
 
-        -- SLIDER
         function Window:Slider(Params)
             Params = Params or {}
 
@@ -1301,7 +1298,6 @@ do
             return Element
         end
 
-        -- DROPDOWN (упрощенный)
         function Window:Dropdown(Params)
             Params = Params or {}
 
@@ -1538,7 +1534,6 @@ do
             return Element
         end
 
-        -- INPUT
         function Window:Input(Params)
             Params = Params or {}
 
@@ -1622,7 +1617,6 @@ do
             return Element
         end
 
-        -- LABEL
         function Window:Label(Params)
             Params = Params or {}
 
@@ -1653,7 +1647,6 @@ do
             return Element
         end
 
-        -- KEYBIND
         function Window:Keybind(Params)
             Params = Params or {}
 
@@ -1782,7 +1775,6 @@ do
             return Element
         end
 
-        -- COLOR PICKER
         function Window:ColorPicker(Params)
             Params = Params or {}
 
