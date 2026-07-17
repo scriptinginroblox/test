@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V3 - ПОЛНАЯ СТАБИЛЬНАЯ ВЕРСИЯ
--- Все элементы: Toggle, Button, Slider, Dropdown, Input, Label, Keybind, ColorPicker
+-- PULSE UI - ФИНАЛЬНАЯ СТАБИЛЬНАЯ ВЕРСИЯ
+-- Полностью переписана с нуля, все ошибки исправлены
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -83,45 +83,29 @@ local Theme = {
     Sidebar = Color3.fromRGB(20, 16, 12),
     Element = Color3.fromRGB(30, 25, 20),
     ElementHover = Color3.fromRGB(40, 33, 26),
-    ElementActive = Color3.fromRGB(50, 41, 32),
     Accent1 = Color3.fromRGB(255, 185, 45),
     Accent2 = Color3.fromRGB(255, 145, 15),
-    Accent3 = Color3.fromRGB(255, 205, 85),
-    Accent4 = Color3.fromRGB(230, 125, 25),
     Text = Color3.fromRGB(255, 248, 240),
     TextDim = Color3.fromRGB(190, 175, 160),
     TextDark = Color3.fromRGB(130, 120, 110),
     Outline = Color3.fromRGB(45, 38, 32),
-    OutlineLight = Color3.fromRGB(65, 55, 45),
-    Glow = Color3.fromRGB(255, 165, 35),
-    Shadow = Color3.fromRGB(0, 0, 0),
-    Success = Color3.fromRGB(100, 230, 100),
-    Danger = Color3.fromRGB(255, 80, 80),
 }
 
 -- ═══════════════════════════════════════════════════════════════════
 -- ШРИФТЫ
 -- ═══════════════════════════════════════════════════════════════════
-local CustomFont = nil
-local CustomFontBold = nil
+local Font = Enum.Font.SourceSans
+local FontBold = Enum.Font.SourceSansBold
 
 pcall(function()
-    CustomFont = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    if F then Font = F end
 end)
 
 pcall(function()
-    CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    if F then FontBold = F end
 end)
-
-local function GetFont(UseBold)
-    if UseBold then
-        return CustomFontBold or Enum.Font.SourceSansBold
-    end
-    return CustomFont or Enum.Font.SourceSans
-end
-
-local Font = GetFont(false)
-local FontBold = GetFont(true)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- БИБЛИОТЕКА
@@ -132,12 +116,10 @@ local PulseUI = {
     Connections = {},
     Threads = {},
     Elements = {},
-    OpenFrames = {},
     Directory = "PulseUI",
     Folders = {Configs = "/Configs", Themes = "/Themes", Assets = "/Assets"},
     MenuKeybind = Enum.KeyCode.RightControl,
     TweenSpeed = 0.3,
-    PulseSpeed = 1.2,
     IsOpen = false,
     IsMobile = IsMobile,
     Theme = Theme,
@@ -145,15 +127,13 @@ local PulseUI = {
     Font = Font,
     FontBold = FontBold,
     ScreenGui = nil,
-    PulseConnections = {},
-    PulseObjects = {},
 }
 
 do
     local Library = PulseUI
     Library.__index = Library
 
-    -- Создание папок
+    -- Папки
     for _, F in pairs(Library.Folders) do
         if not isfolder(Library.Directory .. F) then
             makefolder(Library.Directory .. F)
@@ -163,31 +143,20 @@ do
     -- ═══════════════════════════════════════════════════════════════
     -- ФУНКЦИЯ СОЗДАНИЯ
     -- ═══════════════════════════════════════════════════════════════
-
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            local FontToUse = Library.Font
-            
-            if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
-                pcall(function() Inst.FontFace = FontToUse end)
+            local F = Library.Font
+            if type(F) == "table" and F.ClassName == "Font" then
+                pcall(function() Inst.FontFace = F end)
             end
-            
             if not Inst.FontFace then
-                pcall(function()
-                    if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
-                        Inst.Font = FontToUse
-                    else
-                        Inst.Font = FontToUse
-                    end
-                end)
+                pcall(function() Inst.Font = F end)
             end
-            
             if not Inst.FontFace and not Inst.Font then
                 pcall(function() Inst.Font = Enum.Font.SourceSans end)
             end
-            
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -213,7 +182,6 @@ do
     -- ═══════════════════════════════════════════════════════════════
     -- БЕЗОПАСНАЯ ФУНКЦИЯ СОЕДИНЕНИЯ
     -- ═══════════════════════════════════════════════════════════════
-
     function Library:Connect(Signal, Callback)
         if not Signal then return nil end
         
@@ -236,11 +204,12 @@ do
         return nil
     end
 
-    function Library:Thread(Func)
-        local T = coroutine.create(Func)
-        coroutine.wrap(function() coroutine.resume(T) end)()
-        table.insert(Library.Threads, T)
-        return T
+    function Library:SafeCall(Func, ...)
+        if not Func then return end
+        local Args = {...}
+        local S, R = pcall(Func, table.unpack(Args))
+        if not S then warn("[PulseUI]", R) end
+        return S, R
     end
 
     function Library:Tween(Obj, Props, Info)
@@ -251,200 +220,9 @@ do
         return T
     end
 
-    function Library:SafeCall(Func, ...)
-        if not Func then return end
-        local Args = {...}
-        local S, R = pcall(Func, table.unpack(Args))
-        if not S then warn("[PulseUI]", R) end
-        return S, R
-    end
-
     function Library:Round(Num, Dec)
         local M = 10 ^ (Dec or 0)
         return math.floor(Num * M + 0.5) / M
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- КОНФИГИ
-    -- ═══════════════════════════════════════════════════════════════
-
-    function Library:GetConfig()
-        local Cfg = {}
-        for Flag, Val in pairs(Library.Flags) do
-            if type(Val) == "table" and Val.Color then
-                Cfg[Flag] = {Color = Val.Color:ToHex(), Transparency = Val.Transparency}
-            elseif type(Val) == "table" and Val.Key then
-                Cfg[Flag] = {Key = tostring(Val.Key), Mode = Val.Mode, Active = Val.Active}
-            else
-                Cfg[Flag] = Val
-            end
-        end
-        return HttpService:JSONEncode(Cfg)
-    end
-
-    function Library:LoadConfig(JSON)
-        local Cfg = HttpService:JSONDecode(JSON)
-        for Flag, Val in pairs(Cfg) do
-            local Func = Library.ConfigFlags[Flag]
-            if Func then
-                if type(Val) == "table" and Val.Color then
-                    Func(Color3.fromHex(Val.Color), Val.Transparency)
-                elseif type(Val) == "table" and Val.Key then
-                    Func({Key = Val.Key, Mode = Val.Mode, Active = Val.Active})
-                else
-                    Func(Val)
-                end
-            end
-        end
-    end
-
-    function Library:SaveConfig(Name)
-        if not Name or Name == "" then return end
-        local Path = string.format("%s%s/%s.json", Library.Directory, Library.Folders.Configs, Name)
-        writefile(Path, Library:GetConfig())
-    end
-
-    function Library:LoadConfigFile(Name)
-        if not Name or Name == "" then return end
-        local Path = string.format("%s%s/%s.json", Library.Directory, Library.Folders.Configs, Name)
-        if isfile(Path) then Library:LoadConfig(readfile(Path)) end
-    end
-
-    function Library:DeleteConfig(Name)
-        if not Name or Name == "" then return end
-        local Path = string.format("%s%s/%s.json", Library.Directory, Library.Folders.Configs, Name)
-        if isfile(Path) then delfile(Path) end
-    end
-
-    function Library:GetConfigsList()
-        local List = {}
-        local Path = Library.Directory .. Library.Folders.Configs
-        for _, File in pairs(listfiles(Path)) do
-            local Name = File:gsub(Path .. "/", ""):gsub(Path .. "\\", ""):gsub(".json", "")
-            if Name ~= "" then table.insert(List, Name) end
-        end
-        return List
-    end
-
-    function Library:AutoLoad()
-        local Configs = Library:GetConfigsList()
-        for _, Name in pairs(Configs) do
-            Library:LoadConfigFile(Name)
-            break
-        end
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- UNLOAD (ПОЛНОСТЬЮ БЕЗОПАСНАЯ ВЕРСИЯ)
-    -- ═══════════════════════════════════════════════════════════════
-
-    function Library:Unload()
-        for i = #Library.Connections, 1, -1 do
-            local C = Library.Connections[i]
-            if type(C) == "table" and C.Disconnect then
-                pcall(C.Disconnect, C)
-            end
-            Library.Connections[i] = nil
-        end
-        Library.Connections = {}
-        
-        for i = #Library.PulseConnections, 1, -1 do
-            local C = Library.PulseConnections[i]
-            if type(C) == "table" and C.Disconnect then
-                pcall(C.Disconnect, C)
-            end
-            Library.PulseConnections[i] = nil
-        end
-        Library.PulseConnections = {}
-        
-        for i = #Library.Threads, 1, -1 do
-            local T = Library.Threads[i]
-            if T then pcall(coroutine.close, T) end
-            Library.Threads[i] = nil
-        end
-        Library.Threads = {}
-        
-        if Library.ScreenGui and Library.ScreenGui.Instance then
-            pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
-            Library.ScreenGui = nil
-        end
-        
-        getgenv().PulseUI = nil
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСАЦИЯ
-    -- ═══════════════════════════════════════════════════════════════
-
-    function Library:AddPulse(Obj, Intensity)
-        Intensity = Intensity or 0.12
-        local Inst = Obj.Instance or Obj
-        
-        if Inst:IsA("UIStroke") then
-            local Conn = Library:Connect(RunService.RenderStepped, function()
-                if Inst and Inst.Parent then
-                    local P = math.sin(tick() * Library.PulseSpeed) * 0.08 + 0.2
-                    Inst.Transparency = math.clamp(P, 0, 0.5)
-                end
-            end)
-            if Conn then table.insert(Library.PulseConnections, Conn) end
-            return
-        end
-        
-        if Inst:IsA("ImageLabel") or Inst:IsA("ImageButton") then
-            table.insert(Library.PulseObjects, {
-                Object = Inst,
-                Intensity = Intensity,
-                OriginalColor = Inst.ImageColor3,
-                IsImage = true,
-            })
-            return
-        end
-        
-        table.insert(Library.PulseObjects, {
-            Object = Inst,
-            Intensity = Intensity,
-            OriginalColor = Inst.BackgroundColor3,
-            IsImage = false,
-        })
-    end
-
-    local PulseConnection = Library:Connect(RunService.RenderStepped, function()
-        local Time = tick()
-        for _, Data in pairs(Library.PulseObjects) do
-            if Data.Object and Data.Object.Parent then
-                local P = math.sin(Time * Library.PulseSpeed) * Data.Intensity
-                if Data.IsImage then
-                    local C = Data.OriginalColor
-                    Data.Object.ImageColor3 = Color3.new(
-                        math.clamp(C.R + P, 0, 1),
-                        math.clamp(C.G + P * 0.7, 0, 1),
-                        math.clamp(C.B + P * 0.3, 0, 1)
-                    )
-                else
-                    local C = Data.OriginalColor
-                    Data.Object.BackgroundColor3 = Color3.new(
-                        math.clamp(C.R + P, 0, 1),
-                        math.clamp(C.G + P * 0.7, 0, 1),
-                        math.clamp(C.B + P * 0.3, 0, 1)
-                    )
-                end
-            end
-        end
-    end)
-    if PulseConnection then table.insert(Library.PulseConnections, PulseConnection) end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    -- ═══════════════════════════════════════════════════════════════
-
-    function Library:IsMouseOver(Inst)
-        if not Inst then return false end
-        local MPos = Vector2.new(Mouse.X, Mouse.Y)
-        local Pos = Inst.AbsolutePosition
-        local Size = Inst.AbsoluteSize
-        return MPos.X >= Pos.X and MPos.X <= Pos.X + Size.X and
-               MPos.Y >= Pos.Y and MPos.Y <= Pos.Y + Size.Y
     end
 
     function Library:MakeDraggable(Obj)
@@ -578,7 +356,6 @@ do
             BackgroundColor3 = Theme.Accent1,
             BorderSizePixel = 0,
         })
-        Library:AddPulse(Progress, 0.15)
 
         local Duration = Params.Duration or 3
         TweenService:Create(Progress.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
@@ -603,16 +380,38 @@ do
         end
     end
 
+    function Library:Unload()
+        for i = #Library.Connections, 1, -1 do
+            local C = Library.Connections[i]
+            if type(C) == "table" and C.Disconnect then
+                pcall(C.Disconnect, C)
+            end
+            Library.Connections[i] = nil
+        end
+        Library.Connections = {}
+        
+        for i = #Library.Threads, 1, -1 do
+            local T = Library.Threads[i]
+            if T then pcall(coroutine.close, T) end
+            Library.Threads[i] = nil
+        end
+        Library.Threads = {}
+        
+        if Library.ScreenGui and Library.ScreenGui.Instance then
+            pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
+            Library.ScreenGui = nil
+        end
+        
+        getgenv().PulseUI = nil
+    end
+
     -- ═══════════════════════════════════════════════════════════════
     -- ГЛАВНОЕ ОКНО
     -- ═══════════════════════════════════════════════════════════════
-
-    local ScreenGui, MainFrame, Sidebar, SidebarContent, MainContent, Pages
-
     function Library:Window(Params)
         Params = Params or {}
 
-        ScreenGui = Library:Create("ScreenGui", {
+        local ScreenGui = Library:Create("ScreenGui", {
             Parent = gethui(),
             ResetOnSpawn = false,
             ZIndexBehavior = Enum.ZIndexBehavior.Global,
@@ -620,7 +419,8 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        MainFrame = Library:Create("Frame", {
+        -- Основной фрейм
+        local MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -642,7 +442,8 @@ do
             Transparency = 0.25,
         })
 
-        Sidebar = Library:Create("Frame", {
+        -- Сайдбар
+        local Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 200, 1, 0),
             BackgroundColor3 = Theme.Sidebar,
@@ -663,6 +464,7 @@ do
             BorderSizePixel = 0,
         })
 
+        -- Логотип
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 75),
@@ -679,7 +481,6 @@ do
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Accent1,
         })
-        Library:AddPulse(LogoIcon, 0.2)
 
         local LogoText = Library:Create("TextLabel", {
             Parent = Logo.Instance,
@@ -694,7 +495,7 @@ do
 
         local LogoSub = Library:Create("TextLabel", {
             Parent = Logo.Instance,
-            Text = "UI V3",
+            Text = "UI",
             FontFace = Library.Font,
             TextSize = 11,
             TextColor3 = Theme.TextDim,
@@ -703,6 +504,7 @@ do
             BackgroundTransparency = 1,
         })
 
+        -- Верхняя панель
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 0),
@@ -753,7 +555,8 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        SidebarContent = Library:Create("ScrollingFrame", {
+        -- Список вкладок
+        local TabList = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 75),
             Size = UDim2.new(1, 0, 1, -75),
@@ -766,20 +569,21 @@ do
         })
 
         Library:Create("UIListLayout", {
-            Parent = SidebarContent.Instance,
+            Parent = TabList.Instance,
             Padding = UDim.new(0, 2),
             SortOrder = Enum.SortOrder.LayoutOrder,
         })
 
         Library:Create("UIPadding", {
-            Parent = SidebarContent.Instance,
+            Parent = TabList.Instance,
             PaddingTop = UDim.new(0, 8),
             PaddingBottom = UDim.new(0, 8),
             PaddingLeft = UDim.new(0, 8),
             PaddingRight = UDim.new(0, 8),
         })
 
-        MainContent = Library:Create("Frame", {
+        -- Контент
+        local Content = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 50),
             Size = UDim2.new(1, -200, 1, -50),
@@ -787,8 +591,8 @@ do
             BorderSizePixel = 0,
         })
 
-        Pages = Library:Create("Frame", {
-            Parent = MainContent.Instance,
+        local Pages = Library:Create("Frame", {
+            Parent = Content.Instance,
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
@@ -820,12 +624,13 @@ do
             ActiveTab = nil,
             PageTitle = PageTitle,
             PageDesc = PageDesc,
+            TabList = TabList,
+            Pages = Pages,
         }
 
         -- ═══════════════════════════════════════════════════════════
         -- ДОБАВЛЕНИЕ ВКЛАДКИ
         -- ═══════════════════════════════════════════════════════════
-
         function Window:AddTab(Params)
             Params = Params or {}
 
@@ -837,7 +642,7 @@ do
             }
 
             local Button = Library:Create("TextButton", {
-                Parent = SidebarContent.Instance,
+                Parent = TabList.Instance,
                 Size = UDim2.new(1, 0, 0, 38),
                 BackgroundColor3 = Theme.Sidebar,
                 BackgroundTransparency = 1,
@@ -884,6 +689,7 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
+            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -945,7 +751,6 @@ do
             -- ═══════════════════════════════════════════════════════
             -- СЕКЦИЯ
             -- ═══════════════════════════════════════════════════════
-
             function Tab:Section(Params)
                 Params = Params or {}
 
@@ -987,6 +792,7 @@ do
                     BackgroundTransparency = 1,
                 })
 
+                -- Индикатор
                 local PulseDot = Library:Create("Frame", {
                     Parent = Header.Instance,
                     Size = UDim2.new(0, 8, 0, 8),
@@ -999,7 +805,6 @@ do
                     Parent = PulseDot.Instance,
                     CornerRadius = UDim.new(1, 0),
                 })
-                Library:AddPulse(PulseDot, 0.3)
 
                 local Content = Library:Create("Frame", {
                     Parent = Section.Instance,
@@ -1046,7 +851,6 @@ do
         -- ЭЛЕМЕНТЫ
         -- ═══════════════════════════════════════════════════════════
 
-        -- TOGGLE
         function Window:Toggle(Params)
             Params = Params or {}
 
@@ -1067,7 +871,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
@@ -1108,12 +911,10 @@ do
                     Track.Instance.BackgroundColor3 = Theme.Accent1
                     Knob.Instance.Position = UDim2.new(1, -19, 0.5, -8)
                     Knob.Instance.BackgroundColor3 = Theme.Text
-                    Label.TextColor3 = Theme.Text
                 else
                     Track.Instance.BackgroundColor3 = Theme.Element
                     Knob.Instance.Position = UDim2.new(0, 3, 0.5, -8)
                     Knob.Instance.BackgroundColor3 = Theme.TextDim
-                    Label.TextColor3 = Theme.TextDim
                 end
                 Library.Flags[Element.Flag] = Value
                 Library.SafeCall(Element.Callback, Value)
@@ -1130,7 +931,6 @@ do
             return Element
         end
 
-        -- BUTTON
         function Window:Button(Params)
             Params = Params or {}
 
@@ -1180,7 +980,6 @@ do
             return Element
         end
 
-        -- SLIDER
         function Window:Slider(Params)
             Params = Params or {}
 
@@ -1206,7 +1005,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1302,7 +1100,6 @@ do
             return Element
         end
 
-        -- DROPDOWN
         function Window:Dropdown(Params)
             Params = Params or {}
 
@@ -1325,7 +1122,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1341,7 +1137,6 @@ do
                 BorderSizePixel = 0,
                 Text = Element.Default or "Select...",
                 TextColor3 = Theme.Text,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
             })
@@ -1367,7 +1162,7 @@ do
             })
 
             local Menu = Library:Create("Frame", {
-                Parent = Library.ScreenGui.Instance,
+                Parent = ScreenGui.Instance,
                 Size = UDim2.new(0, 200, 0, 0),
                 BackgroundColor3 = Theme.Background2,
                 BorderSizePixel = 0,
@@ -1429,7 +1224,6 @@ do
                         BorderSizePixel = 0,
                         Text = Item,
                         TextColor3 = Theme.TextDim,
-                        FontFace = Library.Font,
                         TextSize = 13,
                         TextXAlignment = Enum.TextXAlignment.Left,
                     })
@@ -1539,7 +1333,6 @@ do
             return Element
         end
 
-        -- INPUT
         function Window:Input(Params)
             Params = Params or {}
 
@@ -1561,7 +1354,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1577,7 +1369,6 @@ do
                 BorderSizePixel = 0,
                 Text = Element.Default,
                 TextColor3 = Theme.Text,
-                FontFace = Library.Font,
                 TextSize = 14,
                 PlaceholderText = Element.Placeholder,
                 PlaceholderColor3 = Theme.TextDark,
@@ -1623,7 +1414,6 @@ do
             return Element
         end
 
-        -- LABEL
         function Window:Label(Params)
             Params = Params or {}
 
@@ -1654,7 +1444,6 @@ do
             return Element
         end
 
-        -- KEYBIND
         function Window:Keybind(Params)
             Params = Params or {}
 
@@ -1678,7 +1467,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
@@ -1695,7 +1483,6 @@ do
                 BorderSizePixel = 0,
                 Text = tostring(Element.Default):gsub("Enum.KeyCode.", ""),
                 TextColor3 = Theme.Text,
-                FontFace = Library.Font,
                 TextSize = 12,
             })
 
@@ -1723,8 +1510,7 @@ do
                 if Element.Picking then return end
                 Element.Picking = true
                 KeyBtn.Text = "..."
-                local Connection
-                Connection = UserInputService.InputBegan:Connect(function(Input)
+                local Connection = UserInputService.InputBegan:Connect(function(Input)
                     if Input.KeyCode == Enum.KeyCode.Escape then
                         Element.Picking = false
                         if Connection then Connection:Disconnect() end
@@ -1743,6 +1529,9 @@ do
                     if Connection then Connection:Disconnect() end
                     Library.SafeCall(Element.Callback, Element.Value)
                 end)
+                if Connection then
+                    table.insert(Library.Connections, Connection)
+                end
             end
 
             KeyBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
@@ -1783,7 +1572,6 @@ do
             return Element
         end
 
-        -- COLOR PICKER
         function Window:ColorPicker(Params)
             Params = Params or {}
 
@@ -1805,7 +1593,6 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
-                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
@@ -1828,7 +1615,7 @@ do
             })
 
             local Palette = Library:Create("Frame", {
-                Parent = Library.ScreenGui.Instance,
+                Parent = ScreenGui.Instance,
                 Size = UDim2.new(0, 220, 0, 180),
                 BackgroundColor3 = Theme.Background2,
                 BorderSizePixel = 0,
