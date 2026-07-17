@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
--- Исправлены: FontFace, Font, все ошибки
+-- PULSE UI V2 - Премиальная библиотека интерфейсов
+-- Дизайн: Желто-оранжевая гамма с неоновой пульсацией
+-- Версия: 2.0
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -11,11 +12,11 @@ end
 -- СЕРВИСЫ
 -- ═══════════════════════════════════════════════════════════════════
 local Services = {}
-local function GetService(ServiceName)
-    if not Services[ServiceName] then
-        Services[ServiceName] = cloneref(game:GetService(ServiceName))
+local function GetService(Name)
+    if not Services[Name] then
+        Services[Name] = cloneref(game:GetService(Name))
     end
-    return Services[ServiceName]
+    return Services[Name]
 end
 
 local Players = GetService("Players")
@@ -32,107 +33,91 @@ local Camera = Workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 local GuiInset = GuiService:GetGuiInset().Y
 local IsMobile = UserInputService.TouchEnabled or false
-
 gethui = gethui or function() return CoreGui end
 
 -- ═══════════════════════════════════════════════════════════════════
--- ИКОНКИ
+-- ИКОНКИ (SVG)
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
-    ["home"] = "rbxassetid://98755624629571",
-    ["settings"] = "rbxassetid://80758916183665",
-    ["menu"] = "rbxassetid://77021539815611",
-    ["search"] = "rbxassetid://121018724060431",
-    ["close"] = "rbxassetid://76001605964586",
-    ["minimize"] = "rbxassetid://94817928404736",
-    ["maximize"] = "rbxassetid://11422141677",
+    home = "rbxassetid://98755624629571",
+    settings = "rbxassetid://80758916183665",
+    menu = "rbxassetid://77021539815611",
+    search = "rbxassetid://121018724060431",
+    close = "rbxassetid://76001605964586",
+    minimize = "rbxassetid://94817928404736",
+    maximize = "rbxassetid://11422141677",
     ["chevron-down"] = "rbxassetid://109535175596957",
     ["chevron-up"] = "rbxassetid://117264500851637",
     ["chevron-left"] = "rbxassetid://129113930144228",
     ["chevron-right"] = "rbxassetid://105723602996553",
-    ["check"] = "rbxassetid://129443092324752",
-    ["cross"] = "rbxassetid://128493668118280",
-    ["warning"] = "rbxassetid://109326270213910",
-    ["info"] = "rbxassetid://124560466474914",
-    ["folder"] = "rbxassetid://109080612832751",
-    ["save"] = "rbxassetid://126116963775616",
-    ["trash"] = "rbxassetid://106723740584310",
-    ["pulse"] = "rbxassetid://135014211526638",
-    ["palette"] = "rbxassetid://81372281623830",
-    ["key"] = "rbxassetid://96510194465420",
-    ["lock"] = "rbxassetid://80031239225283",
-    ["user"] = "rbxassetid://98376828270066",
-    ["star"] = "rbxassetid://136141469398409",
-    ["heart"] = "rbxassetid://116559368303288",
-    ["bolt"] = "rbxassetid://102881251417484",
-    ["refresh"] = "rbxassetid://6031097226",
-    ["globe"] = "rbxassetid://102861769355196",
-    ["cursor"] = "rbxassetid://132511743665753",
-    ["resize"] = "rbxassetid://7368471234",
-    ["copy"] = "rbxassetid://76996819137437",
-    ["paste"] = "rbxassetid://88846256867074",
-    ["pencil"] = "rbxassetid://76590960968733",
-    ["plus"] = "rbxassetid://133137619535544",
-    ["minus"] = "rbxassetid://118026365011536",
-    ["circle"] = "rbxassetid://131274957777266",
-    ["square"] = "rbxassetid://86304921356806",
-    ["triangle"] = "rbxassetid://126330486745540",
+    check = "rbxassetid://129443092324752",
+    cross = "rbxassetid://128493668118280",
+    warning = "rbxassetid://109326270213910",
+    info = "rbxassetid://124560466474914",
+    folder = "rbxassetid://109080612832751",
+    save = "rbxassetid://126116963775616",
+    trash = "rbxassetid://106723740584310",
+    pulse = "rbxassetid://135014211526638",
+    palette = "rbxassetid://81372281623830",
+    key = "rbxassetid://96510194465420",
+    lock = "rbxassetid://80031239225283",
+    user = "rbxassetid://98376828270066",
+    star = "rbxassetid://136141469398409",
+    bolt = "rbxassetid://102881251417484",
+    refresh = "rbxassetid://6031097226",
+    globe = "rbxassetid://102861769355196",
+    cursor = "rbxassetid://132511743665753",
+    resize = "rbxassetid://7368471234",
+    copy = "rbxassetid://76996819137437",
+    paste = "rbxassetid://88846256867074",
+    pencil = "rbxassetid://76590960968733",
+    plus = "rbxassetid://133137619535544",
+    minus = "rbxassetid://118026365011536",
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ТЕМА
+-- ТЕМА (ПРЕМИУМ)
 -- ═══════════════════════════════════════════════════════════════════
 local Theme = {
-    Background = Color3.fromRGB(18, 14, 10),
-    Background2 = Color3.fromRGB(24, 18, 14),
-    Element = Color3.fromRGB(35, 28, 22),
-    ElementHover = Color3.fromRGB(45, 36, 28),
-    ElementActive = Color3.fromRGB(55, 44, 34),
-    Accent1 = Color3.fromRGB(255, 180, 50),
-    Accent2 = Color3.fromRGB(255, 140, 20),
-    Accent3 = Color3.fromRGB(255, 200, 80),
-    Accent4 = Color3.fromRGB(220, 120, 30),
-    Text = Color3.fromRGB(255, 245, 235),
+    Background = Color3.fromRGB(14, 11, 8),
+    Background2 = Color3.fromRGB(20, 16, 12),
+    Background3 = Color3.fromRGB(26, 21, 17),
+    Element = Color3.fromRGB(34, 28, 22),
+    ElementHover = Color3.fromRGB(44, 36, 28),
+    ElementActive = Color3.fromRGB(54, 44, 34),
+    Accent1 = Color3.fromRGB(255, 190, 50),
+    Accent2 = Color3.fromRGB(255, 150, 20),
+    Accent3 = Color3.fromRGB(255, 210, 90),
+    Accent4 = Color3.fromRGB(230, 130, 30),
+    Text = Color3.fromRGB(255, 248, 240),
     TextDim = Color3.fromRGB(200, 185, 170),
     TextDark = Color3.fromRGB(140, 130, 120),
-    Outline = Color3.fromRGB(60, 48, 38),
-    OutlineLight = Color3.fromRGB(80, 65, 50),
-    Glow = Color3.fromRGB(255, 160, 40),
+    Outline = Color3.fromRGB(50, 42, 35),
+    OutlineLight = Color3.fromRGB(70, 58, 48),
+    Glow = Color3.fromRGB(255, 170, 40),
     Shadow = Color3.fromRGB(0, 0, 0),
-    Success = Color3.fromRGB(100, 220, 100),
+    Success = Color3.fromRGB(100, 230, 100),
     Danger = Color3.fromRGB(255, 80, 80),
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ (ИСПРАВЛЕННАЯ ВЕРСИЯ - РАБОТАЕТ ВСЕГДА)
+-- ШРИФТ
 -- ═══════════════════════════════════════════════════════════════════
-
--- Базовые шрифты (Enum)
-local FONT_ENUM = Enum.Font.SourceSans
-local FONT_BOLD_ENUM = Enum.Font.SourceSansBold
-
--- Пробуем создать объект Font
-local FontObject = nil
-local FontBoldObject = nil
+local Font = Enum.Font.SourceSans
+local FontBold = Enum.Font.SourceSansBold
 
 pcall(function()
-    FontObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    if F then Font = F end
 end)
 
 pcall(function()
-    FontBoldObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    if F then FontBold = F end
 end)
 
--- Функция для безопасного получения шрифта
-local function GetFont(UseBold)
-    if UseBold then
-        return FontBoldObject or FONT_BOLD_ENUM
-    end
-    return FontObject or FONT_ENUM
-end
-
 -- ═══════════════════════════════════════════════════════════════════
--- ОСНОВНАЯ БИБЛИОТЕКА
+-- БИБЛИОТЕКА
 -- ═══════════════════════════════════════════════════════════════════
 local PulseUI = {
     Flags = {},
@@ -142,21 +127,16 @@ local PulseUI = {
     Elements = {},
     OpenFrames = {},
     Directory = "PulseUI",
-    Folders = {
-        Configs = "/Configs",
-        Themes = "/Themes",
-        Assets = "/Assets"
-    },
+    Folders = {Configs = "/Configs", Themes = "/Themes", Assets = "/Assets"},
     MenuKeybind = Enum.KeyCode.RightControl,
-    TweenSpeed = 0.3,
-    PulseSpeed = 1.5,
+    TweenSpeed = 0.25,
+    PulseSpeed = 1.2,
     IsOpen = false,
     IsMobile = IsMobile,
-    Registry = {},
     Theme = Theme,
     Icons = Icons,
-    Font = GetFont(false),
-    FontBold = GetFont(true),
+    Font = Font,
+    FontBold = FontBold,
     ScreenGui = nil,
 }
 
@@ -164,274 +144,120 @@ do
     local Library = PulseUI
     Library.__index = Library
 
-    -- Создание папок
-    for _, Folder in pairs(Library.Folders) do
-        if not isfolder(Library.Directory .. Folder) then
-            makefolder(Library.Directory .. Folder)
+    -- Папки
+    for _, F in pairs(Library.Folders) do
+        if not isfolder(Library.Directory .. F) then
+            makefolder(Library.Directory .. F)
         end
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ (ИСПРАВЛЕННАЯ)
+    -- БАЗОВЫЕ ФУНКЦИИ
     -- ═══════════════════════════════════════════════════════════════
-    function Library:Create(Class, Properties)
-        local Instance = Instance.new(Class)
 
-        if Class == "TextButton" or Class == "TextLabel" or Class == "TextBox" then
-            -- Пытаемся установить FontFace (только если это объект Font)
-            if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                pcall(function()
-                    Instance.FontFace = Library.Font
-                end)
-            end
-            
-            -- Если FontFace не сработал или не подходит, используем Font
-            if not Instance.FontFace then
-                pcall(function()
-                    if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                        Instance.Font = Library.Font
-                    else
-                        Instance.Font = Enum.Font.SourceSans
-                    end
-                end)
-            end
-            
-            -- Если ничего не сработало, используем стандартный Enum
-            if not Instance.FontFace and not Instance.Font then
-                pcall(function()
-                    Instance.Font = Enum.Font.SourceSans
-                end)
-            end
-            
-            Instance.TextSize = 14
-            Instance.TextColor3 = Theme.Text
+    function Library:Create(Class, Props)
+        local Inst = Instance.new(Class)
+
+        if Class:match("Text") then
+            pcall(function()
+                if type(Library.Font) == "table" then
+                    Inst.FontFace = Library.Font
+                else
+                    Inst.Font = Library.Font
+                end
+            end)
+            Inst.TextSize = 14
+            Inst.TextColor3 = Theme.Text
         end
 
         if Class == "TextButton" then
-            Instance.AutoButtonColor = false
-            Instance.Text = ""
+            Inst.AutoButtonColor = false
+            Inst.Text = ""
         end
 
         if Class == "ImageButton" then
-            Instance.AutoButtonColor = false
+            Inst.AutoButtonColor = false
         end
 
-        Instance.Name = "\0"
+        Inst.Name = "\0"
 
-        for Property, Value in pairs(Properties or {}) do
-            if Property == "Parent" then
-                Instance.Parent = Value
-            else
-                Instance[Property] = Value
-            end
+        for K, V in pairs(Props or {}) do
+            Inst[K] = V
         end
 
-        return setmetatable({Instance = Instance}, Library)
+        return setmetatable({Instance = Inst}, Library)
     end
 
-    function Library:Connect(Signal, Callback)
-        local Connection
-        if type(Signal) == "Instance" and Signal:IsA("RBXScriptSignal") then
-            Connection = Signal:Connect(Callback)
-        elseif Signal and type(Signal) == "table" and Signal.Instance then
-            Connection = Signal.Instance:Connect(Callback)
+    function Library:Connect(Sig, Callback)
+        local Conn
+        if type(Sig) == "Instance" and Sig:IsA("RBXScriptSignal") then
+            Conn = Sig:Connect(Callback)
+        elseif Sig and type(Sig) == "table" and Sig.Instance then
+            Conn = Sig.Instance:Connect(Callback)
         else
-            Connection = Signal:Connect(Callback)
+            Conn = Sig:Connect(Callback)
         end
-        table.insert(Library.Connections, Connection)
-        return Connection
+        table.insert(Library.Connections, Conn)
+        return Conn
     end
 
     function Library:Thread(Func)
-        local Thread = coroutine.create(Func)
-        coroutine.wrap(function()
-            coroutine.resume(Thread)
-        end)()
-        table.insert(Library.Threads, Thread)
-        return Thread
+        local T = coroutine.create(Func)
+        coroutine.wrap(function() coroutine.resume(T) end)()
+        table.insert(Library.Threads, T)
+        return T
     end
 
-    function Library:Tween(Object, Properties, Info)
-        local Instance = Object.Instance or Object
+    function Library:Tween(Obj, Props, Info)
+        local Inst = Obj.Instance or Obj
         Info = Info or TweenInfo.new(Library.TweenSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-        local Tween = TweenService:Create(Instance, Info, Properties)
-        Tween:Play()
-        return Tween
-    end
-
-    function Library:GetTransparency(Object)
-        local Instance = Object.Instance or Object
-        if Instance:IsA("Frame") then
-            return {"BackgroundTransparency"}
-        elseif Instance:IsA("TextLabel") or Instance:IsA("TextButton") then
-            return {"TextTransparency", "BackgroundTransparency"}
-        elseif Instance:IsA("ImageLabel") or Instance:IsA("ImageButton") then
-            return {"BackgroundTransparency", "ImageTransparency"}
-        elseif Instance:IsA("ScrollingFrame") then
-            return {"BackgroundTransparency", "ScrollBarImageTransparency"}
-        elseif Instance:IsA("TextBox") then
-            return {"TextTransparency", "BackgroundTransparency"}
-        elseif Instance:IsA("UIStroke") then
-            return {"Transparency"}
-        end
-        return nil
-    end
-
-    function Library:Fade(Object, Property, Visible)
-        local Instance = Object.Instance or Object
-        local OldTransparency = Instance[Property]
-        Instance[Property] = Visible and 1 or OldTransparency
-        local Tween = Library:Tween(Object, {
-            [Property] = Visible and OldTransparency or 1
-        })
-        Library:Connect(Tween.Completed, function()
-            if not Visible then
-                Instance[Property] = OldTransparency
-            end
-        end)
-        return Tween
-    end
-
-    function Library:FadeDescendants(Object, Visible, Callback)
-        local Instance = Object.Instance or Object
-        if Visible then
-            Instance.Visible = true
-        end
-        local Children = Instance:GetDescendants()
-        table.insert(Children, Instance)
-        local LastTween
-        for _, Child in pairs(Children) do
-            local Props = Library:GetTransparency(Child)
-            if Props then
-                for _, Prop in pairs(Props) do
-                    LastTween = Library:Fade(Child, Prop, Visible)
-                end
-            end
-        end
-        if LastTween then
-            Library:Connect(LastTween.Completed, function()
-                Instance.Visible = Visible
-                if Callback then Callback() end
-            end)
-        else
-            Instance.Visible = Visible
-            if Callback then Callback() end
-        end
-    end
-
-    function Library:MakeDraggable(Object)
-        local Instance = Object.Instance or Object
-        local Dragging = false
-        local DragStart, StartPos
-        Instance.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Dragging = true
-                DragStart = Input.Position
-                StartPos = Instance.Position
-                local Changed
-                Changed = Input.Changed:Connect(function()
-                    if Input.UserInputState == Enum.UserInputState.End then
-                        Dragging = false
-                        Changed:Disconnect()
-                    end
-                end)
-            end
-        end)
-        Library:Connect(UserInputService.InputChanged, function(Input)
-            if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                local Delta = Input.Position - DragStart
-                Instance.Position = UDim2.new(
-                    StartPos.X.Scale, StartPos.X.Offset + Delta.X,
-                    StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y
-                )
-            end
-        end)
-    end
-
-    function Library:MakeResizable(Object, MinSize)
-        local Instance = Object.Instance or Object
-        MinSize = MinSize or Vector2.new(300, 200)
-        local Resizing = false
-        local StartPos, StartSize
-        local Handle = Library:Create("ImageButton", {
-            Parent = Instance,
-            AnchorPoint = Vector2.new(1, 1),
-            Position = UDim2.new(1, -4, 1, -4),
-            Size = UDim2.new(0, 16, 0, 16),
-            BackgroundTransparency = 1,
-            Image = Icons.resize,
-            ImageColor3 = Theme.TextDim,
-            ZIndex = 999,
-        })
-        Handle.Instance.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Resizing = true
-                StartPos = Input.Position
-                StartSize = Instance.Size
-            end
-        end)
-        Library:Connect(UserInputService.InputEnded, function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Resizing = false
-            end
-        end)
-        Library:Connect(UserInputService.InputChanged, function(Input)
-            if Resizing and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                local Delta = Input.Position - StartPos
-                local NewX = math.max(StartSize.X.Offset + Delta.X, MinSize.X)
-                local NewY = math.max(StartSize.Y.Offset + Delta.Y, MinSize.Y)
-                Instance.Size = UDim2.new(0, NewX, 0, NewY)
-            end
-        end)
+        local T = TweenService:Create(Inst, Info, Props)
+        T:Play()
+        return T
     end
 
     function Library:SafeCall(Func, ...)
         if not Func then return end
         local Args = {...}
-        local Success, Result = pcall(Func, table.unpack(Args))
-        if not Success then
-            warn("[PulseUI] Error:", Result)
-        end
-        return Success, Result
+        local S, R = pcall(Func, table.unpack(Args))
+        if not S then warn("[PulseUI]", R) end
+        return S, R
     end
 
-    function Library:Round(Number, Decimals)
-        local Multiplier = 10 ^ (Decimals or 0)
-        return math.floor(Number * Multiplier + 0.5) / Multiplier
+    function Library:Round(Num, Dec)
+        local M = 10 ^ (Dec or 0)
+        return math.floor(Num * M + 0.5) / M
     end
+
+    -- ═══════════════════════════════════════════════════════════════
+    -- КОНФИГИ
+    -- ═══════════════════════════════════════════════════════════════
 
     function Library:GetConfig()
-        local Config = {}
-        for Flag, Value in pairs(Library.Flags) do
-            if type(Value) == "table" and Value.Color then
-                Config[Flag] = {
-                    Color = Value.Color:ToHex(),
-                    Transparency = Value.Transparency
-                }
-            elseif type(Value) == "table" and Value.Key then
-                Config[Flag] = {
-                    Key = tostring(Value.Key),
-                    Mode = Value.Mode,
-                    Active = Value.Active
-                }
+        local Cfg = {}
+        for Flag, Val in pairs(Library.Flags) do
+            if type(Val) == "table" and Val.Color then
+                Cfg[Flag] = {Color = Val.Color:ToHex(), Transparency = Val.Transparency}
+            elseif type(Val) == "table" and Val.Key then
+                Cfg[Flag] = {Key = tostring(Val.Key), Mode = Val.Mode, Active = Val.Active}
             else
-                Config[Flag] = Value
+                Cfg[Flag] = Val
             end
         end
-        return HttpService:JSONEncode(Config)
+        return HttpService:JSONEncode(Cfg)
     end
 
     function Library:LoadConfig(JSON)
-        local Config = HttpService:JSONDecode(JSON)
-        for Flag, Value in pairs(Config) do
+        local Cfg = HttpService:JSONDecode(JSON)
+        for Flag, Val in pairs(Cfg) do
             local Func = Library.ConfigFlags[Flag]
             if Func then
-                if type(Value) == "table" and Value.Color then
-                    Func(Color3.fromHex(Value.Color), Value.Transparency)
-                elseif type(Value) == "table" and Value.Key then
-                    Func({Key = Value.Key, Mode = Value.Mode, Active = Value.Active})
+                if type(Val) == "table" and Val.Color then
+                    Func(Color3.fromHex(Val.Color), Val.Transparency)
+                elseif type(Val) == "table" and Val.Key then
+                    Func({Key = Val.Key, Mode = Val.Mode, Active = Val.Active})
                 else
-                    Func(Value)
+                    Func(Val)
                 end
             end
         end
@@ -446,9 +272,7 @@ do
     function Library:LoadConfigFile(Name)
         if not Name or Name == "" then return end
         local Path = string.format("%s%s/%s.json", Library.Directory, Library.Folders.Configs, Name)
-        if isfile(Path) then
-            Library:LoadConfig(readfile(Path))
-        end
+        if isfile(Path) then Library:LoadConfig(readfile(Path)) end
     end
 
     function Library:DeleteConfig(Name)
@@ -462,39 +286,39 @@ do
         local Path = Library.Directory .. Library.Folders.Configs
         for _, File in pairs(listfiles(Path)) do
             local Name = File:gsub(Path .. "/", ""):gsub(Path .. "\\", ""):gsub(".json", "")
-            if Name ~= "" then
-                table.insert(List, Name)
-            end
+            if Name ~= "" then table.insert(List, Name) end
         end
         return List
     end
 
+    function Library:AutoLoad()
+        local Configs = Library:GetConfigsList()
+        for _, Name in pairs(Configs) do
+            Library:LoadConfigFile(Name)
+            break
+        end
+    end
+
     function Library:Unload()
-        for _, Connection in pairs(Library.Connections) do
-            pcall(Connection.Disconnect, Connection)
-        end
-        for _, Thread in pairs(Library.Threads) do
-            pcall(coroutine.close, Thread)
-        end
-        if Library.ScreenGui then
-            Library.ScreenGui.Instance:Destroy()
-        end
+        for _, C in pairs(Library.Connections) do pcall(C.Disconnect, C) end
+        for _, T in pairs(Library.Threads) do pcall(coroutine.close, T) end
+        if Library.ScreenGui then Library.ScreenGui.Instance:Destroy() end
         getgenv().PulseUI = nil
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСИРУЮЩАЯ АНИМАЦИЯ
+    -- ПУЛЬСАЦИЯ
     -- ═══════════════════════════════════════════════════════════════
 
     local PulseObjects = {}
 
-    function Library:AddPulse(Object, Intensity)
+    function Library:AddPulse(Obj, Intensity)
         Intensity = Intensity or 0.15
-        local Instance = Object.Instance or Object
+        local Inst = Obj.Instance or Obj
         table.insert(PulseObjects, {
-            Object = Instance,
+            Object = Inst,
             Intensity = Intensity,
-            OriginalColor = Instance.BackgroundColor3,
+            OriginalColor = Inst.BackgroundColor3,
         })
     end
 
@@ -502,12 +326,13 @@ do
         local Time = tick()
         for _, Data in pairs(PulseObjects) do
             if Data.Object and Data.Object.Parent then
-                local Pulse = math.sin(Time * Library.PulseSpeed) * Data.Intensity
-                local Color = Data.OriginalColor
-                local R = math.clamp(Color.R + Pulse, 0, 1)
-                local G = math.clamp(Color.G + Pulse * 0.7, 0, 1)
-                local B = math.clamp(Color.B + Pulse * 0.3, 0, 1)
-                Data.Object.BackgroundColor3 = Color3.new(R, G, B)
+                local P = math.sin(Time * Library.PulseSpeed) * Data.Intensity
+                local C = Data.OriginalColor
+                Data.Object.BackgroundColor3 = Color3.new(
+                    math.clamp(C.R + P, 0, 1),
+                    math.clamp(C.G + P * 0.7, 0, 1),
+                    math.clamp(C.B + P * 0.3, 0, 1)
+                )
             end
         end
     end)
@@ -516,7 +341,7 @@ do
     -- ГЛАВНОЕ ОКНО
     -- ═══════════════════════════════════════════════════════════════
 
-    local ScreenGui, MainFrame, Sidebar, Content, Pages, TabButtons
+    local ScreenGui, MainFrame, Sidebar, Content, TabButtons, Pages
 
     function Library:Window(Params)
         Params = Params or {}
@@ -529,49 +354,45 @@ do
         })
         Library.ScreenGui = ScreenGui
 
+        -- Основной фрейм с неоновой обводкой
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.new(0.5, 0, 0.5, 0),
-            Size = UDim2.new(0, 800, 0, 550),
+            Size = UDim2.new(0, 820, 0, 560),
             BackgroundColor3 = Theme.Background,
-            BackgroundTransparency = 0,
             BorderSizePixel = 0,
             ClipsDescendants = true,
         })
 
         Library:Create("UICorner", {
             Parent = MainFrame.Instance,
-            CornerRadius = UDim.new(0, 12),
+            CornerRadius = UDim.new(0, 14),
         })
 
-        Library:Create("UIStroke", {
+        -- Неоновая обводка
+        local GlowStroke = Library:Create("UIStroke", {
             Parent = MainFrame.Instance,
-            Color = Theme.Outline,
-            Thickness = 1.5,
+            Color = Theme.Accent1,
+            Thickness = 2,
+            Transparency = 0.3,
         })
+        Library:AddPulse(GlowStroke, 0.08)
 
-        local GlowBg = Library:Create("Frame", {
-            Parent = MainFrame.Instance,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = Theme.Background,
-            BackgroundTransparency = 0.5,
-            BorderSizePixel = 0,
-        })
-        Library:AddPulse(GlowBg, 0.05)
-
+        -- Сайдбар
         Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
-            Size = UDim2.new(0, 200, 1, 0),
+            Size = UDim2.new(0, 210, 1, 0),
             BackgroundColor3 = Theme.Background2,
             BorderSizePixel = 0,
         })
 
         Library:Create("UICorner", {
             Parent = Sidebar.Instance,
-            CornerRadius = UDim.new(0, 12),
+            CornerRadius = UDim.new(0, 14),
         })
 
+        -- Разделитель
         Library:Create("Frame", {
             Parent = Sidebar.Instance,
             AnchorPoint = Vector2.new(1, 0),
@@ -581,9 +402,10 @@ do
             BorderSizePixel = 0,
         })
 
+        -- Логотип с пульсацией
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
-            Size = UDim2.new(1, 0, 0, 70),
+            Size = UDim2.new(1, 0, 0, 80),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -591,47 +413,61 @@ do
         local LogoIcon = Library:Create("ImageLabel", {
             Parent = Logo.Instance,
             Image = Icons.pulse,
-            Size = UDim2.new(0, 32, 0, 32),
-            Position = UDim2.new(0, 15, 0.5, -4),
+            Size = UDim2.new(0, 36, 0, 36),
+            Position = UDim2.new(0, 16, 0.5, -4),
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Accent1,
         })
+        Library:AddPulse(LogoIcon, 0.2)
 
         local LogoText = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "PULSE",
             FontFace = Library.FontBold,
-            TextSize = 20,
+            TextSize = 22,
             TextColor3 = Theme.Accent1,
-            Position = UDim2.new(0, 55, 0.5, -6),
+            Position = UDim2.new(0, 60, 0.5, -6),
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
         })
 
         local LogoSub = Library:Create("TextLabel", {
             Parent = Logo.Instance,
-            Text = "UI",
+            Text = "UI V2",
             FontFace = Library.Font,
             TextSize = 12,
             TextColor3 = Theme.TextDim,
-            Position = UDim2.new(0, 55, 0.5, 10),
+            Position = UDim2.new(0, 60, 0.5, 12),
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundTransparency = 1,
         })
 
+        -- Верхняя панель
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
-            Position = UDim2.new(0, 200, 0, 0),
-            Size = UDim2.new(1, -200, 0, 45),
+            Position = UDim2.new(0, 210, 0, 0),
+            Size = UDim2.new(1, -210, 0, 50),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
 
+        local TitleText = Library:Create("TextLabel", {
+            Parent = TopBar.Instance,
+            Text = Params.Title or "Pulse UI",
+            FontFace = Library.FontBold,
+            TextSize = 18,
+            TextColor3 = Theme.Text,
+            Position = UDim2.new(0, 20, 0.5, 0),
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundTransparency = 1,
+        })
+
+        -- Кнопки управления
         local CloseBtn = Library:Create("ImageButton", {
             Parent = TopBar.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -12, 0.5, 0),
+            Position = UDim2.new(1, -14, 0.5, 0),
             Size = UDim2.new(0, 20, 0, 20),
             BackgroundTransparency = 1,
             Image = Icons.close,
@@ -641,36 +477,27 @@ do
         local MinBtn = Library:Create("ImageButton", {
             Parent = TopBar.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -38, 0.5, 0),
+            Position = UDim2.new(1, -40, 0.5, 0),
             Size = UDim2.new(0, 18, 0, 18),
             BackgroundTransparency = 1,
             Image = Icons.minimize,
             ImageColor3 = Theme.TextDim,
         })
 
-        local TitleText = Library:Create("TextLabel", {
-            Parent = TopBar.Instance,
-            Text = Params.Title or "Pulse UI",
-            FontFace = Library.FontBold,
-            TextSize = 16,
-            TextColor3 = Theme.Text,
-            Position = UDim2.new(0, 16, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundTransparency = 1,
-        })
-
+        -- Контент
         Content = Library:Create("Frame", {
             Parent = MainFrame.Instance,
-            Position = UDim2.new(0, 200, 0, 45),
-            Size = UDim2.new(1, -200, 1, -45),
+            Position = UDim2.new(0, 210, 0, 50),
+            Size = UDim2.new(1, -210, 1, -50),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
 
+        -- Вкладки
         TabButtons = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
-            Position = UDim2.new(0, 0, 0, 70),
-            Size = UDim2.new(1, 0, 1, -70),
+            Position = UDim2.new(0, 0, 0, 80),
+            Size = UDim2.new(1, 0, 1, -80),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 0,
@@ -689,10 +516,11 @@ do
             Parent = TabButtons.Instance,
             PaddingTop = UDim.new(0, 8),
             PaddingBottom = UDim.new(0, 8),
-            PaddingLeft = UDim.new(0, 8),
-            PaddingRight = UDim.new(0, 8),
+            PaddingLeft = UDim.new(0, 10),
+            PaddingRight = UDim.new(0, 10),
         })
 
+        -- Страницы
         Pages = Library:Create("Frame", {
             Parent = Content.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -700,9 +528,19 @@ do
             BorderSizePixel = 0,
         })
 
-        Library:MakeDraggable(MainFrame)
-        Library:MakeResizable(MainFrame, Vector2.new(500, 400))
+        Library:Create("UIPadding", {
+            Parent = Pages.Instance,
+            PaddingTop = UDim.new(0, 12),
+            PaddingBottom = UDim.new(0, 12),
+            PaddingLeft = UDim.new(0, 16),
+            PaddingRight = UDim.new(0, 16),
+        })
 
+        -- Перетаскивание и изменение размера
+        Library:MakeDraggable(MainFrame)
+        Library:MakeResizable(MainFrame, Vector2.new(550, 400))
+
+        -- События
         CloseBtn.Instance.MouseButton1Click:Connect(function()
             Library:Toggle(false)
         end)
@@ -713,10 +551,15 @@ do
             end
         end)
 
+        -- Возвращаем объект окна
         local Window = {
             Tabs = {},
             ActiveTab = nil,
         }
+
+        -- ═══════════════════════════════════════════════════════════
+        -- ВКЛАДКИ
+        -- ═══════════════════════════════════════════════════════════
 
         function Window:AddTab(Params)
             Params = Params or {}
@@ -725,13 +568,13 @@ do
                 Name = Params.Name or "Tab",
                 Icon = Params.Icon or Icons.menu,
                 Description = Params.Description or "",
-                Elements = {},
                 Active = false,
             }
 
+            -- Кнопка вкладки
             local Button = Library:Create("TextButton", {
                 Parent = TabButtons.Instance,
-                Size = UDim2.new(1, 0, 0, 42),
+                Size = UDim2.new(1, 0, 0, 44),
                 BackgroundColor3 = Theme.Background2,
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
@@ -746,7 +589,7 @@ do
                 Parent = Button.Instance,
                 Image = Tab.Icon,
                 Size = UDim2.new(0, 20, 0, 20),
-                Position = UDim2.new(0, 12, 0.5, 0),
+                Position = UDim2.new(0, 14, 0.5, 0),
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundTransparency = 1,
                 ImageColor3 = Theme.TextDim,
@@ -758,14 +601,15 @@ do
                 FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.TextDim,
-                Position = UDim2.new(0, 40, 0.5, 0),
+                Position = UDim2.new(0, 44, 0.5, 0),
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundTransparency = 1,
             })
 
+            -- Акцентная линия
             local AccentLine = Library:Create("Frame", {
                 Parent = Button.Instance,
-                Position = UDim2.new(0, 0, 0.5, -16),
+                Position = UDim2.new(0, 0, 0.5, -18),
                 Size = UDim2.new(0, 3, 0, 0),
                 BackgroundColor3 = Theme.Accent1,
                 BackgroundTransparency = 1,
@@ -777,20 +621,13 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
+            -- Страница вкладки
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
                 Visible = false,
                 BorderSizePixel = 0,
-            })
-
-            Library:Create("UIPadding", {
-                Parent = Page.Instance,
-                PaddingTop = UDim.new(0, 12),
-                PaddingBottom = UDim.new(0, 12),
-                PaddingLeft = UDim.new(0, 16),
-                PaddingRight = UDim.new(0, 16),
             })
 
             local ElementsContainer = Library:Create("ScrollingFrame", {
@@ -812,17 +649,17 @@ do
 
             Tab.ElementsContainer = ElementsContainer
 
+            -- Активация/деактивация
             function Tab:Activate()
-                if Window.ActiveTab then
-                    Window.ActiveTab:Deactivate()
-                end
+                if Window.ActiveTab then Window.ActiveTab:Deactivate() end
                 Tab.Active = true
                 Window.ActiveTab = Tab
+
                 Button.Instance.BackgroundTransparency = 0
                 Icon.ImageColor3 = Theme.Accent1
                 Text.TextColor3 = Theme.Text
                 AccentLine.Instance.BackgroundTransparency = 0
-                AccentLine.Instance.Size = UDim2.new(0, 3, 0, 32)
+                AccentLine.Instance.Size = UDim2.new(0, 3, 0, 36)
                 Page.Instance.Visible = true
             end
 
@@ -840,6 +677,10 @@ do
                 Tab:Activate()
             end)
 
+            -- ═══════════════════════════════════════════════════════
+            -- СЕКЦИИ
+            -- ═══════════════════════════════════════════════════════
+
             function Tab:Section(Params)
                 Params = Params or {}
 
@@ -854,7 +695,7 @@ do
 
                 Library:Create("UICorner", {
                     Parent = Section.Instance,
-                    CornerRadius = UDim.new(0, 8),
+                    CornerRadius = UDim.new(0, 10),
                 })
 
                 Library:Create("UIStroke", {
@@ -863,9 +704,10 @@ do
                     Thickness = 1,
                 })
 
+                -- Заголовок секции с пульсирующим индикатором
                 local Header = Library:Create("Frame", {
                     Parent = Section.Instance,
-                    Size = UDim2.new(1, 0, 0, 40),
+                    Size = UDim2.new(1, 0, 0, 44),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
                 })
@@ -876,14 +718,14 @@ do
                     FontFace = Library.FontBold,
                     TextSize = 15,
                     TextColor3 = Theme.Text,
-                    Position = UDim2.new(0, 14, 0.5, 0),
+                    Position = UDim2.new(0, 16, 0.5, 0),
                     AnchorPoint = Vector2.new(0, 0.5),
                     BackgroundTransparency = 1,
                 })
 
                 local PulseDot = Library:Create("Frame", {
                     Parent = Header.Instance,
-                    Size = UDim2.new(0, 8, 0, 8),
+                    Size = UDim2.new(0, 10, 0, 10),
                     Position = UDim2.new(1, -20, 0.5, 0),
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     BackgroundColor3 = Theme.Accent1,
@@ -893,11 +735,12 @@ do
                     Parent = PulseDot.Instance,
                     CornerRadius = UDim.new(1, 0),
                 })
-                Library:AddPulse(PulseDot, 0.3)
+                Library:AddPulse(PulseDot, 0.35)
 
+                -- Контент
                 local Content = Library:Create("Frame", {
                     Parent = Section.Instance,
-                    Position = UDim2.new(0, 0, 0, 40),
+                    Position = UDim2.new(0, 0, 0, 44),
                     Size = UDim2.new(1, 0, 0, 0),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
@@ -912,10 +755,10 @@ do
 
                 Library:Create("UIPadding", {
                     Parent = Content.Instance,
-                    PaddingBottom = UDim.new(0, 12),
+                    PaddingBottom = UDim.new(0, 14),
                     PaddingTop = UDim.new(0, 4),
-                    PaddingLeft = UDim.new(0, 12),
-                    PaddingRight = UDim.new(0, 12),
+                    PaddingLeft = UDim.new(0, 14),
+                    PaddingRight = UDim.new(0, 14),
                 })
 
                 return {
@@ -931,10 +774,7 @@ do
             end
 
             table.insert(Window.Tabs, Tab)
-
-            if #Window.Tabs == 1 then
-                Tab:Activate()
-            end
+            if #Window.Tabs == 1 then Tab:Activate() end
 
             return Tab
         end
@@ -944,11 +784,13 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ЭЛЕМЕНТЫ (УПРОЩЕННЫЕ, НО РАБОЧИЕ)
+    -- ЭЛЕМЕНТЫ
     -- ═══════════════════════════════════════════════════════════════
 
+    -- 🔘 TOGGLE
     function Library:Toggle(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Toggle",
             Flag = Params.Flag or "Toggle_" .. tostring(#Library.Elements + 1),
@@ -958,7 +800,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 32),
+            Size = UDim2.new(1, 0, 0, 34),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -974,11 +816,12 @@ do
             BackgroundTransparency = 1,
         })
 
+        -- Свитч
         local Track = Library:Create("TextButton", {
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, 0, 0.5, 0),
-            Size = UDim2.new(0, 44, 0, 24),
+            Size = UDim2.new(0, 48, 0, 26),
             BackgroundColor3 = Theme.Element,
             BorderSizePixel = 0,
         })
@@ -988,10 +831,18 @@ do
             CornerRadius = UDim.new(1, 0),
         })
 
+        -- Обводка свитча
+        local TrackStroke = Library:Create("UIStroke", {
+            Parent = Track.Instance,
+            Color = Theme.Outline,
+            Thickness = 1,
+        })
+
+        -- Круг
         local Knob = Library:Create("Frame", {
             Parent = Track.Instance,
             Size = UDim2.new(0, 18, 0, 18),
-            Position = UDim2.new(0, 3, 0.5, -9),
+            Position = UDim2.new(0, 4, 0.5, -9),
             BackgroundColor3 = Theme.TextDim,
             BorderSizePixel = 0,
         })
@@ -1001,32 +852,38 @@ do
             CornerRadius = UDim.new(1, 0),
         })
 
+        -- Свечение при включении
         local Glow = Library:Create("Frame", {
             Parent = Track.Instance,
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundColor3 = Theme.Accent1,
-            BackgroundTransparency = 0.3,
+            BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
         Library:Create("UICorner", {
             Parent = Glow.Instance,
             CornerRadius = UDim.new(1, 0),
         })
-        Library:AddPulse(Glow, 0.1)
 
         function Element:Set(Value)
             Element.Value = Value
+
             if Value then
                 Track.Instance.BackgroundColor3 = Theme.Accent1
-                Knob.Instance.Position = UDim2.new(1, -21, 0.5, -9)
+                TrackStroke.Color = Theme.Accent1
+                Knob.Instance.Position = UDim2.new(1, -22, 0.5, -9)
                 Knob.Instance.BackgroundColor3 = Theme.Text
-                Glow.Instance.BackgroundTransparency = 0.3
+                Glow.Instance.BackgroundTransparency = 0.25
+                Label.TextColor3 = Theme.Text
             else
                 Track.Instance.BackgroundColor3 = Theme.Element
-                Knob.Instance.Position = UDim2.new(0, 3, 0.5, -9)
+                TrackStroke.Color = Theme.Outline
+                Knob.Instance.Position = UDim2.new(0, 4, 0.5, -9)
                 Knob.Instance.BackgroundColor3 = Theme.TextDim
                 Glow.Instance.BackgroundTransparency = 1
+                Label.TextColor3 = Theme.TextDim
             end
+
             Library.Flags[Element.Flag] = Value
             Library.SafeCall(Element.Callback, Value)
         end
@@ -1037,23 +894,22 @@ do
 
         Element.Instance = Container.Instance
         Library.Elements[Element.Flag] = Element
-        Library.ConfigFlags[Element.Flag] = function(Value)
-            Element:Set(Value)
-        end
-
+        Library.ConfigFlags[Element.Flag] = function(Value) Element:Set(Value) end
         Element:Set(Element.Default)
         return Element
     end
 
+    -- 🔘 BUTTON
     function Library:Button(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Button",
             Callback = Params.Callback or function() end,
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 36),
+            Size = UDim2.new(1, 0, 0, 38),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1071,9 +927,17 @@ do
 
         Library:Create("UICorner", {
             Parent = Button.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
         })
 
+        -- Градиентная обводка
+        local Stroke = Library:Create("UIStroke", {
+            Parent = Button.Instance,
+            Color = Theme.Outline,
+            Thickness = 1,
+        })
+
+        -- Свечение при наведении
         local Glow = Library:Create("Frame", {
             Parent = Button.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -1083,23 +947,27 @@ do
         })
         Library:Create("UICorner", {
             Parent = Glow.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
         })
 
         Button.Instance.MouseEnter:Connect(function()
             Button.Instance.BackgroundColor3 = Theme.ElementHover
-            Glow.Instance.BackgroundTransparency = 0.15
+            Glow.Instance.BackgroundTransparency = 0.12
+            Stroke.Color = Theme.Accent1
         end)
 
         Button.Instance.MouseLeave:Connect(function()
             Button.Instance.BackgroundColor3 = Theme.Element
             Glow.Instance.BackgroundTransparency = 1
+            Stroke.Color = Theme.Outline
         end)
 
         Button.Instance.MouseButton1Click:Connect(function()
             Library:SafeCall(Element.Callback)
-            Button.Instance.BackgroundColor3 = Theme.Accent1
-            task.wait(0.1)
+
+            -- Эффект нажатия
+            Button.Instance.BackgroundColor3 = Theme.Accent2
+            task.wait(0.08)
             Button.Instance.BackgroundColor3 = Theme.Element
         end)
 
@@ -1107,8 +975,10 @@ do
         return Element
     end
 
+    -- 📊 SLIDER
     function Library:Slider(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Slider",
             Flag = Params.Flag or "Slider_" .. tostring(#Library.Elements + 1),
@@ -1123,7 +993,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 48),
+            Size = UDim2.new(1, 0, 0, 50),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1141,7 +1011,7 @@ do
         local ValueLabel = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = tostring(Element.Default) .. Element.Suffix,
-            FontFace = Library.Font,
+            FontFace = Library.FontBold,
             TextSize = 14,
             TextColor3 = Theme.Accent1,
             AnchorPoint = Vector2.new(1, 0),
@@ -1152,7 +1022,7 @@ do
         local Track = Library:Create("TextButton", {
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(0, 1),
-            Position = UDim2.new(0, 0, 1, -4),
+            Position = UDim2.new(0, 0, 1, -6),
             Size = UDim2.new(1, 0, 0, 6),
             BackgroundColor3 = Theme.Element,
             BorderSizePixel = 0,
@@ -1173,12 +1043,12 @@ do
             Parent = Fill.Instance,
             CornerRadius = UDim.new(1, 0),
         })
-        Library:AddPulse(Fill, 0.08)
+        Library:AddPulse(Fill, 0.06)
 
         local Knob = Library:Create("Frame", {
             Parent = Track.Instance,
-            Size = UDim2.new(0, 14, 0, 14),
-            Position = UDim2.new(0.5, -7, 0.5, -7),
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(0.5, -8, 0.5, -8),
             BackgroundColor3 = Theme.Accent1,
             BorderSizePixel = 0,
         })
@@ -1186,15 +1056,25 @@ do
             Parent = Knob.Instance,
             CornerRadius = UDim.new(1, 0),
         })
-        Library:AddPulse(Knob, 0.2)
+        Library:AddPulse(Knob, 0.15)
+
+        -- Обводка кноба
+        Library:Create("UIStroke", {
+            Parent = Knob.Instance,
+            Color = Theme.Background,
+            Thickness = 2,
+        })
 
         function Element:Set(Value)
             Element.Value = math.clamp(Value, Element.Min, Element.Max)
             Element.Value = Library:Round(Element.Value, Element.Decimals)
+
             local Percent = (Element.Value - Element.Min) / (Element.Max - Element.Min)
             Fill.Instance.Size = UDim2.new(Percent, 0, 1, 0)
-            Knob.Instance.Position = UDim2.new(Percent, -7, 0.5, -7)
+            Knob.Instance.Position = UDim2.new(Percent, -8, 0.5, -8)
+
             ValueLabel.Text = tostring(Element.Value) .. Element.Suffix
+
             Library.Flags[Element.Flag] = Element.Value
             Library.SafeCall(Element.Callback, Element.Value)
         end
@@ -1224,16 +1104,15 @@ do
 
         Element.Instance = Container.Instance
         Library.Elements[Element.Flag] = Element
-        Library.ConfigFlags[Element.Flag] = function(Value)
-            Element:Set(Value)
-        end
-
+        Library.ConfigFlags[Element.Flag] = function(Value) Element:Set(Value) end
         Element:Set(Element.Default)
         return Element
     end
 
+    -- 📋 DROPDOWN
     function Library:Dropdown(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Dropdown",
             Flag = Params.Flag or "Dropdown_" .. tostring(#Library.Elements + 1),
@@ -1246,7 +1125,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 48),
+            Size = UDim2.new(1, 0, 0, 50),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1265,7 +1144,7 @@ do
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(0, 1),
             Position = UDim2.new(0, 0, 1, -2),
-            Size = UDim2.new(1, 0, 0, 28),
+            Size = UDim2.new(1, 0, 0, 30),
             BackgroundColor3 = Theme.Element,
             BorderSizePixel = 0,
             Text = Element.Default or "Select...",
@@ -1277,24 +1156,31 @@ do
 
         Library:Create("UICorner", {
             Parent = Display.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
         })
 
         Library:Create("UIPadding", {
             Parent = Display.Instance,
-            PaddingLeft = UDim.new(0, 12),
+            PaddingLeft = UDim.new(0, 14),
+        })
+
+        Library:Create("UIStroke", {
+            Parent = Display.Instance,
+            Color = Theme.Outline,
+            Thickness = 1,
         })
 
         local Arrow = Library:Create("ImageLabel", {
             Parent = Display.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -10, 0.5, 0),
+            Position = UDim2.new(1, -12, 0.5, 0),
             Size = UDim2.new(0, 14, 0, 14),
             BackgroundTransparency = 1,
             Image = Icons["chevron-down"],
             ImageColor3 = Theme.TextDim,
         })
 
+        -- Меню
         local Menu = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             Size = UDim2.new(0, 200, 0, 0),
@@ -1307,7 +1193,7 @@ do
 
         Library:Create("UICorner", {
             Parent = Menu.Instance,
-            CornerRadius = UDim.new(0, 8),
+            CornerRadius = UDim.new(0, 10),
         })
 
         Library:Create("UIStroke", {
@@ -1345,16 +1231,14 @@ do
 
         function Element:UpdateMenu()
             for _, Child in pairs(MenuList.Instance:GetChildren()) do
-                if Child:IsA("TextButton") then
-                    Child:Destroy()
-                end
+                if Child:IsA("TextButton") then Child:Destroy() end
             end
             Options = {}
 
             for _, Item in pairs(Element.Items) do
                 local Option = Library:Create("TextButton", {
                     Parent = MenuList.Instance,
-                    Size = UDim2.new(1, 0, 0, 30),
+                    Size = UDim2.new(1, 0, 0, 32),
                     BackgroundColor3 = Theme.Background2,
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
@@ -1367,18 +1251,18 @@ do
 
                 Library:Create("UICorner", {
                     Parent = Option.Instance,
-                    CornerRadius = UDim.new(0, 4),
+                    CornerRadius = UDim.new(0, 6),
                 })
 
                 Library:Create("UIPadding", {
                     Parent = Option.Instance,
-                    PaddingLeft = UDim.new(0, 10),
+                    PaddingLeft = UDim.new(0, 12),
                 })
 
                 local Check = Library:Create("ImageLabel", {
                     Parent = Option.Instance,
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Position = UDim2.new(1, -8, 0.5, 0),
+                    Position = UDim2.new(1, -10, 0.5, 0),
                     Size = UDim2.new(0, 14, 0, 14),
                     BackgroundTransparency = 1,
                     Image = Icons.check,
@@ -1398,9 +1282,9 @@ do
 
                 Option.Instance.MouseButton1Click:Connect(function()
                     if Element.Multi then
-                        local Index = table.find(Element.Value, Item)
-                        if Index then
-                            table.remove(Element.Value, Index)
+                        local Idx = table.find(Element.Value, Item)
+                        if Idx then
+                            table.remove(Element.Value, Idx)
                             Check.ImageTransparency = 1
                         else
                             table.insert(Element.Value, Item)
@@ -1408,12 +1292,11 @@ do
                         end
                     else
                         Element.Value = {Item}
-                        for _, Opt in pairs(Options) do
-                            Opt.Check.ImageTransparency = 1
-                        end
+                        for _, Opt in pairs(Options) do Opt.Check.ImageTransparency = 1 end
                         Check.ImageTransparency = 0
                         Element:CloseMenu()
                     end
+
                     Element:UpdateDisplay()
                     Library.SafeCall(Element.Callback, Element.Multi and Element.Value or Element.Value[1])
                 end)
@@ -1460,16 +1343,10 @@ do
         end
 
         function Element:ToggleMenu()
-            if Element.IsOpen then
-                Element:CloseMenu()
-            else
-                Element:OpenMenu()
-            end
+            if Element.IsOpen then Element:CloseMenu() else Element:OpenMenu() end
         end
 
-        Display.Instance.MouseButton1Click:Connect(function()
-            Element:ToggleMenu()
-        end)
+        Display.Instance.MouseButton1Click:Connect(function() Element:ToggleMenu() end)
 
         Library:Connect(UserInputService.InputBegan, function(Input)
             if Element.IsOpen and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
@@ -1506,8 +1383,10 @@ do
         return Element
     end
 
+    -- 📝 INPUT
     function Library:Input(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Input",
             Flag = Params.Flag or "Input_" .. tostring(#Library.Elements + 1),
@@ -1518,7 +1397,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 48),
+            Size = UDim2.new(1, 0, 0, 50),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1537,7 +1416,7 @@ do
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(0, 1),
             Position = UDim2.new(0, 0, 1, -2),
-            Size = UDim2.new(1, 0, 0, 28),
+            Size = UDim2.new(1, 0, 0, 30),
             BackgroundColor3 = Theme.Element,
             BorderSizePixel = 0,
             Text = Element.Default,
@@ -1552,12 +1431,18 @@ do
 
         Library:Create("UICorner", {
             Parent = Input.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
+        })
+
+        Library:Create("UIStroke", {
+            Parent = Input.Instance,
+            Color = Theme.Outline,
+            Thickness = 1,
         })
 
         Library:Create("UIPadding", {
             Parent = Input.Instance,
-            PaddingLeft = UDim.new(0, 12),
+            PaddingLeft = UDim.new(0, 14),
         })
 
         Input.Instance:GetPropertyChangedSignal("Text"):Connect(function()
@@ -1579,6 +1464,14 @@ do
             end
         end)
 
+        Input.Instance.Focused:Connect(function()
+            Input.Instance.BackgroundColor3 = Theme.ElementHover
+        end)
+
+        Input.Instance.FocusLost:Connect(function()
+            Input.Instance.BackgroundColor3 = Theme.Element
+        end)
+
         Element.Instance = Container.Instance
         Library.Elements[Element.Flag] = Element
         Library.ConfigFlags[Element.Flag] = function(Value)
@@ -1588,14 +1481,16 @@ do
         return Element
     end
 
+    -- 🏷️ LABEL
     function Library:Label(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "",
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 24),
+            Size = UDim2.new(1, 0, 0, 26),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1612,15 +1507,15 @@ do
         })
 
         Element.Instance = Container.Instance
-        Element.SetText = function(Text)
-            Label.Text = Text
-        end
+        Element.SetText = function(Text) Label.Text = Text end
 
         return Element
     end
 
+    -- 🎨 COLOR PICKER
     function Library:ColorPicker(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Color",
             Flag = Params.Flag or "Color_" .. tostring(#Library.Elements + 1),
@@ -1631,7 +1526,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 32),
+            Size = UDim2.new(1, 0, 0, 34),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1651,14 +1546,14 @@ do
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, 0, 0.5, 0),
-            Size = UDim2.new(0, 28, 0, 28),
+            Size = UDim2.new(0, 30, 0, 30),
             BackgroundColor3 = Element.Value,
             BorderSizePixel = 0,
         })
 
         Library:Create("UICorner", {
             Parent = ColorBtn.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
         })
 
         Library:Create("UIStroke", {
@@ -1667,9 +1562,10 @@ do
             Thickness = 1,
         })
 
+        -- Палитра
         local Palette = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
-            Size = UDim2.new(0, 220, 0, 200),
+            Size = UDim2.new(0, 240, 0, 220),
             BackgroundColor3 = Theme.Background2,
             BorderSizePixel = 0,
             Visible = false,
@@ -1678,7 +1574,7 @@ do
 
         Library:Create("UICorner", {
             Parent = Palette.Instance,
-            CornerRadius = UDim.new(0, 8),
+            CornerRadius = UDim.new(0, 12),
         })
 
         Library:Create("UIStroke", {
@@ -1708,14 +1604,13 @@ do
             end
         end
 
-        ColorBtn.Instance.MouseButton1Click:Connect(function()
-            Element:Toggle()
-        end)
+        ColorBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
 
+        -- Hue Bar
         local HueBar = Library:Create("Frame", {
             Parent = Palette.Instance,
             Position = UDim2.new(0, 10, 0, 10),
-            Size = UDim2.new(1, -20, 0, 12),
+            Size = UDim2.new(1, -20, 0, 14),
             BackgroundColor3 = Color3.new(1, 1, 1),
             BorderSizePixel = 0,
         })
@@ -1778,8 +1673,10 @@ do
         return Element
     end
 
+    -- ⌨️ KEYBIND
     function Library:Keybind(Params)
         Params = Params or {}
+
         local Element = {
             Name = Params.Name or "Keybind",
             Flag = Params.Flag or "Keybind_" .. tostring(#Library.Elements + 1),
@@ -1792,7 +1689,7 @@ do
         }
 
         local Container = Library:Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 32),
+            Size = UDim2.new(1, 0, 0, 34),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
         })
@@ -1812,7 +1709,7 @@ do
             Parent = Container.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, 0, 0.5, 0),
-            Size = UDim2.new(0, 80, 0, 28),
+            Size = UDim2.new(0, 90, 0, 28),
             BackgroundColor3 = Theme.Element,
             BorderSizePixel = 0,
             Text = tostring(Element.Default):gsub("Enum.KeyCode.", ""),
@@ -1823,18 +1720,26 @@ do
 
         Library:Create("UICorner", {
             Parent = KeyBtn.Instance,
-            CornerRadius = UDim.new(0, 6),
+            CornerRadius = UDim.new(0, 8),
+        })
+
+        Library:Create("UIStroke", {
+            Parent = KeyBtn.Instance,
+            Color = Theme.Outline,
+            Thickness = 1,
         })
 
         function Element:Set(Key)
             Element.Value = Key
             Element.Active = false
+
             if Key then
                 local Name = tostring(Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
                 KeyBtn.Text = Name
             else
                 KeyBtn.Text = "None"
             end
+
             Library.Flags[Element.Flag] = {
                 Key = Element.Value,
                 Mode = Element.Mode,
@@ -1844,8 +1749,10 @@ do
 
         function Element:Toggle()
             if Element.Picking then return end
+
             Element.Picking = true
             KeyBtn.Text = "..."
+
             local Connection
             Connection = UserInputService.InputBegan:Connect(function(Input)
                 if Input.KeyCode == Enum.KeyCode.Escape then
@@ -1854,28 +1761,28 @@ do
                     Element:Set(Element.Default)
                     return
                 end
+
                 if Input.UserInputType == Enum.UserInputType.Keyboard then
                     Element:Set(Input.KeyCode)
-                elseif Input.UserInputType == Enum.UserInputType.MouseButton1 or 
+                elseif Input.UserInputType == Enum.UserInputType.MouseButton1 or
                        Input.UserInputType == Enum.UserInputType.MouseButton2 then
                     Element:Set(Input.UserInputType)
                 else
                     return
                 end
+
                 Element.Picking = false
                 Connection:Disconnect()
                 Library.SafeCall(Element.Callback, Element.Value)
             end)
         end
 
-        KeyBtn.Instance.MouseButton1Click:Connect(function()
-            Element:Toggle()
-        end)
-
+        KeyBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
         Element:Set(Element.Default)
 
         Library:Connect(UserInputService.InputBegan, function(Input)
             if not Element.Value or Element.Picking then return end
+
             if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
                 if Element.Mode == "Toggle" then
                     Element.Active = not Element.Active
@@ -1884,6 +1791,7 @@ do
                 else
                     Element.Active = true
                 end
+
                 Library.SafeCall(Element.Callback, Element.Active)
                 Library.Flags[Element.Flag].Active = Element.Active
             end
@@ -1891,6 +1799,7 @@ do
 
         Library:Connect(UserInputService.InputEnded, function(Input)
             if not Element.Value or Element.Picking then return end
+
             if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
                 if Element.Mode == "Hold" then
                     Element.Active = false
@@ -1912,49 +1821,121 @@ do
     -- ═══════════════════════════════════════════════════════════════
     -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     -- ═══════════════════════════════════════════════════════════════
-    
-    function Library:IsMouseOver(Instance)
-        if not Instance then return false end
-        local MousePos = Vector2.new(Mouse.X, Mouse.Y)
-        local Pos = Instance.AbsolutePosition
-        local Size = Instance.AbsoluteSize
-        return MousePos.X >= Pos.X and MousePos.X <= Pos.X + Size.X and
-               MousePos.Y >= Pos.Y and MousePos.Y <= Pos.Y + Size.Y
+
+    function Library:IsMouseOver(Inst)
+        if not Inst then return false end
+        local MPos = Vector2.new(Mouse.X, Mouse.Y)
+        local Pos = Inst.AbsolutePosition
+        local Size = Inst.AbsoluteSize
+        return MPos.X >= Pos.X and MPos.X <= Pos.X + Size.X and
+               MPos.Y >= Pos.Y and MPos.Y <= Pos.Y + Size.Y
     end
-    
+
+    function Library:MakeDraggable(Obj)
+        local Inst = Obj.Instance or Obj
+        local Dragging = false
+        local DragStart, StartPos
+
+        Inst.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                Dragging = true
+                DragStart = Input.Position
+                StartPos = Inst.Position
+                local Changed = Input.Changed:Connect(function()
+                    if Input.UserInputState == Enum.UserInputState.End then
+                        Dragging = false
+                        Changed:Disconnect()
+                    end
+                end)
+            end
+        end)
+
+        Library:Connect(UserInputService.InputChanged, function(Input)
+            if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+                local Delta = Input.Position - DragStart
+                Inst.Position = UDim2.new(
+                    StartPos.X.Scale, StartPos.X.Offset + Delta.X,
+                    StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y
+                )
+            end
+        end)
+    end
+
+    function Library:MakeResizable(Obj, MinSize)
+        local Inst = Obj.Instance or Obj
+        MinSize = MinSize or Vector2.new(400, 300)
+        local Resizing = false
+        local StartPos, StartSize
+
+        local Handle = Library:Create("ImageButton", {
+            Parent = Inst,
+            AnchorPoint = Vector2.new(1, 1),
+            Position = UDim2.new(1, -4, 1, -4),
+            Size = UDim2.new(0, 18, 0, 18),
+            BackgroundTransparency = 1,
+            Image = Icons.resize,
+            ImageColor3 = Theme.TextDim,
+            ZIndex = 999,
+        })
+
+        Handle.Instance.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                Resizing = true
+                StartPos = Input.Position
+                StartSize = Inst.Size
+            end
+        end)
+
+        Library:Connect(UserInputService.InputEnded, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                Resizing = false
+            end
+        end)
+
+        Library:Connect(UserInputService.InputChanged, function(Input)
+            if Resizing and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+                local Delta = Input.Position - StartPos
+                Inst.Size = UDim2.new(
+                    0, math.max(StartSize.X.Offset + Delta.X, MinSize.X),
+                    0, math.max(StartSize.Y.Offset + Delta.Y, MinSize.Y)
+                )
+            end
+        end)
+    end
+
     function Library:Notify(Params)
         Params = Params or {}
-        
+
         local Container = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             AnchorPoint = Vector2.new(1, 0),
             Position = UDim2.new(1, -16, 0, 16),
-            Size = UDim2.new(0, 300, 0, 0),
+            Size = UDim2.new(0, 320, 0, 0),
             BackgroundColor3 = Theme.Background2,
             BorderSizePixel = 0,
             AutomaticSize = Enum.AutomaticSize.Y,
             ClipsDescendants = true,
         })
-        
+
         Library:Create("UICorner", {
             Parent = Container.Instance,
-            CornerRadius = UDim.new(0, 8),
+            CornerRadius = UDim.new(0, 10),
         })
-        
+
         Library:Create("UIStroke", {
             Parent = Container.Instance,
             Color = Theme.Outline,
             Thickness = 1,
         })
-        
+
         Library:Create("UIPadding", {
             Parent = Container.Instance,
-            PaddingTop = UDim.new(0, 12),
-            PaddingBottom = UDim.new(0, 12),
-            PaddingLeft = UDim.new(0, 14),
-            PaddingRight = UDim.new(0, 14),
+            PaddingTop = UDim.new(0, 14),
+            PaddingBottom = UDim.new(0, 14),
+            PaddingLeft = UDim.new(0, 16),
+            PaddingRight = UDim.new(0, 16),
         })
-        
+
         local Title = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Title or "Notification",
@@ -1963,7 +1944,7 @@ do
             TextColor3 = Theme.Text,
             BackgroundTransparency = 1,
         })
-        
+
         local Desc = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Description or "",
@@ -1973,7 +1954,8 @@ do
             BackgroundTransparency = 1,
             TextWrapped = true,
         })
-        
+
+        -- Прогресс-бар
         local Progress = Library:Create("Frame", {
             Parent = Container.Instance,
             Size = UDim2.new(1, 0, 0, 2),
@@ -1982,24 +1964,19 @@ do
             BorderSizePixel = 0,
         })
         Library:AddPulse(Progress, 0.15)
-        
+
         local Duration = Params.Duration or 3
-        local Tween = TweenService:Create(Progress.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
+        TweenService:Create(Progress.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
             Size = UDim2.new(0, 0, 0, 2),
-        })
-        Tween:Play()
-        
+        }):Play()
+
         task.delay(Duration, function()
             Container.Instance:Destroy()
         end)
-        
+
         return Container
     end
-    
-    -- ═══════════════════════════════════════════════════════════════
-    -- УПРАВЛЕНИЕ ОКНОМ
-    -- ═══════════════════════════════════════════════════════════════
-    
+
     function Library:Toggle(State)
         if State ~= nil then
             Library.IsOpen = State
@@ -2010,23 +1987,7 @@ do
             Library.ScreenGui.Instance.Enabled = Library.IsOpen
         end
     end
-    
-    -- ═══════════════════════════════════════════════════════════════
-    -- АВТОЗАГРУЗКА
-    -- ═══════════════════════════════════════════════════════════════
-    
-    function Library:AutoLoad()
-        local Configs = Library:GetConfigsList()
-        for _, Name in pairs(Configs) do
-            Library:LoadConfigFile(Name)
-            break
-        end
-    end
-    
-    -- ═══════════════════════════════════════════════════════════════
-    -- ВОЗВРАТ
-    -- ═══════════════════════════════════════════════════════════════
-    
+
     getgenv().PulseUI = Library
     return Library
 end
