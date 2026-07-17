@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V3 - ФИНАЛЬНАЯ СТАБИЛЬНАЯ ВЕРСИЯ
--- Полностью исправлены все ошибки с соединениями
+-- PULSE UI V3 - ПОЛНАЯ СТАБИЛЬНАЯ ВЕРСИЯ
+-- Все элементы: Toggle, Button, Slider, Dropdown, Input, Label, Keybind, ColorPicker
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -215,10 +215,7 @@ do
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Connect(Signal, Callback)
-        -- Проверяем, что Signal валидный
-        if not Signal then
-            return nil
-        end
+        if not Signal then return nil end
         
         local Connection = nil
         local Success = pcall(function()
@@ -231,7 +228,6 @@ do
             end
         end)
         
-        -- Проверяем, что Connection действительно является соединением
         if Connection and type(Connection) == "table" and Connection.Disconnect then
             table.insert(Library.Connections, Connection)
             return Connection
@@ -343,7 +339,6 @@ do
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Unload()
-        -- Отключаем основные соединения с проверкой типа
         for i = #Library.Connections, 1, -1 do
             local C = Library.Connections[i]
             if type(C) == "table" and C.Disconnect then
@@ -353,7 +348,6 @@ do
         end
         Library.Connections = {}
         
-        -- Отключаем пульсации
         for i = #Library.PulseConnections, 1, -1 do
             local C = Library.PulseConnections[i]
             if type(C) == "table" and C.Disconnect then
@@ -363,17 +357,13 @@ do
         end
         Library.PulseConnections = {}
         
-        -- Закрываем потоки
         for i = #Library.Threads, 1, -1 do
             local T = Library.Threads[i]
-            if T then
-                pcall(coroutine.close, T)
-            end
+            if T then pcall(coroutine.close, T) end
             Library.Threads[i] = nil
         end
         Library.Threads = {}
         
-        -- Уничтожаем GUI
         if Library.ScreenGui and Library.ScreenGui.Instance then
             pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
             Library.ScreenGui = nil
@@ -1053,9 +1043,10 @@ do
         end
 
         -- ═══════════════════════════════════════════════════════════
-        -- ЭЛЕМЕНТЫ (УПРОЩЕННЫЕ ДЛЯ СТАБИЛЬНОСТИ)
+        -- ЭЛЕМЕНТЫ
         -- ═══════════════════════════════════════════════════════════
 
+        -- TOGGLE
         function Window:Toggle(Params)
             Params = Params or {}
 
@@ -1139,6 +1130,7 @@ do
             return Element
         end
 
+        -- BUTTON
         function Window:Button(Params)
             Params = Params or {}
 
@@ -1188,6 +1180,7 @@ do
             return Element
         end
 
+        -- SLIDER
         function Window:Slider(Params)
             Params = Params or {}
 
@@ -1309,10 +1302,639 @@ do
             return Element
         end
 
-        -- Остальные элементы (Dropdown, Input, Label, Keybind, ColorPicker)
-        -- Добавляются аналогично, но для экономии места опущены
-        
-        -- Если нужны все элементы, пиши в следующем сообщении
+        -- DROPDOWN
+        function Window:Dropdown(Params)
+            Params = Params or {}
+
+            local Element = {
+                Name = Params.Name or "Dropdown",
+                Flag = Params.Flag or "Dropdown_" .. tostring(#Library.Elements + 1),
+                Items = Params.Items or {},
+                Default = Params.Default or "",
+                Callback = Params.Callback or function() end,
+                Value = {},
+                IsOpen = false,
+            }
+
+            local Container = Library:Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 44),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            local Label = Library:Create("TextLabel", {
+                Parent = Container.Instance,
+                Text = Element.Name,
+                FontFace = Library.Font,
+                TextSize = 14,
+                TextColor3 = Theme.Text,
+                Position = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1,
+            })
+
+            local Display = Library:Create("TextButton", {
+                Parent = Container.Instance,
+                AnchorPoint = Vector2.new(0, 1),
+                Position = UDim2.new(0, 0, 1, -2),
+                Size = UDim2.new(1, 0, 0, 26),
+                BackgroundColor3 = Theme.Element,
+                BorderSizePixel = 0,
+                Text = Element.Default or "Select...",
+                TextColor3 = Theme.Text,
+                FontFace = Library.Font,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+            })
+
+            Library:Create("UICorner", {
+                Parent = Display.Instance,
+                CornerRadius = UDim.new(0, 6),
+            })
+
+            Library:Create("UIPadding", {
+                Parent = Display.Instance,
+                PaddingLeft = UDim.new(0, 12),
+            })
+
+            local Arrow = Library:Create("ImageLabel", {
+                Parent = Display.Instance,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -10, 0.5, 0),
+                Size = UDim2.new(0, 12, 0, 12),
+                BackgroundTransparency = 1,
+                Image = Icons["chevron-down"],
+                ImageColor3 = Theme.TextDim,
+            })
+
+            local Menu = Library:Create("Frame", {
+                Parent = Library.ScreenGui.Instance,
+                Size = UDim2.new(0, 200, 0, 0),
+                BackgroundColor3 = Theme.Background2,
+                BorderSizePixel = 0,
+                Visible = false,
+                ClipsDescendants = true,
+                ZIndex = 100,
+            })
+
+            Library:Create("UICorner", {
+                Parent = Menu.Instance,
+                CornerRadius = UDim.new(0, 8),
+            })
+
+            Library:Create("UIStroke", {
+                Parent = Menu.Instance,
+                Color = Theme.Outline,
+                Thickness = 1,
+            })
+
+            local MenuList = Library:Create("ScrollingFrame", {
+                Parent = Menu.Instance,
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                ScrollBarThickness = 2,
+                ScrollBarImageColor3 = Theme.Outline,
+                CanvasSize = UDim2.new(0, 0, 0, 0),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            })
+
+            Library:Create("UIListLayout", {
+                Parent = MenuList.Instance,
+                Padding = UDim.new(0, 2),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+            })
+
+            Library:Create("UIPadding", {
+                Parent = MenuList.Instance,
+                PaddingTop = UDim.new(0, 4),
+                PaddingBottom = UDim.new(0, 4),
+                PaddingLeft = UDim.new(0, 4),
+                PaddingRight = UDim.new(0, 4),
+            })
+
+            local Options = {}
+
+            function Element:UpdateMenu()
+                for _, Child in pairs(MenuList.Instance:GetChildren()) do
+                    if Child:IsA("TextButton") then Child:Destroy() end
+                end
+                Options = {}
+
+                for _, Item in pairs(Element.Items) do
+                    local Option = Library:Create("TextButton", {
+                        Parent = MenuList.Instance,
+                        Size = UDim2.new(1, 0, 0, 28),
+                        BackgroundColor3 = Theme.Background2,
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        Text = Item,
+                        TextColor3 = Theme.TextDim,
+                        FontFace = Library.Font,
+                        TextSize = 13,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    })
+
+                    Library:Create("UICorner", {
+                        Parent = Option.Instance,
+                        CornerRadius = UDim.new(0, 4),
+                    })
+
+                    Library:Create("UIPadding", {
+                        Parent = Option.Instance,
+                        PaddingLeft = UDim.new(0, 10),
+                    })
+
+                    local Check = Library:Create("ImageLabel", {
+                        Parent = Option.Instance,
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        Position = UDim2.new(1, -8, 0.5, 0),
+                        Size = UDim2.new(0, 12, 0, 12),
+                        BackgroundTransparency = 1,
+                        Image = Icons.check,
+                        ImageColor3 = Theme.Accent1,
+                        ImageTransparency = 1,
+                    })
+
+                    Option.Instance.MouseEnter:Connect(function()
+                        Option.Instance.BackgroundColor3 = Theme.ElementHover
+                        Option.Instance.BackgroundTransparency = 0
+                    end)
+
+                    Option.Instance.MouseLeave:Connect(function()
+                        Option.Instance.BackgroundColor3 = Theme.Background2
+                        Option.Instance.BackgroundTransparency = 1
+                    end)
+
+                    Option.Instance.MouseButton1Click:Connect(function()
+                        Element.Value = {Item}
+                        for _, Opt in pairs(Options) do Opt.Check.ImageTransparency = 1 end
+                        Check.ImageTransparency = 0
+                        Element:CloseMenu()
+                        Element:UpdateDisplay()
+                        Library.SafeCall(Element.Callback, Item)
+                    end)
+
+                    table.insert(Options, {
+                        Instance = Option,
+                        Check = Check,
+                        Item = Item,
+                    })
+                end
+
+                for _, Opt in pairs(Options) do
+                    if table.find(Element.Value, Opt.Item) then
+                        Opt.Check.ImageTransparency = 0
+                    end
+                end
+            end
+
+            function Element:UpdateDisplay()
+                Display.Text = Element.Value[1] or "Select..."
+            end
+
+            function Element:OpenMenu()
+                Element.IsOpen = true
+                local Pos = Display.Instance.AbsolutePosition
+                Menu.Instance.Position = UDim2.new(0, Pos.X, 0, Pos.Y + Display.Instance.AbsoluteSize.Y + 4)
+                Menu.Instance.Size = UDim2.new(0, Display.Instance.AbsoluteSize.X, 0, 0)
+                Menu.Instance.Visible = true
+                Menu.Instance.Size = UDim2.new(0, Display.Instance.AbsoluteSize.X, 0, math.min(MenuList.Instance.AbsoluteContentSize.Y + 8, 150))
+                Arrow.Rotation = 180
+            end
+
+            function Element:CloseMenu()
+                Element.IsOpen = false
+                Menu.Instance.Size = UDim2.new(0, Display.Instance.AbsoluteSize.X, 0, 0)
+                Menu.Instance.Visible = false
+                Arrow.Rotation = 0
+            end
+
+            function Element:ToggleMenu()
+                if Element.IsOpen then Element:CloseMenu() else Element:OpenMenu() end
+            end
+
+            Display.Instance.MouseButton1Click:Connect(function() Element:ToggleMenu() end)
+
+            Library:Connect(UserInputService.InputBegan, function(Input)
+                if Element.IsOpen and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
+                    if not Library:IsMouseOver(Menu.Instance) and not Library:IsMouseOver(Display.Instance) then
+                        Element:CloseMenu()
+                    end
+                end
+            end)
+
+            Element:UpdateMenu()
+            if Element.Default then Element.Value = {Element.Default} end
+            Element:UpdateDisplay()
+
+            Element.Instance = Container.Instance
+            Library.Elements[Element.Flag] = Element
+            Library.ConfigFlags[Element.Flag] = function(Value)
+                Element.Value = {Value}
+                Element:UpdateDisplay()
+                Element:UpdateMenu()
+                Library.SafeCall(Element.Callback, Value)
+            end
+
+            return Element
+        end
+
+        -- INPUT
+        function Window:Input(Params)
+            Params = Params or {}
+
+            local Element = {
+                Name = Params.Name or "Input",
+                Flag = Params.Flag or "Input_" .. tostring(#Library.Elements + 1),
+                Default = Params.Default or "",
+                Placeholder = Params.Placeholder or "Type here...",
+                Callback = Params.Callback or function() end,
+                Numeric = Params.Numeric or false,
+            }
+
+            local Container = Library:Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 44),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            local Label = Library:Create("TextLabel", {
+                Parent = Container.Instance,
+                Text = Element.Name,
+                FontFace = Library.Font,
+                TextSize = 14,
+                TextColor3 = Theme.Text,
+                Position = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1,
+            })
+
+            local Input = Library:Create("TextBox", {
+                Parent = Container.Instance,
+                AnchorPoint = Vector2.new(0, 1),
+                Position = UDim2.new(0, 0, 1, -2),
+                Size = UDim2.new(1, 0, 0, 26),
+                BackgroundColor3 = Theme.Element,
+                BorderSizePixel = 0,
+                Text = Element.Default,
+                TextColor3 = Theme.Text,
+                FontFace = Library.Font,
+                TextSize = 14,
+                PlaceholderText = Element.Placeholder,
+                PlaceholderColor3 = Theme.TextDark,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ClearTextOnFocus = false,
+            })
+
+            Library:Create("UICorner", {
+                Parent = Input.Instance,
+                CornerRadius = UDim.new(0, 6),
+            })
+
+            Library:Create("UIPadding", {
+                Parent = Input.Instance,
+                PaddingLeft = UDim.new(0, 12),
+            })
+
+            Input.Instance:GetPropertyChangedSignal("Text"):Connect(function()
+                local Value = Input.Text
+                if Element.Numeric and Value ~= "" then
+                    if not tonumber(Value) then
+                        Input.Text = Element.Value or ""
+                        return
+                    end
+                end
+                Element.Value = Value
+                Library.Flags[Element.Flag] = Value
+                Library.SafeCall(Element.Callback, Value)
+            end)
+
+            Input.Instance.FocusLost:Connect(function()
+                if Element.Numeric and Input.Text ~= "" then
+                    Input.Text = tostring(tonumber(Input.Text))
+                end
+            end)
+
+            Element.Instance = Container.Instance
+            Library.Elements[Element.Flag] = Element
+            Library.ConfigFlags[Element.Flag] = function(Value)
+                Input.Text = tostring(Value)
+            end
+
+            return Element
+        end
+
+        -- LABEL
+        function Window:Label(Params)
+            Params = Params or {}
+
+            local Element = {
+                Name = Params.Name or "",
+            }
+
+            local Container = Library:Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 22),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            local Label = Library:Create("TextLabel", {
+                Parent = Container.Instance,
+                Text = Element.Name,
+                FontFace = Params.Bold and Library.FontBold or Library.Font,
+                TextSize = Params.Size or 14,
+                TextColor3 = Params.Dim and Theme.TextDim or Theme.Text,
+                Position = UDim2.new(0, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundTransparency = 1,
+            })
+
+            Element.Instance = Container.Instance
+            Element.SetText = function(Text) Label.Text = Text end
+
+            return Element
+        end
+
+        -- KEYBIND
+        function Window:Keybind(Params)
+            Params = Params or {}
+
+            local Element = {
+                Name = Params.Name or "Keybind",
+                Flag = Params.Flag or "Keybind_" .. tostring(#Library.Elements + 1),
+                Default = Params.Default or Enum.KeyCode.X,
+                Mode = Params.Mode or "Toggle",
+                Callback = Params.Callback or function() end,
+                Value = nil,
+                Active = false,
+                Picking = false,
+            }
+
+            local Container = Library:Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 28),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            local Label = Library:Create("TextLabel", {
+                Parent = Container.Instance,
+                Text = Element.Name,
+                FontFace = Library.Font,
+                TextSize = 14,
+                TextColor3 = Theme.Text,
+                Position = UDim2.new(0, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundTransparency = 1,
+            })
+
+            local KeyBtn = Library:Create("TextButton", {
+                Parent = Container.Instance,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, 0, 0.5, 0),
+                Size = UDim2.new(0, 80, 0, 24),
+                BackgroundColor3 = Theme.Element,
+                BorderSizePixel = 0,
+                Text = tostring(Element.Default):gsub("Enum.KeyCode.", ""),
+                TextColor3 = Theme.Text,
+                FontFace = Library.Font,
+                TextSize = 12,
+            })
+
+            Library:Create("UICorner", {
+                Parent = KeyBtn.Instance,
+                CornerRadius = UDim.new(0, 6),
+            })
+
+            function Element:Set(Key)
+                Element.Value = Key
+                Element.Active = false
+                if Key then
+                    KeyBtn.Text = tostring(Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
+                else
+                    KeyBtn.Text = "None"
+                end
+                Library.Flags[Element.Flag] = {
+                    Key = Element.Value,
+                    Mode = Element.Mode,
+                    Active = Element.Active,
+                }
+            end
+
+            function Element:Toggle()
+                if Element.Picking then return end
+                Element.Picking = true
+                KeyBtn.Text = "..."
+                local Connection
+                Connection = UserInputService.InputBegan:Connect(function(Input)
+                    if Input.KeyCode == Enum.KeyCode.Escape then
+                        Element.Picking = false
+                        if Connection then Connection:Disconnect() end
+                        Element:Set(Element.Default)
+                        return
+                    end
+                    if Input.UserInputType == Enum.UserInputType.Keyboard then
+                        Element:Set(Input.KeyCode)
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton1 or
+                           Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                        Element:Set(Input.UserInputType)
+                    else
+                        return
+                    end
+                    Element.Picking = false
+                    if Connection then Connection:Disconnect() end
+                    Library.SafeCall(Element.Callback, Element.Value)
+                end)
+            end
+
+            KeyBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
+            Element:Set(Element.Default)
+
+            Library:Connect(UserInputService.InputBegan, function(Input)
+                if not Element.Value or Element.Picking then return end
+                if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
+                    if Element.Mode == "Toggle" then
+                        Element.Active = not Element.Active
+                    elseif Element.Mode == "Hold" then
+                        Element.Active = true
+                    else
+                        Element.Active = true
+                    end
+                    Library.SafeCall(Element.Callback, Element.Active)
+                    Library.Flags[Element.Flag].Active = Element.Active
+                end
+            end)
+
+            Library:Connect(UserInputService.InputEnded, function(Input)
+                if not Element.Value or Element.Picking then return end
+                if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
+                    if Element.Mode == "Hold" then
+                        Element.Active = false
+                        Library.SafeCall(Element.Callback, Element.Active)
+                        Library.Flags[Element.Flag].Active = Element.Active
+                    end
+                end
+            end)
+
+            Element.Instance = Container.Instance
+            Library.Elements[Element.Flag] = Element
+            Library.ConfigFlags[Element.Flag] = function(Value)
+                Element:Set(Value)
+            end
+
+            return Element
+        end
+
+        -- COLOR PICKER
+        function Window:ColorPicker(Params)
+            Params = Params or {}
+
+            local Element = {
+                Name = Params.Name or "Color",
+                Flag = Params.Flag or "Color_" .. tostring(#Library.Elements + 1),
+                Default = Params.Default or Color3.fromRGB(255, 185, 45),
+                Callback = Params.Callback or function() end,
+                Value = Params.Default or Color3.fromRGB(255, 185, 45),
+                IsOpen = false,
+            }
+
+            local Container = Library:Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 28),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            local Label = Library:Create("TextLabel", {
+                Parent = Container.Instance,
+                Text = Element.Name,
+                FontFace = Library.Font,
+                TextSize = 14,
+                TextColor3 = Theme.Text,
+                Position = UDim2.new(0, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundTransparency = 1,
+            })
+
+            local ColorBtn = Library:Create("TextButton", {
+                Parent = Container.Instance,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, 0, 0.5, 0),
+                Size = UDim2.new(0, 24, 0, 24),
+                BackgroundColor3 = Element.Value,
+                BorderSizePixel = 0,
+            })
+
+            Library:Create("UICorner", {
+                Parent = ColorBtn.Instance,
+                CornerRadius = UDim.new(0, 6),
+            })
+
+            local Palette = Library:Create("Frame", {
+                Parent = Library.ScreenGui.Instance,
+                Size = UDim2.new(0, 220, 0, 180),
+                BackgroundColor3 = Theme.Background2,
+                BorderSizePixel = 0,
+                Visible = false,
+                ZIndex = 100,
+            })
+
+            Library:Create("UICorner", {
+                Parent = Palette.Instance,
+                CornerRadius = UDim.new(0, 8),
+            })
+
+            Library:Create("UIStroke", {
+                Parent = Palette.Instance,
+                Color = Theme.Outline,
+                Thickness = 1,
+            })
+
+            local Hue, Sat, Val = Element.Value:ToHSV()
+
+            local function UpdateColor()
+                local Color = Color3.fromHSV(Hue, Sat, Val)
+                Element.Value = Color
+                ColorBtn.BackgroundColor3 = Color
+                Library.Flags[Element.Flag] = Color
+                Library.SafeCall(Element.Callback, Color)
+            end
+
+            function Element:Toggle()
+                Element.IsOpen = not Element.IsOpen
+                if Element.IsOpen then
+                    local Pos = ColorBtn.Instance.AbsolutePosition
+                    Palette.Instance.Position = UDim2.new(0, Pos.X - 20, 0, Pos.Y + ColorBtn.Instance.AbsoluteSize.Y + 4)
+                    Palette.Instance.Visible = true
+                else
+                    Palette.Instance.Visible = false
+                end
+            end
+
+            ColorBtn.Instance.MouseButton1Click:Connect(function() Element:Toggle() end)
+
+            local HueBar = Library:Create("Frame", {
+                Parent = Palette.Instance,
+                Position = UDim2.new(0, 10, 0, 10),
+                Size = UDim2.new(1, -20, 0, 12),
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BorderSizePixel = 0,
+            })
+
+            Library:Create("UICorner", {
+                Parent = HueBar.Instance,
+                CornerRadius = UDim.new(1, 0),
+            })
+
+            Library:Create("UIGradient", {
+                Parent = HueBar.Instance,
+                Rotation = 90,
+                Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                    ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+                }),
+            })
+
+            local function SetHue(X)
+                Hue = math.clamp(X / HueBar.Instance.AbsoluteSize.X, 0, 1)
+                UpdateColor()
+            end
+
+            HueBar.Instance.InputBegan:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    SetHue(Input.Position.X - HueBar.Instance.AbsolutePosition.X)
+                end
+            end)
+
+            Library:Connect(UserInputService.InputChanged, function(Input)
+                if Element.IsOpen and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+                    if Input.UserInputType == Enum.UserInputType.Touch or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                        SetHue(Input.Position.X - HueBar.Instance.AbsolutePosition.X)
+                    end
+                end
+            end)
+
+            Library:Connect(UserInputService.InputBegan, function(Input)
+                if Element.IsOpen and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
+                    if not Library:IsMouseOver(Palette.Instance) and not Library:IsMouseOver(ColorBtn.Instance) then
+                        Element:Toggle()
+                    end
+                end
+            end)
+
+            Element.Instance = Container.Instance
+            Library.Elements[Element.Flag] = Element
+            Library.ConfigFlags[Element.Flag] = function(Value)
+                Element.Value = Value
+                ColorBtn.BackgroundColor3 = Value
+                Library.Flags[Element.Flag] = Value
+                Library.SafeCall(Element.Callback, Value)
+            end
+
+            return Element
+        end
 
         Library.Window = Window
         return Window
