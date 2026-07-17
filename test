@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- PULSE UI - ФИНАЛЬНАЯ СТАБИЛЬНАЯ ВЕРСИЯ
--- Полностью переписана с нуля, все ошибки исправлены
+-- Все ошибки с FontFace исправлены
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -92,20 +92,31 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТЫ
+-- ШРИФТЫ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = Enum.Font.SourceSans
-local FontBold = Enum.Font.SourceSansBold
+
+-- Создаем объекты Font только если доступны
+local FontObj = nil
+local FontBoldObj = nil
 
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    if F then Font = F end
+    FontObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    if F then FontBold = F end
+    FontBoldObj = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
+
+-- Функция для безопасного получения шрифта
+local function GetFont(IsBold)
+    if IsBold then
+        return FontBoldObj or Enum.Font.SourceSansBold
+    end
+    return FontObj or Enum.Font.SourceSans
+end
+
+local Font = GetFont(false)
+local FontBold = GetFont(true)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- БИБЛИОТЕКА
@@ -141,22 +152,36 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ
+    -- ФУНКЦИЯ СОЗДАНИЯ (ПОЛНОСТЬЮ ИСПРАВЛЕНА)
     -- ═══════════════════════════════════════════════════════════════
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
             local F = Library.Font
+            
+            -- Пробуем установить FontFace (только если это объект Font)
             if type(F) == "table" and F.ClassName == "Font" then
-                pcall(function() Inst.FontFace = F end)
+                pcall(function()
+                    Inst.FontFace = F
+                end)
             end
+            
+            -- Если FontFace не сработал, используем Font (Enum)
             if not Inst.FontFace then
-                pcall(function() Inst.Font = F end)
+                pcall(function()
+                    -- Если это Enum, используем напрямую
+                    Inst.Font = F
+                end)
             end
+            
+            -- Если ничего не сработало, используем стандартный шрифт
             if not Inst.FontFace and not Inst.Font then
-                pcall(function() Inst.Font = Enum.Font.SourceSans end)
+                pcall(function()
+                    Inst.Font = Enum.Font.SourceSans
+                end)
             end
+            
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -180,13 +205,13 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- БЕЗОПАСНАЯ ФУНКЦИЯ СОЕДИНЕНИЯ
+    -- СОЕДИНЕНИЯ
     -- ═══════════════════════════════════════════════════════════════
     function Library:Connect(Signal, Callback)
         if not Signal then return nil end
         
         local Connection = nil
-        local Success = pcall(function()
+        pcall(function()
             if type(Signal) == "Instance" and Signal:IsA("RBXScriptSignal") then
                 Connection = Signal:Connect(Callback)
             elseif type(Signal) == "table" and Signal.Instance then
@@ -419,7 +444,6 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- Основной фрейм
         local MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -442,7 +466,6 @@ do
             Transparency = 0.25,
         })
 
-        -- Сайдбар
         local Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 200, 1, 0),
@@ -464,7 +487,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Логотип
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 75),
@@ -504,7 +526,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Верхняя панель
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 0),
@@ -555,7 +576,6 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- Список вкладок
         local TabList = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 75),
@@ -582,7 +602,6 @@ do
             PaddingRight = UDim.new(0, 8),
         })
 
-        -- Контент
         local Content = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 50),
@@ -689,7 +708,6 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
-            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -792,7 +810,6 @@ do
                     BackgroundTransparency = 1,
                 })
 
-                -- Индикатор
                 local PulseDot = Library:Create("Frame", {
                     Parent = Header.Instance,
                     Size = UDim2.new(0, 8, 0, 8),
@@ -871,6 +888,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
@@ -1005,6 +1023,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1122,6 +1141,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1137,6 +1157,7 @@ do
                 BorderSizePixel = 0,
                 Text = Element.Default or "Select...",
                 TextColor3 = Theme.Text,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left,
             })
@@ -1224,6 +1245,7 @@ do
                         BorderSizePixel = 0,
                         Text = Item,
                         TextColor3 = Theme.TextDim,
+                        FontFace = Library.Font,
                         TextSize = 13,
                         TextXAlignment = Enum.TextXAlignment.Left,
                     })
@@ -1354,6 +1376,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0, 0),
@@ -1369,6 +1392,7 @@ do
                 BorderSizePixel = 0,
                 Text = Element.Default,
                 TextColor3 = Theme.Text,
+                FontFace = Library.Font,
                 TextSize = 14,
                 PlaceholderText = Element.Placeholder,
                 PlaceholderColor3 = Theme.TextDark,
@@ -1467,6 +1491,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
@@ -1483,6 +1508,7 @@ do
                 BorderSizePixel = 0,
                 Text = tostring(Element.Default):gsub("Enum.KeyCode.", ""),
                 TextColor3 = Theme.Text,
+                FontFace = Library.Font,
                 TextSize = 12,
             })
 
@@ -1593,6 +1619,7 @@ do
             local Label = Library:Create("TextLabel", {
                 Parent = Container.Instance,
                 Text = Element.Name,
+                FontFace = Library.Font,
                 TextSize = 14,
                 TextColor3 = Theme.Text,
                 Position = UDim2.new(0, 0, 0.5, 0),
