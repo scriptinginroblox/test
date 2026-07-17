@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V2 - ИСПРАВЛЕННАЯ ВЕРСИЯ
--- Исправлена пульсация для UIStroke
+-- PULSE UI V2 - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+-- Исправлены все ошибки с FontFace
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -100,20 +100,33 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ
+-- ШРИФТ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = Enum.Font.SourceSans
-local FontBold = Enum.Font.SourceSansBold
 
+-- Создаем объекты шрифтов (если возможно)
+local FontObject = nil
+local FontBoldObject = nil
+
+-- Пробуем создать кастомные шрифты через Font.new
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    if F then Font = F end
+    FontObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
 pcall(function()
-    local F = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    if F then FontBold = F end
+    FontBoldObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
+
+-- Функция для получения шрифта (возвращает либо объект Font, либо Enum)
+local function GetFont(UseBold)
+    if UseBold then
+        return FontBoldObject or Enum.Font.SourceSansBold
+    end
+    return FontObject or Enum.Font.SourceSans
+end
+
+-- Сохраняем шрифты
+local Font = GetFont(false)
+local FontBold = GetFont(true)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- БИБЛИОТЕКА
@@ -151,20 +164,39 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- БАЗОВЫЕ ФУНКЦИИ
+    -- ФУНКЦИЯ СОЗДАНИЯ (ИСПРАВЛЕННАЯ)
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            pcall(function()
-                if type(Library.Font) == "table" then
+            -- Пытаемся установить FontFace (только если это объект Font, а не Enum)
+            if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
+                pcall(function()
                     Inst.FontFace = Library.Font
-                else
-                    Inst.Font = Library.Font
-                end
-            end)
+                end)
+            end
+            
+            -- Если FontFace не сработал или это Enum, используем Font (Enum)
+            if not Inst.FontFace then
+                pcall(function()
+                    if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
+                        Inst.Font = Library.Font
+                    else
+                        -- Если это Enum, используем его напрямую
+                        Inst.Font = Library.Font
+                    end
+                end)
+            end
+            
+            -- Если ничего не сработало, используем стандартный Enum
+            if not Inst.FontFace and not Inst.Font then
+                pcall(function()
+                    Inst.Font = Enum.Font.SourceSans
+                end)
+            end
+            
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -306,7 +338,7 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСАЦИЯ (ИСПРАВЛЕННАЯ)
+    -- ПУЛЬСАЦИЯ
     -- ═══════════════════════════════════════════════════════════════
 
     local PulseObjects = {}
@@ -315,13 +347,7 @@ do
         Intensity = Intensity or 0.15
         local Inst = Obj.Instance or Obj
         
-        -- Проверяем, можно ли применять пульсацию к этому объекту
-        local CanPulse = true
-        
-        -- UIStroke не имеет BackgroundColor3
         if Inst:IsA("UIStroke") then
-            CanPulse = false
-            -- Для UIStroke используем Tween для прозрачности
             Library:Connect(RunService.RenderStepped, function()
                 if Inst and Inst.Parent then
                     local P = math.sin(tick() * Library.PulseSpeed) * 0.1 + 0.2
@@ -331,7 +357,6 @@ do
             return
         end
         
-        -- Для ImageLabel пульсируем ImageColor3
         if Inst:IsA("ImageLabel") or Inst:IsA("ImageButton") then
             table.insert(PulseObjects, {
                 Object = Inst,
@@ -342,7 +367,6 @@ do
             return
         end
         
-        -- Для всех остальных - BackgroundColor3
         table.insert(PulseObjects, {
             Object = Inst,
             Intensity = Intensity,
@@ -392,7 +416,6 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- Основной фрейм
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -408,7 +431,6 @@ do
             CornerRadius = UDim.new(0, 14),
         })
 
-        -- Обводка (без пульсации, просто стиль)
         Library:Create("UIStroke", {
             Parent = MainFrame.Instance,
             Color = Theme.Accent1,
@@ -416,7 +438,6 @@ do
             Transparency = 0.3,
         })
 
-        -- Сайдбар
         Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 210, 1, 0),
@@ -438,7 +459,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Логотип
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 80),
@@ -479,7 +499,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Верхняя панель
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 210, 0, 0),
@@ -499,7 +518,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Кнопки управления
         local CloseBtn = Library:Create("ImageButton", {
             Parent = TopBar.Instance,
             AnchorPoint = Vector2.new(1, 0.5),
@@ -520,7 +538,6 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- Контент
         Content = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 210, 0, 50),
@@ -529,7 +546,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Вкладки
         TabButtons = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 80),
@@ -556,7 +572,6 @@ do
             PaddingRight = UDim.new(0, 10),
         })
 
-        -- Страницы
         Pages = Library:Create("Frame", {
             Parent = Content.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -572,11 +587,9 @@ do
             PaddingRight = UDim.new(0, 16),
         })
 
-        -- Перетаскивание и изменение размера
         Library:MakeDraggable(MainFrame)
         Library:MakeResizable(MainFrame, Vector2.new(550, 400))
 
-        -- События
         CloseBtn.Instance.MouseButton1Click:Connect(function()
             Library:Toggle(false)
         end)
@@ -587,7 +600,6 @@ do
             end
         end)
 
-        -- Возвращаем объект окна
         local Window = {
             Tabs = {},
             ActiveTab = nil,
@@ -641,7 +653,6 @@ do
                 BackgroundTransparency = 1,
             })
 
-            -- Акцентная линия
             local AccentLine = Library:Create("Frame", {
                 Parent = Button.Instance,
                 Position = UDim2.new(0, 0, 0.5, -18),
@@ -656,7 +667,6 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
-            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -819,7 +829,6 @@ do
     -- ЭЛЕМЕНТЫ
     -- ═══════════════════════════════════════════════════════════════
 
-    -- 🔘 TOGGLE
     function Library:Toggle(Params)
         Params = Params or {}
 
@@ -927,7 +936,6 @@ do
         return Element
     end
 
-    -- 🔘 BUTTON
     function Library:Button(Params)
         Params = Params or {}
 
@@ -999,7 +1007,6 @@ do
         return Element
     end
 
-    -- 📊 SLIDER
     function Library:Slider(Params)
         Params = Params or {}
 
@@ -1132,7 +1139,6 @@ do
         return Element
     end
 
-    -- 📋 DROPDOWN (упрощенная версия)
     function Library:Dropdown(Params)
         Params = Params or {}
 
@@ -1405,7 +1411,6 @@ do
         return Element
     end
 
-    -- 📝 INPUT
     function Library:Input(Params)
         Params = Params or {}
 
@@ -1503,7 +1508,6 @@ do
         return Element
     end
 
-    -- 🏷️ LABEL
     function Library:Label(Params)
         Params = Params or {}
 
@@ -1534,7 +1538,6 @@ do
         return Element
     end
 
-    -- 🎨 COLOR PICKER (упрощенная)
     function Library:ColorPicker(Params)
         Params = Params or {}
 
@@ -1693,7 +1696,6 @@ do
         return Element
     end
 
-    -- ⌨️ KEYBIND
     function Library:Keybind(Params)
         Params = Params or {}
 
@@ -1902,7 +1904,8 @@ do
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Resizing = true
                 StartPos = Input.Position
-                StartSize = Inst.Size            end
+                StartSize = Inst.Size
+            end
         end)
 
         Library:Connect(UserInputService.InputEnded, function(Input)
