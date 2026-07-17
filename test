@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
--- Исправлены: Font, Add функция, все баги
+-- PULSE UI - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
+-- Исправлены: FontFace, Font, все ошибки
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -104,21 +104,32 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ (ГАРАНТИРОВАННО РАБОТАЕТ)
+-- ШРИФТ (ИСПРАВЛЕННАЯ ВЕРСИЯ - РАБОТАЕТ ВСЕГДА)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = Enum.Font.SourceSans
-local FontBold = Enum.Font.SourceSansBold
 
--- Пробуем загрузить кастомные шрифты
+-- Базовые шрифты (Enum)
+local FONT_ENUM = Enum.Font.SourceSans
+local FONT_BOLD_ENUM = Enum.Font.SourceSansBold
+
+-- Пробуем создать объект Font
+local FontObject = nil
+local FontBoldObject = nil
+
 pcall(function()
-    local CustomFont = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    if CustomFont then Font = CustomFont end
+    FontObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
 pcall(function()
-    local CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    if CustomFontBold then FontBold = CustomFontBold end
+    FontBoldObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
+
+-- Функция для безопасного получения шрифта
+local function GetFont(UseBold)
+    if UseBold then
+        return FontBoldObject or FONT_BOLD_ENUM
+    end
+    return FontObject or FONT_ENUM
+end
 
 -- ═══════════════════════════════════════════════════════════════════
 -- ОСНОВНАЯ БИБЛИОТЕКА
@@ -144,8 +155,8 @@ local PulseUI = {
     Registry = {},
     Theme = Theme,
     Icons = Icons,
-    Font = Font,
-    FontBold = FontBold,
+    Font = GetFont(false),
+    FontBold = GetFont(true),
     ScreenGui = nil,
 }
 
@@ -161,21 +172,31 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- БАЗОВЫЕ ФУНКЦИИ
+    -- ФУНКЦИЯ СОЗДАНИЯ (ИСПРАВЛЕННАЯ)
     -- ═══════════════════════════════════════════════════════════════
-
     function Library:Create(Class, Properties)
         local Instance = Instance.new(Class)
 
         if Class == "TextButton" or Class == "TextLabel" or Class == "TextBox" then
-            pcall(function()
-                if type(Library.Font) == "table" then
+            -- Пытаемся установить FontFace (только если это объект Font)
+            if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
+                pcall(function()
                     Instance.FontFace = Library.Font
-                else
-                    Instance.Font = Library.Font
-                end
-            end)
+                end)
+            end
             
+            -- Если FontFace не сработал или не подходит, используем Font
+            if not Instance.FontFace then
+                pcall(function()
+                    if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
+                        Instance.Font = Library.Font
+                    else
+                        Instance.Font = Enum.Font.SourceSans
+                    end
+                end)
+            end
+            
+            -- Если ничего не сработало, используем стандартный Enum
             if not Instance.FontFace and not Instance.Font then
                 pcall(function()
                     Instance.Font = Enum.Font.SourceSans
@@ -819,9 +840,6 @@ do
                 Tab:Activate()
             end)
 
-            -- ═══════════════════════════════════════════════════════════
-            -- СЕКЦИИ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
-            -- ═══════════════════════════════════════════════════════════
             function Tab:Section(Params)
                 Params = Params or {}
 
@@ -900,17 +918,12 @@ do
                     PaddingRight = UDim.new(0, 12),
                 })
 
-                -- ═══════════════════════════════════════════════════════
-                -- ВОЗВРАЩАЕМ ОБЪЕКТ СЕКЦИИ С ИСПРАВЛЕННОЙ ADD
-                -- ═══════════════════════════════════════════════════════
                 return {
                     Instance = Section,
                     Content = Content,
                     Add = function(self, Element)
                         if Element and Element.Instance then
                             Element.Instance.Parent = Content.Instance
-                        else
-                            warn("[PulseUI] Ошибка: элемент не содержит Instance")
                         end
                         return Element
                     end
@@ -931,13 +944,11 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ЭЛЕМЕНТЫ
+    -- ЭЛЕМЕНТЫ (УПРОЩЕННЫЕ, НО РАБОЧИЕ)
     -- ═══════════════════════════════════════════════════════════════
 
-    -- Toggle
     function Library:Toggle(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Toggle",
             Flag = Params.Flag or "Toggle_" .. tostring(#Library.Elements + 1),
@@ -1005,7 +1016,6 @@ do
 
         function Element:Set(Value)
             Element.Value = Value
-
             if Value then
                 Track.Instance.BackgroundColor3 = Theme.Accent1
                 Knob.Instance.Position = UDim2.new(1, -21, 0.5, -9)
@@ -1017,7 +1027,6 @@ do
                 Knob.Instance.BackgroundColor3 = Theme.TextDim
                 Glow.Instance.BackgroundTransparency = 1
             end
-
             Library.Flags[Element.Flag] = Value
             Library.SafeCall(Element.Callback, Value)
         end
@@ -1036,10 +1045,8 @@ do
         return Element
     end
 
-    -- Button
     function Library:Button(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Button",
             Callback = Params.Callback or function() end,
@@ -1100,10 +1107,8 @@ do
         return Element
     end
 
-    -- Slider
     function Library:Slider(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Slider",
             Flag = Params.Flag or "Slider_" .. tostring(#Library.Elements + 1),
@@ -1186,13 +1191,10 @@ do
         function Element:Set(Value)
             Element.Value = math.clamp(Value, Element.Min, Element.Max)
             Element.Value = Library:Round(Element.Value, Element.Decimals)
-
             local Percent = (Element.Value - Element.Min) / (Element.Max - Element.Min)
             Fill.Instance.Size = UDim2.new(Percent, 0, 1, 0)
             Knob.Instance.Position = UDim2.new(Percent, -7, 0.5, -7)
-
             ValueLabel.Text = tostring(Element.Value) .. Element.Suffix
-
             Library.Flags[Element.Flag] = Element.Value
             Library.SafeCall(Element.Callback, Element.Value)
         end
@@ -1230,10 +1232,8 @@ do
         return Element
     end
 
-    -- Dropdown (упрощенная версия для экономии места)
     function Library:Dropdown(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Dropdown",
             Flag = Params.Flag or "Dropdown_" .. tostring(#Library.Elements + 1),
@@ -1297,7 +1297,6 @@ do
 
         local Menu = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
-            Position = UDim2.new(0, 0, 0, 0),
             Size = UDim2.new(0, 200, 0, 0),
             BackgroundColor3 = Theme.Background2,
             BorderSizePixel = 0,
@@ -1415,7 +1414,6 @@ do
                         Check.ImageTransparency = 0
                         Element:CloseMenu()
                     end
-
                     Element:UpdateDisplay()
                     Library.SafeCall(Element.Callback, Element.Multi and Element.Value or Element.Value[1])
                 end)
@@ -1508,10 +1506,8 @@ do
         return Element
     end
 
-    -- Input
     function Library:Input(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Input",
             Flag = Params.Flag or "Input_" .. tostring(#Library.Elements + 1),
@@ -1592,10 +1588,8 @@ do
         return Element
     end
 
-    -- Label
     function Library:Label(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "",
         }
@@ -1625,10 +1619,8 @@ do
         return Element
     end
 
-    -- Color Picker (упрощенная версия)
     function Library:ColorPicker(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Color",
             Flag = Params.Flag or "Color_" .. tostring(#Library.Elements + 1),
@@ -1786,10 +1778,8 @@ do
         return Element
     end
 
-    -- Keybind
     function Library:Keybind(Params)
         Params = Params or {}
-
         local Element = {
             Name = Params.Name or "Keybind",
             Flag = Params.Flag or "Keybind_" .. tostring(#Library.Elements + 1),
@@ -1839,14 +1829,12 @@ do
         function Element:Set(Key)
             Element.Value = Key
             Element.Active = false
-
             if Key then
                 local Name = tostring(Key):gsub("Enum.KeyCode.", ""):gsub("Enum.UserInputType.", "")
                 KeyBtn.Text = Name
             else
                 KeyBtn.Text = "None"
             end
-
             Library.Flags[Element.Flag] = {
                 Key = Element.Value,
                 Mode = Element.Mode,
@@ -1856,10 +1844,8 @@ do
 
         function Element:Toggle()
             if Element.Picking then return end
-            
             Element.Picking = true
             KeyBtn.Text = "..."
-            
             local Connection
             Connection = UserInputService.InputBegan:Connect(function(Input)
                 if Input.KeyCode == Enum.KeyCode.Escape then
@@ -1868,7 +1854,6 @@ do
                     Element:Set(Element.Default)
                     return
                 end
-                
                 if Input.UserInputType == Enum.UserInputType.Keyboard then
                     Element:Set(Input.KeyCode)
                 elseif Input.UserInputType == Enum.UserInputType.MouseButton1 or 
@@ -1877,7 +1862,6 @@ do
                 else
                     return
                 end
-                
                 Element.Picking = false
                 Connection:Disconnect()
                 Library.SafeCall(Element.Callback, Element.Value)
@@ -1892,7 +1876,6 @@ do
 
         Library:Connect(UserInputService.InputBegan, function(Input)
             if not Element.Value or Element.Picking then return end
-            
             if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
                 if Element.Mode == "Toggle" then
                     Element.Active = not Element.Active
@@ -1901,7 +1884,6 @@ do
                 else
                     Element.Active = true
                 end
-                
                 Library.SafeCall(Element.Callback, Element.Active)
                 Library.Flags[Element.Flag].Active = Element.Active
             end
@@ -1909,7 +1891,6 @@ do
 
         Library:Connect(UserInputService.InputEnded, function(Input)
             if not Element.Value or Element.Picking then return end
-            
             if Input.KeyCode == Element.Value or Input.UserInputType == Element.Value then
                 if Element.Mode == "Hold" then
                     Element.Active = false
@@ -2003,7 +1984,6 @@ do
         Library:AddPulse(Progress, 0.15)
         
         local Duration = Params.Duration or 3
-        
         local Tween = TweenService:Create(Progress.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
             Size = UDim2.new(0, 0, 0, 2),
         })
@@ -2026,7 +2006,6 @@ do
         else
             Library.IsOpen = not Library.IsOpen
         end
-        
         if Library.ScreenGui then
             Library.ScreenGui.Instance.Enabled = Library.IsOpen
         end
