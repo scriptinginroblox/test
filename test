@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- PULSE UI V3 - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
--- Исправлены все ошибки с FontFace
+-- Исправлены все ошибки: FontFace, Disconnect, Connections
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -100,10 +100,8 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТЫ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+-- ШРИФТЫ
 -- ═══════════════════════════════════════════════════════════════════
-
--- Создаем объекты Font (если поддерживается)
 local CustomFont = nil
 local CustomFontBold = nil
 
@@ -115,7 +113,6 @@ pcall(function()
     CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
 
--- Функция для получения шрифта (возвращает либо объект Font, либо Enum)
 local function GetFont(UseBold)
     if UseBold then
         return CustomFontBold or Enum.Font.SourceSansBold
@@ -123,7 +120,6 @@ local function GetFont(UseBold)
     return CustomFont or Enum.Font.SourceSans
 end
 
--- Сохраняем шрифты
 local Font = GetFont(false)
 local FontBold = GetFont(true)
 
@@ -165,41 +161,31 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ (ПОЛНОСТЬЮ ИСПРАВЛЕНА)
+    -- ФУНКЦИЯ СОЗДАНИЯ
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            -- Пытаемся установить шрифт
             local FontToUse = Library.Font
             
-            -- Пробуем установить FontFace (только если это объект Font)
             if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
-                pcall(function()
-                    Inst.FontFace = FontToUse
-                end)
+                pcall(function() Inst.FontFace = FontToUse end)
             end
             
-            -- Если FontFace не сработал или это Enum, используем Font
             if not Inst.FontFace then
                 pcall(function()
-                    -- Если это объект Font, используем его через Font
                     if type(FontToUse) == "table" and FontToUse.ClassName == "Font" then
                         Inst.Font = FontToUse
                     else
-                        -- Иначе используем как Enum
                         Inst.Font = FontToUse
                     end
                 end)
             end
             
-            -- Если ничего не сработало, используем стандартный шрифт
             if not Inst.FontFace and not Inst.Font then
-                pcall(function()
-                    Inst.Font = Enum.Font.SourceSans
-                end)
+                pcall(function() Inst.Font = Enum.Font.SourceSans end)
             end
             
             Inst.TextSize = 14
@@ -225,22 +211,34 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ОСТАЛЬНЫЕ ФУНКЦИИ
+    -- БЕЗОПАСНОЕ ДОБАВЛЕНИЕ СОЕДИНЕНИЙ
     -- ═══════════════════════════════════════════════════════════════
+
+    function Library:AddConnection(Conn)
+        if Conn and type(Conn) == "table" and Conn.Disconnect then
+            table.insert(Library.Connections, Conn)
+            return Conn
+        end
+        return nil
+    end
 
     function Library:Connect(Sig, Callback)
         local Conn
-        if type(Sig) == "Instance" and Sig:IsA("RBXScriptSignal") then
-            Conn = Sig:Connect(Callback)
-        elseif Sig and type(Sig) == "table" and Sig.Instance then
-            Conn = Sig.Instance:Connect(Callback)
-        else
-            Conn = Sig:Connect(Callback)
-        end
-        if Conn then
+        pcall(function()
+            if type(Sig) == "Instance" and Sig:IsA("RBXScriptSignal") then
+                Conn = Sig:Connect(Callback)
+            elseif Sig and type(Sig) == "table" and Sig.Instance then
+                Conn = Sig.Instance:Connect(Callback)
+            else
+                Conn = Sig:Connect(Callback)
+            end
+        end)
+        
+        if Conn and type(Conn) == "table" and Conn.Disconnect then
             table.insert(Library.Connections, Conn)
+            return Conn
         end
-        return Conn
+        return nil
     end
 
     function Library:Thread(Func)
@@ -341,23 +339,47 @@ do
         end
     end
 
+    -- ═══════════════════════════════════════════════════════════════
+    -- UNLOAD (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    -- ═══════════════════════════════════════════════════════════════
+
     function Library:Unload()
-        for _, C in pairs(Library.Connections) do
-            if C and C.Disconnect then pcall(C.Disconnect, C) end
+        -- Отключаем основные соединения
+        for i = #Library.Connections, 1, -1 do
+            local C = Library.Connections[i]
+            if C and type(C) == "table" and C.Disconnect then
+                pcall(C.Disconnect, C)
+            end
+            Library.Connections[i] = nil
         end
         Library.Connections = {}
-        for _, C in pairs(Library.PulseConnections) do
-            if C and C.Disconnect then pcall(C.Disconnect, C) end
+        
+        -- Отключаем пульсации
+        for i = #Library.PulseConnections, 1, -1 do
+            local C = Library.PulseConnections[i]
+            if C and type(C) == "table" and C.Disconnect then
+                pcall(C.Disconnect, C)
+            end
+            Library.PulseConnections[i] = nil
         end
         Library.PulseConnections = {}
-        for _, T in pairs(Library.Threads) do
-            if T then pcall(coroutine.close, T) end
+        
+        -- Закрываем потоки
+        for i = #Library.Threads, 1, -1 do
+            local T = Library.Threads[i]
+            if T then
+                pcall(coroutine.close, T)
+            end
+            Library.Threads[i] = nil
         end
         Library.Threads = {}
+        
+        -- Уничтожаем GUI
         if Library.ScreenGui and Library.ScreenGui.Instance then
             pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
             Library.ScreenGui = nil
         end
+        
         getgenv().PulseUI = nil
     end
 
@@ -609,7 +631,6 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- ОСНОВНОЙ ФРЕЙМ
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -632,7 +653,6 @@ do
             Transparency = 0.25,
         })
 
-        -- САЙДБАР
         Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 200, 1, 0),
@@ -654,7 +674,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- ЛОГОТИП
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 75),
@@ -695,7 +714,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- ВЕРХНЯЯ ПАНЕЛЬ
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 0),
@@ -746,7 +764,6 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- ВКЛАДКИ (САЙДБАР)
         SidebarContent = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 75),
@@ -773,7 +790,6 @@ do
             PaddingRight = UDim.new(0, 8),
         })
 
-        -- КОНТЕНТ
         MainContent = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 50),
@@ -797,11 +813,9 @@ do
             PaddingRight = UDim.new(0, 18),
         })
 
-        -- ПЕРЕТАСКИВАНИЕ
         Library:MakeDraggable(MainFrame)
         Library:MakeResizable(MainFrame, Vector2.new(550, 400))
 
-        -- СОБЫТИЯ
         CloseBtn.Instance.MouseButton1Click:Connect(function()
             Library:Toggle(false)
         end)
@@ -812,7 +826,6 @@ do
             end
         end)
 
-        -- ОБЪЕКТ ОКНА
         local Window = {
             Tabs = {},
             ActiveTab = nil,
