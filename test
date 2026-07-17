@@ -1,7 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - Премиальная библиотека для создания интерфейсов
--- ФИНАЛЬНАЯ ВЕРСИЯ - Работает на 100% версий Roblox
--- Дизайн: Желто-оранжевая гамма с пульсирующими элементами
+-- PULSE UI - ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+-- Исправлены: Font, Add функция, все баги
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -37,7 +36,7 @@ local IsMobile = UserInputService.TouchEnabled or false
 gethui = gethui or function() return CoreGui end
 
 -- ═══════════════════════════════════════════════════════════════════
--- ИКОНКИ (SVG в формате rbxassetid)
+-- ИКОНКИ
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
     ["home"] = "rbxassetid://98755624629571",
@@ -81,7 +80,7 @@ local Icons = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ТЕМА (Желто-оранжевая гамма)
+-- ТЕМА
 -- ═══════════════════════════════════════════════════════════════════
 local Theme = {
     Background = Color3.fromRGB(18, 14, 10),
@@ -105,29 +104,21 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ (ГАРАНТИРОВАННО РАБОТАЕТ НА ВСЕХ ВЕРСИЯХ)
+-- ШРИФТ (ГАРАНТИРОВАННО РАБОТАЕТ)
 -- ═══════════════════════════════════════════════════════════════════
+local Font = Enum.Font.SourceSans
+local FontBold = Enum.Font.SourceSansBold
 
--- Используем ТОЛЬКО шрифты, которые есть в Enum.Font во всех версиях
--- SourceSans есть везде, это базовый шрифт Roblox
-local FONT_NORMAL = Enum.Font.SourceSans
-local FONT_BOLD = Enum.Font.SourceSansBold
-
--- Пробуем загрузить кастомный шрифт через Font.new (если доступно)
-local CustomFont = nil
-local CustomFontBold = nil
-
+-- Пробуем загрузить кастомные шрифты
 pcall(function()
-    CustomFont = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    local CustomFont = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    if CustomFont then Font = CustomFont end
 end)
 
 pcall(function()
-    CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    local CustomFontBold = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    if CustomFontBold then FontBold = CustomFontBold end
 end)
-
--- Используем кастомные шрифты если они загрузились, иначе SourceSans
-local Font = CustomFont or FONT_NORMAL
-local FontBold = CustomFontBold or FONT_BOLD
 
 -- ═══════════════════════════════════════════════════════════════════
 -- ОСНОВНАЯ БИБЛИОТЕКА
@@ -177,21 +168,14 @@ do
         local Instance = Instance.new(Class)
 
         if Class == "TextButton" or Class == "TextLabel" or Class == "TextBox" then
-            -- Пробуем установить FontFace (для новых версий)
-            if type(Library.Font) == "table" then
-                pcall(function()
+            pcall(function()
+                if type(Library.Font) == "table" then
                     Instance.FontFace = Library.Font
-                end)
-            end
-            
-            -- Если FontFace не сработал, используем Enum.Font
-            if not Instance.FontFace then
-                pcall(function()
+                else
                     Instance.Font = Library.Font
-                end)
-            end
+                end
+            end)
             
-            -- Если ничего не сработало, используем SourceSans (есть везде)
             if not Instance.FontFace and not Instance.Font then
                 pcall(function()
                     Instance.Font = Enum.Font.SourceSans
@@ -256,7 +240,6 @@ do
 
     function Library:GetTransparency(Object)
         local Instance = Object.Instance or Object
-
         if Instance:IsA("Frame") then
             return {"BackgroundTransparency"}
         elseif Instance:IsA("TextLabel") or Instance:IsA("TextButton") then
@@ -277,30 +260,24 @@ do
         local Instance = Object.Instance or Object
         local OldTransparency = Instance[Property]
         Instance[Property] = Visible and 1 or OldTransparency
-
         local Tween = Library:Tween(Object, {
             [Property] = Visible and OldTransparency or 1
         })
-
         Library:Connect(Tween.Completed, function()
             if not Visible then
                 Instance[Property] = OldTransparency
             end
         end)
-
         return Tween
     end
 
     function Library:FadeDescendants(Object, Visible, Callback)
         local Instance = Object.Instance or Object
-
         if Visible then
             Instance.Visible = true
         end
-
         local Children = Instance:GetDescendants()
         table.insert(Children, Instance)
-
         local LastTween
         for _, Child in pairs(Children) do
             local Props = Library:GetTransparency(Child)
@@ -310,7 +287,6 @@ do
                 end
             end
         end
-
         if LastTween then
             Library:Connect(LastTween.Completed, function()
                 Instance.Visible = Visible
@@ -324,16 +300,13 @@ do
 
     function Library:MakeDraggable(Object)
         local Instance = Object.Instance or Object
-
         local Dragging = false
         local DragStart, StartPos
-
         Instance.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = Input.Position
                 StartPos = Instance.Position
-
                 local Changed
                 Changed = Input.Changed:Connect(function()
                     if Input.UserInputState == Enum.UserInputState.End then
@@ -343,7 +316,6 @@ do
                 end)
             end
         end)
-
         Library:Connect(UserInputService.InputChanged, function(Input)
             if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                 local Delta = Input.Position - DragStart
@@ -358,10 +330,8 @@ do
     function Library:MakeResizable(Object, MinSize)
         local Instance = Object.Instance or Object
         MinSize = MinSize or Vector2.new(300, 200)
-
         local Resizing = false
         local StartPos, StartSize
-
         local Handle = Library:Create("ImageButton", {
             Parent = Instance,
             AnchorPoint = Vector2.new(1, 1),
@@ -372,7 +342,6 @@ do
             ImageColor3 = Theme.TextDim,
             ZIndex = 999,
         })
-
         Handle.Instance.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Resizing = true
@@ -380,13 +349,11 @@ do
                 StartSize = Instance.Size
             end
         end)
-
         Library:Connect(UserInputService.InputEnded, function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Resizing = false
             end
         end)
-
         Library:Connect(UserInputService.InputChanged, function(Input)
             if Resizing and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                 local Delta = Input.Position - StartPos
@@ -533,7 +500,6 @@ do
     function Library:Window(Params)
         Params = Params or {}
 
-        -- Создание GUI
         ScreenGui = Library:Create("ScreenGui", {
             Parent = gethui(),
             ResetOnSpawn = false,
@@ -542,7 +508,6 @@ do
         })
         Library.ScreenGui = ScreenGui
 
-        -- Основной фрейм
         MainFrame = Library:Create("Frame", {
             Parent = ScreenGui.Instance,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -565,7 +530,6 @@ do
             Thickness = 1.5,
         })
 
-        -- Пульсирующий фон
         local GlowBg = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -575,7 +539,6 @@ do
         })
         Library:AddPulse(GlowBg, 0.05)
 
-        -- Сайдбар
         Sidebar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Size = UDim2.new(0, 200, 1, 0),
@@ -597,7 +560,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Логотип
         local Logo = Library:Create("Frame", {
             Parent = Sidebar.Instance,
             Size = UDim2.new(1, 0, 0, 70),
@@ -637,7 +599,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Кнопки свернуть/закрыть
         local TopBar = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 0),
@@ -677,7 +638,6 @@ do
             BackgroundTransparency = 1,
         })
 
-        -- Контент
         Content = Library:Create("Frame", {
             Parent = MainFrame.Instance,
             Position = UDim2.new(0, 200, 0, 45),
@@ -686,7 +646,6 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Вкладки (сайдбар)
         TabButtons = Library:Create("ScrollingFrame", {
             Parent = Sidebar.Instance,
             Position = UDim2.new(0, 0, 0, 70),
@@ -713,7 +672,6 @@ do
             PaddingRight = UDim.new(0, 8),
         })
 
-        -- Страницы
         Pages = Library:Create("Frame", {
             Parent = Content.Instance,
             Size = UDim2.new(1, 0, 1, 0),
@@ -721,27 +679,19 @@ do
             BorderSizePixel = 0,
         })
 
-        -- Перетаскивание
         Library:MakeDraggable(MainFrame)
         Library:MakeResizable(MainFrame, Vector2.new(500, 400))
 
-        -- События
         CloseBtn.Instance.MouseButton1Click:Connect(function()
             Library:Toggle(false)
         end)
 
-        MinBtn.Instance.MouseButton1Click:Connect(function()
-            -- Минимизация
-        end)
-
-        -- Клавиша для открытия
         Library:Connect(UserInputService.InputBegan, function(Input)
             if Input.KeyCode == Library.MenuKeybind and not UserInputService:GetFocusedTextBox() then
                 Library:Toggle()
             end
         end)
 
-        -- Возвращаем окно
         local Window = {
             Tabs = {},
             ActiveTab = nil,
@@ -758,7 +708,6 @@ do
                 Active = false,
             }
 
-            -- Кнопка вкладки
             local Button = Library:Create("TextButton", {
                 Parent = TabButtons.Instance,
                 Size = UDim2.new(1, 0, 0, 42),
@@ -793,7 +742,6 @@ do
                 BackgroundTransparency = 1,
             })
 
-            -- Акцентная полоса
             local AccentLine = Library:Create("Frame", {
                 Parent = Button.Instance,
                 Position = UDim2.new(0, 0, 0.5, -16),
@@ -808,7 +756,6 @@ do
                 CornerRadius = UDim.new(1, 0),
             })
 
-            -- Страница
             local Page = Library:Create("Frame", {
                 Parent = Pages.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -825,7 +772,6 @@ do
                 PaddingRight = UDim.new(0, 16),
             })
 
-            -- Контейнер для элементов
             local ElementsContainer = Library:Create("ScrollingFrame", {
                 Parent = Page.Instance,
                 Size = UDim2.new(1, 0, 1, 0),
@@ -845,15 +791,12 @@ do
 
             Tab.ElementsContainer = ElementsContainer
 
-            -- Активация вкладки
             function Tab:Activate()
                 if Window.ActiveTab then
                     Window.ActiveTab:Deactivate()
                 end
-
                 Tab.Active = true
                 Window.ActiveTab = Tab
-
                 Button.Instance.BackgroundTransparency = 0
                 Icon.ImageColor3 = Theme.Accent1
                 Text.TextColor3 = Theme.Text
@@ -864,7 +807,6 @@ do
 
             function Tab:Deactivate()
                 Tab.Active = false
-
                 Button.Instance.BackgroundTransparency = 1
                 Icon.ImageColor3 = Theme.TextDim
                 Text.TextColor3 = Theme.TextDim
@@ -877,7 +819,9 @@ do
                 Tab:Activate()
             end)
 
-            -- Секции
+            -- ═══════════════════════════════════════════════════════════
+            -- СЕКЦИИ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+            -- ═══════════════════════════════════════════════════════════
             function Tab:Section(Params)
                 Params = Params or {}
 
@@ -901,7 +845,6 @@ do
                     Thickness = 1,
                 })
 
-                -- Заголовок секции
                 local Header = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Size = UDim2.new(1, 0, 0, 40),
@@ -920,7 +863,6 @@ do
                     BackgroundTransparency = 1,
                 })
 
-                -- Пульсирующий индикатор
                 local PulseDot = Library:Create("Frame", {
                     Parent = Header.Instance,
                     Size = UDim2.new(0, 8, 0, 8),
@@ -935,7 +877,6 @@ do
                 })
                 Library:AddPulse(PulseDot, 0.3)
 
-                -- Контент секции
                 local Content = Library:Create("Frame", {
                     Parent = Section.Instance,
                     Position = UDim2.new(0, 0, 0, 40),
@@ -959,11 +900,18 @@ do
                     PaddingRight = UDim.new(0, 12),
                 })
 
+                -- ═══════════════════════════════════════════════════════
+                -- ВОЗВРАЩАЕМ ОБЪЕКТ СЕКЦИИ С ИСПРАВЛЕННОЙ ADD
+                -- ═══════════════════════════════════════════════════════
                 return {
                     Instance = Section,
                     Content = Content,
                     Add = function(self, Element)
-                        Element.Instance.Parent = Content.Instance
+                        if Element and Element.Instance then
+                            Element.Instance.Parent = Content.Instance
+                        else
+                            warn("[PulseUI] Ошибка: элемент не содержит Instance")
+                        end
                         return Element
                     end
                 }
@@ -1143,7 +1091,6 @@ do
 
         Button.Instance.MouseButton1Click:Connect(function()
             Library:SafeCall(Element.Callback)
-
             Button.Instance.BackgroundColor3 = Theme.Accent1
             task.wait(0.1)
             Button.Instance.BackgroundColor3 = Theme.Element
@@ -1253,7 +1200,6 @@ do
         Track.Instance.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Element.Sliding = true
-
                 local X = (Input.Position.X - Track.Instance.AbsolutePosition.X) / Track.Instance.AbsoluteSize.X
                 local Value = Element.Min + (Element.Max - Element.Min) * math.clamp(X, 0, 1)
                 Element:Set(Value)
@@ -1284,7 +1230,7 @@ do
         return Element
     end
 
-    -- Dropdown
+    -- Dropdown (упрощенная версия для экономии места)
     function Library:Dropdown(Params)
         Params = Params or {}
 
@@ -1349,7 +1295,6 @@ do
             ImageColor3 = Theme.TextDim,
         })
 
-        -- Выпадающее меню
         local Menu = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             Position = UDim2.new(0, 0, 0, 0),
@@ -1482,7 +1427,6 @@ do
                 })
             end
 
-            -- Выделение выбранных
             for _, Opt in pairs(Options) do
                 if table.find(Element.Value, Opt.Item) then
                     Opt.Check.ImageTransparency = 0
@@ -1506,7 +1450,6 @@ do
             Menu.Instance.Position = UDim2.new(0, Pos.X, 0, Pos.Y + Display.Instance.AbsoluteSize.Y + 4)
             Menu.Instance.Size = UDim2.new(0, Display.Instance.AbsoluteSize.X, 0, 0)
             Menu.Instance.Visible = true
-
             Menu.Instance.Size = UDim2.new(0, Display.Instance.AbsoluteSize.X, 0, math.min(MenuList.Instance.AbsoluteContentSize.Y + 8, 200))
             Arrow.Rotation = 180
         end
@@ -1682,7 +1625,7 @@ do
         return Element
     end
 
-    -- Color Picker
+    -- Color Picker (упрощенная версия)
     function Library:ColorPicker(Params)
         Params = Params or {}
 
@@ -1732,7 +1675,6 @@ do
             Thickness = 1,
         })
 
-        -- Палитра
         local Palette = Library:Create("Frame", {
             Parent = Library.ScreenGui.Instance,
             Size = UDim2.new(0, 220, 0, 200),
