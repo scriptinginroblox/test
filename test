@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
--- PULSE UI V2 - ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
--- Исправлены все ошибки с FontFace
+-- PULSE UI V2 - ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+-- Исправлены все ошибки: FontFace, Disconnect, AddPulse
 -- ═══════════════════════════════════════════════════════════════════
 
 if getgenv().PulseUI and getgenv().PulseUI.Unload then
@@ -100,14 +100,11 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+-- ШРИФТ
 -- ═══════════════════════════════════════════════════════════════════
-
--- Создаем объекты шрифтов (если возможно)
 local FontObject = nil
 local FontBoldObject = nil
 
--- Пробуем создать кастомные шрифты через Font.new
 pcall(function()
     FontObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
@@ -116,7 +113,6 @@ pcall(function()
     FontBoldObject = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 end)
 
--- Функция для получения шрифта (возвращает либо объект Font, либо Enum)
 local function GetFont(UseBold)
     if UseBold then
         return FontBoldObject or Enum.Font.SourceSansBold
@@ -124,7 +120,6 @@ local function GetFont(UseBold)
     return FontObject or Enum.Font.SourceSans
 end
 
--- Сохраняем шрифты
 local Font = GetFont(false)
 local FontBold = GetFont(true)
 
@@ -150,6 +145,7 @@ local PulseUI = {
     Font = Font,
     FontBold = FontBold,
     ScreenGui = nil,
+    PulseConnections = {}, -- отдельный список для пульсации
 }
 
 do
@@ -164,39 +160,28 @@ do
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ (ИСПРАВЛЕННАЯ)
+    -- ФУНКЦИЯ СОЗДАНИЯ
     -- ═══════════════════════════════════════════════════════════════
 
     function Library:Create(Class, Props)
         local Inst = Instance.new(Class)
 
         if Class:match("Text") then
-            -- Пытаемся установить FontFace (только если это объект Font, а не Enum)
             if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
-                pcall(function()
-                    Inst.FontFace = Library.Font
-                end)
+                pcall(function() Inst.FontFace = Library.Font end)
             end
-            
-            -- Если FontFace не сработал или это Enum, используем Font (Enum)
             if not Inst.FontFace then
                 pcall(function()
                     if type(Library.Font) == "table" and Library.Font.ClassName == "Font" then
                         Inst.Font = Library.Font
                     else
-                        -- Если это Enum, используем его напрямую
                         Inst.Font = Library.Font
                     end
                 end)
             end
-            
-            -- Если ничего не сработало, используем стандартный Enum
             if not Inst.FontFace and not Inst.Font then
-                pcall(function()
-                    Inst.Font = Enum.Font.SourceSans
-                end)
+                pcall(function() Inst.Font = Enum.Font.SourceSans end)
             end
-            
             Inst.TextSize = 14
             Inst.TextColor3 = Theme.Text
         end
@@ -228,7 +213,9 @@ do
         else
             Conn = Sig:Connect(Callback)
         end
-        table.insert(Library.Connections, Conn)
+        if Conn then
+            table.insert(Library.Connections, Conn)
+        end
         return Conn
     end
 
@@ -330,15 +317,46 @@ do
         end
     end
 
+    -- ═══════════════════════════════════════════════════════════════
+    -- UNLOAD (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    -- ═══════════════════════════════════════════════════════════════
+
     function Library:Unload()
-        for _, C in pairs(Library.Connections) do pcall(C.Disconnect, C) end
-        for _, T in pairs(Library.Threads) do pcall(coroutine.close, T) end
-        if Library.ScreenGui then Library.ScreenGui.Instance:Destroy() end
+        -- Отключаем все соединения с проверкой
+        for _, C in pairs(Library.Connections) do
+            if C and C.Disconnect then
+                pcall(C.Disconnect, C)
+            end
+        end
+        Library.Connections = {}
+        
+        -- Отключаем пульсации
+        for _, C in pairs(Library.PulseConnections) do
+            if C and C.Disconnect then
+                pcall(C.Disconnect, C)
+            end
+        end
+        Library.PulseConnections = {}
+        
+        -- Закрываем потоки
+        for _, T in pairs(Library.Threads) do
+            if T then
+                pcall(coroutine.close, T)
+            end
+        end
+        Library.Threads = {}
+        
+        -- Уничтожаем GUI
+        if Library.ScreenGui and Library.ScreenGui.Instance then
+            pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
+            Library.ScreenGui = nil
+        end
+        
         getgenv().PulseUI = nil
     end
 
     -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСАЦИЯ
+    -- ПУЛЬСАЦИЯ (ИСПРАВЛЕННАЯ)
     -- ═══════════════════════════════════════════════════════════════
 
     local PulseObjects = {}
@@ -348,12 +366,15 @@ do
         local Inst = Obj.Instance or Obj
         
         if Inst:IsA("UIStroke") then
-            Library:Connect(RunService.RenderStepped, function()
+            local Conn = Library:Connect(RunService.RenderStepped, function()
                 if Inst and Inst.Parent then
                     local P = math.sin(tick() * Library.PulseSpeed) * 0.1 + 0.2
                     Inst.Transparency = math.clamp(P, 0, 0.6)
                 end
             end)
+            if Conn then
+                table.insert(Library.PulseConnections, Conn)
+            end
             return
         end
         
@@ -375,7 +396,8 @@ do
         })
     end
 
-    Library:Connect(RunService.RenderStepped, function()
+    -- Основной цикл пульсации
+    local PulseConnection = Library:Connect(RunService.RenderStepped, function()
         local Time = tick()
         for _, Data in pairs(PulseObjects) do
             if Data.Object and Data.Object.Parent then
@@ -398,6 +420,10 @@ do
             end
         end
     end)
+    
+    if PulseConnection then
+        table.insert(Library.PulseConnections, PulseConnection)
+    end
 
     -- ═══════════════════════════════════════════════════════════════
     -- ГЛАВНОЕ ОКНО
@@ -1779,7 +1805,7 @@ do
             Connection = UserInputService.InputBegan:Connect(function(Input)
                 if Input.KeyCode == Enum.KeyCode.Escape then
                     Element.Picking = false
-                    Connection:Disconnect()
+                    if Connection then Connection:Disconnect() end
                     Element:Set(Element.Default)
                     return
                 end
@@ -1794,7 +1820,7 @@ do
                 end
 
                 Element.Picking = false
-                Connection:Disconnect()
+                if Connection then Connection:Disconnect() end
                 Library.SafeCall(Element.Callback, Element.Value)
             end)
         end
@@ -1866,7 +1892,7 @@ do
                 local Changed = Input.Changed:Connect(function()
                     if Input.UserInputState == Enum.UserInputState.End then
                         Dragging = false
-                        Changed:Disconnect()
+                        if Changed then Changed:Disconnect() end
                     end
                 end)
             end
