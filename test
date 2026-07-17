@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- PULSE UI - Премиальная библиотека для создания интерфейсов
--- Исправленная версия (поддержка разных версий Roblox)
+-- Полностью исправленная версия (работает на всех версиях Roblox)
 -- Дизайн: Желто-оранжевая гамма с пульсирующими элементами
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -40,7 +40,6 @@ gethui = gethui or function() return CoreGui end
 -- ИКОНКИ (SVG в формате rbxassetid)
 -- ═══════════════════════════════════════════════════════════════════
 local Icons = {
-    -- Навигация
     ["home"] = "rbxassetid://98755624629571",
     ["settings"] = "rbxassetid://80758916183665",
     ["menu"] = "rbxassetid://77021539815611",
@@ -85,29 +84,20 @@ local Icons = {
 -- ТЕМА (Желто-оранжевая гамма)
 -- ═══════════════════════════════════════════════════════════════════
 local Theme = {
-    -- Основные цвета
     Background = Color3.fromRGB(18, 14, 10),
     Background2 = Color3.fromRGB(24, 18, 14),
     Element = Color3.fromRGB(35, 28, 22),
     ElementHover = Color3.fromRGB(45, 36, 28),
     ElementActive = Color3.fromRGB(55, 44, 34),
-    
-    -- Акцентные цвета (желто-оранжевые)
     Accent1 = Color3.fromRGB(255, 180, 50),
     Accent2 = Color3.fromRGB(255, 140, 20),
     Accent3 = Color3.fromRGB(255, 200, 80),
     Accent4 = Color3.fromRGB(220, 120, 30),
-    
-    -- Текст
     Text = Color3.fromRGB(255, 245, 235),
     TextDim = Color3.fromRGB(200, 185, 170),
     TextDark = Color3.fromRGB(140, 130, 120),
-    
-    -- Обводки
     Outline = Color3.fromRGB(60, 48, 38),
     OutlineLight = Color3.fromRGB(80, 65, 50),
-    
-    -- Специальные
     Glow = Color3.fromRGB(255, 160, 40),
     Shadow = Color3.fromRGB(0, 0, 0),
     Success = Color3.fromRGB(100, 220, 100),
@@ -115,60 +105,61 @@ local Theme = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════
--- ШРИФТ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+-- ШРИФТ (ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ)
 -- ═══════════════════════════════════════════════════════════════════
-local Font = nil
-local FontBold = nil
 
--- Функция для безопасного создания шрифта
-local function SafeCreateFont(AssetId, Weight, Style)
-    -- Способ 1: Font.new() (новая версия)
-    local Success, Result = pcall(function()
-        return Font.new(AssetId, Weight, Style)
-    end)
-    
-    if Success and Result then
-        return Result
+-- Доступные шрифты в Roblox
+local AvailableFonts = {
+    ["Gotham"] = Enum.Font.Gotham,
+    ["GothamBold"] = Enum.Font.GothamBold,
+    ["GothamItalic"] = Enum.Font.GothamItalic,
+    ["GothamBoldItalic"] = Enum.Font.GothamBoldItalic,
+    ["Arial"] = Enum.Font.Arial,
+    ["ArialBold"] = Enum.Font.ArialBold,
+    ["ArialItalic"] = Enum.Font.ArialItalic,
+    ["ArialBoldItalic"] = Enum.Font.ArialBoldItalic,
+    ["SourceSans"] = Enum.Font.SourceSans,
+    ["SourceSansBold"] = Enum.Font.SourceSansBold,
+    ["SourceSansItalic"] = Enum.Font.SourceSansItalic,
+    ["SourceSansBoldItalic"] = Enum.Font.SourceSansBoldItalic,
+    ["Roboto"] = Enum.Font.Roboto,
+    ["RobotoBold"] = Enum.Font.RobotoBold,
+    ["RobotoItalic"] = Enum.Font.RobotoItalic,
+    ["RobotoBoldItalic"] = Enum.Font.RobotoBoldItalic,
+    ["Ubuntu"] = Enum.Font.Ubuntu,
+    ["UbuntuBold"] = Enum.Font.UbuntuBold,
+    ["UbuntuItalic"] = Enum.Font.UbuntuItalic,
+    ["UbuntuBoldItalic"] = Enum.Font.UbuntuBoldItalic,
+    ["Legacy"] = Enum.Font.Legacy,
+}
+
+-- Функция для безопасного получения шрифта
+local function GetSafeFont(FontName)
+    if AvailableFonts[FontName] then
+        return AvailableFonts[FontName]
     end
-    
-    -- Способ 2: Font.fromEnum() (старая версия)
-    Success, Result = pcall(function()
-        if Font and Font.fromEnum then
-            return Font.fromEnum(Enum.Font.GothamSemiBold)
-        end
-    end)
-    
-    if Success and Result then
-        return Result
-    end
-    
-    -- Способ 3: Стандартный Enum
-    return Enum.Font.GothamSemiBold
+    return Enum.Font.SourceSans
 end
 
--- Пробуем получить Font из глобальной переменной
-local Success, FontObject = pcall(function()
-    return Font
+-- Создаем шрифты
+local Font = GetSafeFont("SourceSans")
+local FontBold = GetSafeFont("SourceSansBold")
+
+-- Пробуем создать кастомный шрифт через Font.new (если доступно)
+local Success, CustomFont = pcall(function()
+    return Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 end)
 
-if Success and FontObject then
-    Font = FontObject
-else
-    -- Создаем Font через стандартный способ
-    pcall(function()
-        Font = Enum.Font.GothamSemiBold
-    end)
+if Success and CustomFont then
+    Font = CustomFont
 end
 
--- Создаем шрифты с проверкой
-if Font == Enum.Font.GothamSemiBold then
-    -- Используем стандартные
-    Font = Enum.Font.GothamSemiBold
-    FontBold = Enum.Font.GothamBold
-else
-    -- Пробуем создать кастомные
-    Font = SafeCreateFont("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    FontBold = SafeCreateFont("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+local Success, CustomFontBold = pcall(function()
+    return Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+end)
+
+if Success and CustomFontBold then
+    FontBold = CustomFontBold
 end
 
 -- ═══════════════════════════════════════════════════════════════════
@@ -181,29 +172,23 @@ local PulseUI = {
     Threads = {},
     Elements = {},
     OpenFrames = {},
-    
     Directory = "PulseUI",
     Folders = {
         Configs = "/Configs",
         Themes = "/Themes",
         Assets = "/Assets"
     },
-    
     MenuKeybind = Enum.KeyCode.RightControl,
     TweenSpeed = 0.3,
     PulseSpeed = 1.5,
-    
     IsOpen = false,
     IsMobile = IsMobile,
-    
     Registry = {},
     Theme = Theme,
     Icons = Icons,
     Font = Font,
     FontBold = FontBold,
-    
     ScreenGui = nil,
-    Window = nil,
 }
 
 do
@@ -224,19 +209,25 @@ do
     function Library:Create(Class, Properties)
         local Instance = Instance.new(Class)
 
-        -- Устанавливаем шрифт только если это текстовый объект
         if Class == "TextButton" or Class == "TextLabel" or Class == "TextBox" then
-            -- Проверяем, что шрифт существует
-            if Library.Font then
+            -- Используем доступные шрифты
+            if type(Library.Font) == "table" then
                 pcall(function()
                     Instance.FontFace = Library.Font
                 end)
             end
             
-            -- Если не получилось установить FontFace, используем стандартный
+            -- Если FontFace не сработал, используем Enum.Font
             if not Instance.FontFace then
                 pcall(function()
-                    Instance.Font = Enum.Font.GothamSemiBold
+                    Instance.Font = Library.Font
+                end)
+            end
+            
+            -- Если ничего не сработало, используем SourceSans
+            if not Instance.FontFace and not Instance.Font then
+                pcall(function()
+                    Instance.Font = Enum.Font.SourceSans
                 end)
             end
             
@@ -660,7 +651,7 @@ do
         local LogoText = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "PULSE",
-            FontFace = Library.FontBold or Enum.Font.GothamBold,
+            FontFace = Library.FontBold or Enum.Font.SourceSansBold,
             TextSize = 20,
             TextColor3 = Theme.Accent1,
             Position = UDim2.new(0, 55, 0.5, -6),
@@ -671,7 +662,7 @@ do
         local LogoSub = Library:Create("TextLabel", {
             Parent = Logo.Instance,
             Text = "UI",
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 12,
             TextColor3 = Theme.TextDim,
             Position = UDim2.new(0, 55, 0.5, 10),
@@ -711,7 +702,7 @@ do
         local TitleText = Library:Create("TextLabel", {
             Parent = TopBar.Instance,
             Text = Params.Title or "Pulse UI",
-            FontFace = Library.FontBold or Enum.Font.GothamBold,
+            FontFace = Library.FontBold or Enum.Font.SourceSansBold,
             TextSize = 16,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 16, 0.5, 0),
@@ -827,7 +818,7 @@ do
             local Text = Library:Create("TextLabel", {
                 Parent = Button.Instance,
                 Text = Tab.Name,
-                FontFace = Library.Font or Enum.Font.GothamSemiBold,
+                FontFace = Library.Font or Enum.Font.SourceSans,
                 TextSize = 14,
                 TextColor3 = Theme.TextDim,
                 Position = UDim2.new(0, 40, 0.5, 0),
@@ -954,7 +945,7 @@ do
                 local HeaderText = Library:Create("TextLabel", {
                     Parent = Header.Instance,
                     Text = Params.Name or "Section",
-                    FontFace = Library.FontBold or Enum.Font.GothamBold,
+                    FontFace = Library.FontBold or Enum.Font.SourceSansBold,
                     TextSize = 15,
                     TextColor3 = Theme.Text,
                     Position = UDim2.new(0, 14, 0.5, 0),
@@ -1049,7 +1040,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0.5, 0),
@@ -1152,7 +1143,7 @@ do
             BorderSizePixel = 0,
             Text = Element.Name,
             TextColor3 = Theme.Text,
-            FontFace = Library.FontBold or Enum.Font.GothamBold,
+            FontFace = Library.FontBold or Enum.Font.SourceSansBold,
             TextSize = 14,
         })
 
@@ -1221,7 +1212,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0, 0),
@@ -1231,7 +1222,7 @@ do
         local ValueLabel = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = tostring(Element.Default) .. Element.Suffix,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Accent1,
             AnchorPoint = Vector2.new(1, 0),
@@ -1350,7 +1341,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0, 0),
@@ -1366,7 +1357,7 @@ do
             BorderSizePixel = 0,
             Text = Element.Default or "Select...",
             TextColor3 = Theme.Text,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
         })
@@ -1458,7 +1449,7 @@ do
                     BorderSizePixel = 0,
                     Text = Item,
                     TextColor3 = Theme.TextDim,
-                    FontFace = Library.Font or Enum.Font.GothamSemiBold,
+                    FontFace = Library.Font or Enum.Font.SourceSans,
                     TextSize = 13,
                     TextXAlignment = Enum.TextXAlignment.Left,
                 })
@@ -1629,7 +1620,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0, 0),
@@ -1645,7 +1636,7 @@ do
             BorderSizePixel = 0,
             Text = Element.Default,
             TextColor3 = Theme.Text,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             PlaceholderText = Element.Placeholder,
             PlaceholderColor3 = Theme.TextDark,
@@ -1708,7 +1699,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Params.Bold and (Library.FontBold or Enum.Font.GothamBold) or (Library.Font or Enum.Font.GothamSemiBold),
+            FontFace = Params.Bold and (Library.FontBold or Enum.Font.SourceSansBold) or (Library.Font or Enum.Font.SourceSans),
             TextSize = Params.Size or 14,
             TextColor3 = Params.Dim and Theme.TextDim or Theme.Text,
             Position = UDim2.new(0, 0, 0.5, 0),
@@ -1746,7 +1737,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0.5, 0),
@@ -1910,7 +1901,7 @@ do
         local Label = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Element.Name,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 14,
             TextColor3 = Theme.Text,
             Position = UDim2.new(0, 0, 0.5, 0),
@@ -1927,7 +1918,7 @@ do
             BorderSizePixel = 0,
             Text = tostring(Element.Default):gsub("Enum.KeyCode.", ""),
             TextColor3 = Theme.Text,
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 13,
         })
 
@@ -2077,7 +2068,7 @@ do
         local Title = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Title or "Notification",
-            FontFace = Library.FontBold or Enum.Font.GothamBold,
+            FontFace = Library.FontBold or Enum.Font.SourceSansBold,
             TextSize = 15,
             TextColor3 = Theme.Text,
             BackgroundTransparency = 1,
@@ -2086,7 +2077,7 @@ do
         local Desc = Library:Create("TextLabel", {
             Parent = Container.Instance,
             Text = Params.Description or "",
-            FontFace = Library.Font or Enum.Font.GothamSemiBold,
+            FontFace = Library.Font or Enum.Font.SourceSans,
             TextSize = 13,
             TextColor3 = Theme.TextDim,
             BackgroundTransparency = 1,
