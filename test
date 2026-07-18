@@ -22,19 +22,13 @@ local DefaultTheme = {
     GroupBg = Color3.fromRGB(20, 20, 25),
     ElementBg = Color3.fromRGB(24, 24, 30),
     ElementHover = Color3.fromRGB(34, 34, 42),
-    Text = Color3.fromRGB(255, 255, 255), -- Белый текст везде
+    Text = Color3.fromRGB(255, 255, 255),
     TextDim = Color3.fromRGB(150, 150, 165),
     White = Color3.fromRGB(255, 255, 255),
     ToggleOff = Color3.fromRGB(60, 60, 70),
-    ToggleOffGradStart = Color3.fromRGB(50, 50, 60),
-    ToggleOffGradEnd = Color3.fromRGB(70, 70, 80),
+    ToggleOn = Color3.fromRGB(255, 140, 0),
     OrangeStart = Color3.fromRGB(255, 120, 0),
-    OrangeMid = Color3.fromRGB(255, 180, 0),
-    OrangeEnd = Color3.fromRGB(200, 80, 0),
-    OrangeDim = Color3.fromRGB(200, 100, 0),
     Border = Color3.fromRGB(35, 35, 42),
-    
-    -- Цвета градиента (только для иконок и названия)
     GradientStart = Color3.fromRGB(255, 200, 80),
     GradientEnd = Color3.fromRGB(255, 120, 0)
 }
@@ -100,16 +94,13 @@ function PyroHubLibrary:CreateWindow(config)
     local Theme = config.Theme or DefaultTheme
     local Size = config.Size or UDim2.new(0, 720, 0, 500)
     local Keybind = config.Keybind or Enum.KeyCode.RightShift
-    local SaveConfig = config.SaveConfig or false
 
-    -- Создание ScreenGui
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = Title .. "Hub"
     ScreenGui.Parent = CoreGui
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     ScreenGui.DisplayOrder = 999
 
-    -- Главный фрейм
     local MainFrame = Instance.new("Frame")
     MainFrame.Size = Size
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -119,27 +110,23 @@ function PyroHubLibrary:CreateWindow(config)
     Round(MainFrame, 8)
     MakeDraggable(MainFrame)
 
-    -- Обводка с градиентом
     local MainStroke = Instance.new("UIStroke")
     MainStroke.Thickness = 2.5
     MainStroke.Parent = MainFrame
     CreateGradient(MainStroke, Theme)
 
-    -- Сайдбар
     local Sidebar = Instance.new("Frame")
     Sidebar.Size = UDim2.new(0, 190, 1, 0)
     Sidebar.BackgroundColor3 = Theme.SidebarBg
     Sidebar.Parent = MainFrame
     Round(Sidebar, 8)
 
-    -- Заголовок
     local HeaderFrame = Instance.new("Frame")
     HeaderFrame.Size = UDim2.new(1, 0, 0, 55)
     HeaderFrame.Position = UDim2.new(0, 12, 0, 12)
     HeaderFrame.BackgroundTransparency = 1
     HeaderFrame.Parent = Sidebar
 
-    -- Иконка с градиентом
     local HeaderIcon = Instance.new("ImageLabel")
     HeaderIcon.Size = UDim2.new(0, 28, 0, 28)
     HeaderIcon.Position = UDim2.new(0, 0, 0.5, 0)
@@ -147,10 +134,9 @@ function PyroHubLibrary:CreateWindow(config)
     HeaderIcon.BackgroundTransparency = 1
     HeaderIcon.Image = Icon
     HeaderIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    CreateGradient(HeaderIcon, Theme) -- ГРАДИЕНТ ТОЛЬКО НА ИКОНКЕ
+    CreateGradient(HeaderIcon, Theme)
     HeaderIcon.Parent = HeaderFrame
 
-    -- Заголовок текст с градиентом
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Text = Title .. "\n" .. SubTitle
     TitleLabel.Size = UDim2.new(1, -38, 1, 0)
@@ -162,9 +148,8 @@ function PyroHubLibrary:CreateWindow(config)
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
     TitleLabel.Parent = HeaderFrame
-    CreateGradient(TitleLabel, Theme) -- ГРАДИЕНТ ТОЛЬКО НА PYRO HUB
+    CreateGradient(TitleLabel, Theme)
 
-    -- Контейнер для вкладок
     local TabContainer = Instance.new("ScrollingFrame")
     TabContainer.Size = UDim2.new(1, 0, 1, -80)
     TabContainer.Position = UDim2.new(0, 0, 0, 80)
@@ -174,7 +159,6 @@ function PyroHubLibrary:CreateWindow(config)
     TabContainer.Parent = Sidebar
     Instance.new("UIListLayout", TabContainer).Padding = UDim.new(0, 4)
 
-    -- Поиск
     local TopBar = Instance.new("Frame")
     TopBar.Size = UDim2.new(1, -205, 0, 55)
     TopBar.Position = UDim2.new(0, 205, 0, 0)
@@ -189,7 +173,6 @@ function PyroHubLibrary:CreateWindow(config)
     SearchBar.Parent = TopBar
     Round(SearchBar, 6)
 
-    -- Иконка поиска с градиентом
     local SearchIcon = Instance.new("ImageLabel")
     SearchIcon.Size = UDim2.new(0, 14, 0, 14)
     SearchIcon.Position = UDim2.new(0, 10, 0.5, 0)
@@ -197,7 +180,7 @@ function PyroHubLibrary:CreateWindow(config)
     SearchIcon.BackgroundTransparency = 1
     SearchIcon.Image = "rbxassetid://121018724060431"
     SearchIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    CreateGradient(SearchIcon, Theme) -- ГРАДИЕНТ НА ИКОНКЕ ПОИСКА
+    CreateGradient(SearchIcon, Theme)
     SearchIcon.Parent = SearchBar
 
     local SearchInput = Instance.new("TextBox")
@@ -206,13 +189,12 @@ function PyroHubLibrary:CreateWindow(config)
     SearchInput.BackgroundTransparency = 1
     SearchInput.Text = ""
     SearchInput.PlaceholderText = "Search"
-    SearchInput.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+    SearchInput.TextColor3 = Theme.Text
     SearchInput.PlaceholderColor3 = Theme.TextDim
     SearchInput.Font = Enum.Font.GothamMedium
     SearchInput.TextSize = 13
     SearchInput.Parent = SearchBar
 
-    -- Кнопка закрытия с градиентом
     local CloseBtn = Instance.new("ImageButton")
     CloseBtn.Size = UDim2.new(0, 20, 0, 20)
     CloseBtn.Position = UDim2.new(1, -12, 0.5, 0)
@@ -220,11 +202,10 @@ function PyroHubLibrary:CreateWindow(config)
     CloseBtn.BackgroundTransparency = 1
     CloseBtn.Image = "rbxassetid://110786993356448"
     CloseBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    CreateGradient(CloseBtn, Theme) -- ГРАДИЕНТ НА КНОПКЕ ЗАКРЫТИЯ
+    CreateGradient(CloseBtn, Theme)
     CloseBtn.Parent = TopBar
     CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-    -- Объект окна
     local Window = {
         Tabs = {},
         ActiveTab = nil,
@@ -233,37 +214,18 @@ function PyroHubLibrary:CreateWindow(config)
         MainFrame = MainFrame,
         ScreenGui = ScreenGui,
         Visible = true,
-        
-        -- Метод для выгрузки
-        Unload = function()
-            ScreenGui:Destroy()
-        end,
-        
-        -- Метод для скрытия/показа
-        SetVisible = function(self, visible)
-            MainFrame.Visible = visible
-            self.Visible = visible
-        end,
-        
-        -- Метод для получения флага
-        GetFlag = function(self, flag)
-            return self.Flags[flag]
-        end,
-        
-        -- Метод для установки флага
-        SetFlag = function(self, flag, value)
-            self.Flags[flag] = value
-        end
+        Unload = function() ScreenGui:Destroy() end,
+        SetVisible = function(self, visible) MainFrame.Visible = visible; self.Visible = visible end,
+        GetFlag = function(self, flag) return self.Flags[flag] end,
+        SetFlag = function(self, flag, value) self.Flags[flag] = value end
     }
-    
-    -- Бинд на открытие/закрытие
+
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Keybind then
             Window:SetVisible(not Window.Visible)
         end
     end)
 
-    -- Функция добавления вкладки
     function Window:AddTab(name, iconAsset)
         local TabBtn = Instance.new("TextButton")
         TabBtn.Size = UDim2.new(1, 0, 0, 30)
@@ -278,7 +240,7 @@ function PyroHubLibrary:CreateWindow(config)
         TabIcon.AnchorPoint = Vector2.new(0, 0.5)
         TabIcon.BackgroundTransparency = 1
         TabIcon.Image = iconAsset or ""
-        TabIcon.ImageColor3 = Theme.TextDim -- СЕРЫЙ ПО УМОЛЧАНИЮ
+        TabIcon.ImageColor3 = Theme.TextDim
         TabIcon.Parent = TabBtn
 
         local TabLabel = Instance.new("TextLabel")
@@ -288,11 +250,10 @@ function PyroHubLibrary:CreateWindow(config)
         TabLabel.BackgroundTransparency = 1
         TabLabel.Font = Enum.Font.GothamMedium
         TabLabel.TextSize = 12
-        TabLabel.TextColor3 = Theme.TextDim -- СЕРЫЙ ПО УМОЛЧАНИЮ
+        TabLabel.TextColor3 = Theme.TextDim
         TabLabel.TextXAlignment = Enum.TextXAlignment.Left
         TabLabel.Parent = TabBtn
 
-        -- Контент вкладки
         local TabContent = Instance.new("Frame")
         TabContent.Size = UDim2.new(1, -210, 1, -60)
         TabContent.Position = UDim2.new(0, 210, 0, 60)
@@ -314,7 +275,6 @@ function PyroHubLibrary:CreateWindow(config)
         ContentLayout.AutomaticSize = Enum.AutomaticSize.Y
         ContentLayout.Parent = MainScroll
 
-        -- Колонки
         local Columns = Instance.new("Frame")
         Columns.Size = UDim2.new(1, 0, 0, 0)
         Columns.BackgroundTransparency = 1
@@ -346,19 +306,17 @@ function PyroHubLibrary:CreateWindow(config)
             if Window.ActiveTab then
                 local prev = Window.ActiveTab
                 prev.TabBtn.BackgroundTransparency = 1
-                -- Убираем градиент с иконки предыдущей вкладки
                 if prev.TabIcon:FindFirstChild("UIGradient") then
                     prev.TabIcon:FindFirstChild("UIGradient").Enabled = false
                 end
                 prev.TabIcon.ImageColor3 = Theme.TextDim
-                prev.TabLabel.TextColor3 = Theme.TextDim -- БЕЛЫЙ ТЕКСТ
+                prev.TabLabel.TextColor3 = Theme.TextDim
                 prev.TabContent.Visible = false
             end
             
             TabBtn.BackgroundTransparency = 0.15
             TabBtn.BackgroundColor3 = Theme.ElementBg
             
-            -- Включаем градиент на иконке активной вкладки
             TabIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
             if not TabIcon:FindFirstChild("UIGradient") then
                 CreateGradient(TabIcon, Theme)
@@ -366,26 +324,15 @@ function PyroHubLibrary:CreateWindow(config)
                 TabIcon:FindFirstChild("UIGradient").Enabled = true
             end
             
-            TabLabel.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
-            
+            TabLabel.TextColor3 = Theme.White
             TabContent.Visible = true
             
-            Window.ActiveTab = {
-                TabBtn = TabBtn,
-                TabIcon = TabIcon,
-                TabLabel = TabLabel,
-                TabContent = TabContent
-            }
+            Window.ActiveTab = {TabBtn = TabBtn, TabIcon = TabIcon, TabLabel = TabLabel, TabContent = TabContent}
         end
         TabBtn.MouseButton1Click:Connect(Select)
 
-        local Tab = {
-            Left = LeftCol,
-            Right = RightCol,
-            Select = Select
-        }
+        local Tab = {Left = LeftCol, Right = RightCol, Select = Select}
 
-        -- Функция добавления группы
         function Tab:AddGroupbox(name, side, iconId)
             local parent = side == 1 and LeftCol or RightCol
             
@@ -406,7 +353,6 @@ function PyroHubLibrary:CreateWindow(config)
             TitleFrame.BackgroundTransparency = 1
             TitleFrame.Parent = Group
 
-            -- Иконка группы с градиентом
             if iconId then
                 local Icon = Instance.new("ImageLabel")
                 Icon.Size = UDim2.new(0, 16, 0, 16)
@@ -415,7 +361,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Icon.BackgroundTransparency = 1
                 Icon.Image = iconId
                 Icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                CreateGradient(Icon, Theme) -- ГРАДИЕНТ НА ИКОНКЕ ГРУППЫ
+                CreateGradient(Icon, Theme)
                 Icon.Parent = TitleFrame
             end
 
@@ -426,7 +372,7 @@ function PyroHubLibrary:CreateWindow(config)
             Title.BackgroundTransparency = 1
             Title.Font = Enum.Font.GothamBold
             Title.TextSize = 13
-            Title.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ (БЕЗ ГРАДИЕНТА)
+            Title.TextColor3 = Theme.White
             Title.TextXAlignment = Enum.TextXAlignment.Left
             Title.Parent = TitleFrame
 
@@ -475,7 +421,7 @@ function PyroHubLibrary:CreateWindow(config)
 
             local GroupObj = {}
 
-            -- ========== ТОГЛ ==========
+            -- ========== ТОГЛ (БЕЗ ГРАДИЕНТА) ==========
             function GroupObj:AddToggle(config)
                 local name = config.Name or "Toggle"
                 local flag = config.Flag or name
@@ -494,7 +440,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamMedium
                 Label.TextSize = 12
-                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextColor3 = Theme.White
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
 
@@ -514,10 +460,6 @@ function PyroHubLibrary:CreateWindow(config)
                 Circle.Parent = SwitchBg
                 Round(Circle, 6)
 
-                -- Градиент на фоне тогла когда включен
-                local OnGrad = CreateGradient(SwitchBg, Theme)
-                OnGrad.Enabled = false
-
                 local State = default
                 
                 local Toggle = {}
@@ -526,12 +468,10 @@ function PyroHubLibrary:CreateWindow(config)
                     State = val
                     if val then
                         Tween(Circle, {Position = UDim2.new(1, -14, 0.5, 0), BackgroundColor3 = Theme.White})
-                        Tween(SwitchBg, {BackgroundColor3 = Color3.new(1, 1, 1)})
-                        OnGrad.Enabled = true
+                        Tween(SwitchBg, {BackgroundColor3 = Theme.ToggleOn})
                     else
                         Tween(Circle, {Position = UDim2.new(0, 2, 0.5, 0), BackgroundColor3 = Theme.TextDim})
                         Tween(SwitchBg, {BackgroundColor3 = Theme.ToggleOff})
-                        OnGrad.Enabled = false
                     end
                     Window.Flags[flag] = val
                     callback(val)
@@ -547,7 +487,7 @@ function PyroHubLibrary:CreateWindow(config)
                 return Toggle
             end
 
-            -- ========== СЛАЙДЕР ==========
+            -- ========== СЛАЙДЕР (С ГРАДИЕНТОМ НА ПОЛЗУНКЕ) ==========
             function GroupObj:AddSlider(config)
                 local name = config.Name or "Slider"
                 local flag = config.Flag or name
@@ -568,7 +508,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamMedium
                 Label.TextSize = 12
-                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextColor3 = Theme.White
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
 
@@ -579,7 +519,7 @@ function PyroHubLibrary:CreateWindow(config)
                 ValueLabel.BackgroundTransparency = 1
                 ValueLabel.Font = Enum.Font.GothamBold
                 ValueLabel.TextSize = 12
-                ValueLabel.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                ValueLabel.TextColor3 = Theme.White
                 ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
                 ValueLabel.Parent = Frame
 
@@ -595,9 +535,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Fill.BackgroundColor3 = Theme.White
                 Fill.Parent = BarBg
                 Round(Fill, 3)
-                
-                -- Градиент на ползунке
-                CreateGradient(Fill, Theme)
+                CreateGradient(Fill, Theme) -- ГРАДИЕНТ НА ПОЛЗУНКЕ
 
                 local Value = default
                 local dragging = false
@@ -655,14 +593,14 @@ function PyroHubLibrary:CreateWindow(config)
                 Btn.Text = name
                 Btn.Font = Enum.Font.GothamMedium
                 Btn.TextSize = 12
-                Btn.TextColor3 = Theme.TextDim -- СЕРЫЙ ТЕКСТ
+                Btn.TextColor3 = Theme.TextDim
                 Btn.TextXAlignment = Enum.TextXAlignment.Center
                 Btn.Parent = Container
                 Round(Btn, 4)
 
                 Btn.MouseEnter:Connect(function()
                     Tween(Btn, {BackgroundColor3 = Theme.ElementHover})
-                    Btn.TextColor3 = Theme.White -- БЕЛЫЙ ПРИ НАВЕДЕНИИ
+                    Btn.TextColor3 = Theme.White
                 end)
                 Btn.MouseLeave:Connect(function()
                     Tween(Btn, {BackgroundColor3 = Theme.ElementBg})
@@ -677,7 +615,7 @@ function PyroHubLibrary:CreateWindow(config)
                 end)
             end
 
-            -- ========== ДРОПДАУН ==========
+            -- ========== ОБЫЧНЫЙ ДРОПДАУН (ВЫБОР ОДНОЙ ФУНКЦИИ) ==========
             function GroupObj:AddDropdown(config)
                 local name = config.Name or "Dropdown"
                 local flag = config.Flag or name
@@ -696,7 +634,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamMedium
                 Label.TextSize = 12
-                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextColor3 = Theme.White
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
 
@@ -707,7 +645,7 @@ function PyroHubLibrary:CreateWindow(config)
                 DropBtn.Text = "  " .. (default or "---")
                 DropBtn.Font = Enum.Font.GothamMedium
                 DropBtn.TextSize = 12
-                DropBtn.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+                DropBtn.TextColor3 = Theme.Text
                 DropBtn.TextXAlignment = Enum.TextXAlignment.Left
                 DropBtn.Parent = Frame
                 Round(DropBtn, 4)
@@ -749,7 +687,7 @@ function PyroHubLibrary:CreateWindow(config)
                     ItemBtn.MouseEnter:Connect(function()
                         ItemBtn.BackgroundTransparency = 0.9
                         ItemBtn.BackgroundColor3 = Theme.ElementHover
-                        ItemBtn.TextColor3 = Theme.White -- БЕЛЫЙ ПРИ НАВЕДЕНИИ
+                        ItemBtn.TextColor3 = Theme.White
                     end)
                     ItemBtn.MouseLeave:Connect(function()
                         ItemBtn.BackgroundTransparency = 1
@@ -782,6 +720,194 @@ function PyroHubLibrary:CreateWindow(config)
                 return Dropdown
             end
 
+            -- ========== МУЛЬТИ-ДРОПДАУН (ВЫБОР НЕСКОЛЬКИХ ФУНКЦИЙ) ==========
+            function GroupObj:AddMultiDropdown(config)
+                local name = config.Name or "Multi Dropdown"
+                local flag = config.Flag or name
+                local items = config.Items or {}
+                local default = config.Default or {}
+                local callback = config.Callback or function() end
+
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 28)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = Container
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.5, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+
+                local DropBtn = Instance.new("TextButton")
+                DropBtn.Size = UDim2.new(0.45, 0, 1, 0)
+                DropBtn.Position = UDim2.new(0.55, 0, 0, 0)
+                DropBtn.BackgroundColor3 = Theme.ElementBg
+                DropBtn.Text = "  Select..."
+                DropBtn.Font = Enum.Font.GothamMedium
+                DropBtn.TextSize = 12
+                DropBtn.TextColor3 = Theme.Text
+                DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+                DropBtn.Parent = Frame
+                Round(DropBtn, 4)
+
+                local Arrow = Instance.new("ImageLabel")
+                Arrow.Size = UDim2.new(0, 10, 0, 10)
+                Arrow.Position = UDim2.new(1, -6, 0.5, 0)
+                Arrow.AnchorPoint = Vector2.new(1, 0.5)
+                Arrow.BackgroundTransparency = 1
+                Arrow.Image = "rbxassetid://134243273101015"
+                Arrow.ImageColor3 = Theme.TextDim
+                Arrow.Parent = DropBtn
+
+                local DropList = Instance.new("Frame")
+                DropList.Size = UDim2.new(1, 0, 0, 0)
+                DropList.Position = UDim2.new(0, 0, 1, 2)
+                DropList.BackgroundColor3 = Theme.ElementBg
+                DropList.Visible = false
+                DropList.ZIndex = 10
+                DropList.Parent = DropBtn
+                Round(DropList, 4)
+                
+                Instance.new("UIStroke", DropList).Color = Theme.Border
+                Instance.new("UIStroke", DropList).Thickness = 1
+                Instance.new("UIListLayout", DropList)
+
+                local SelectedItems = {}
+                for _, item in ipairs(default) do
+                    SelectedItems[item] = true
+                end
+                
+                local ItemButtons = {}
+                
+                local function UpdateButtonText()
+                    local selectedList = {}
+                    for item, selected in pairs(SelectedItems) do
+                        if selected then
+                            table.insert(selectedList, item)
+                        end
+                    end
+                    if #selectedList == 0 then
+                        DropBtn.Text = "  Select..."
+                    elseif #selectedList == 1 then
+                        DropBtn.Text = "  " .. selectedList[1]
+                    else
+                        DropBtn.Text = "  " .. #selectedList .. " selected"
+                    end
+                end
+
+                for _, item in ipairs(items) do
+                    local ItemBtn = Instance.new("TextButton")
+                    ItemBtn.Size = UDim2.new(1, 0, 0, 22)
+                    ItemBtn.BackgroundTransparency = 1
+                    ItemBtn.Text = "  " .. item
+                    ItemBtn.Font = Enum.Font.GothamMedium
+                    ItemBtn.TextSize = 11
+                    ItemBtn.TextColor3 = SelectedItems[item] and Theme.White or Theme.TextDim
+                    ItemBtn.TextXAlignment = Enum.TextXAlignment.Left
+                    ItemBtn.ZIndex = 10
+                    ItemBtn.Parent = DropList
+                    
+                    -- Индикатор выбора
+                    local Indicator = Instance.new("Frame")
+                    Indicator.Size = UDim2.new(0, 4, 0, 4)
+                    Indicator.Position = UDim2.new(1, -8, 0.5, 0)
+                    Indicator.AnchorPoint = Vector2.new(1, 0.5)
+                    Indicator.BackgroundColor3 = Theme.ToggleOn
+                    Indicator.Visible = SelectedItems[item] or false
+                    Indicator.Parent = ItemBtn
+                    Round(Indicator, 2)
+                    
+                    ItemBtn.MouseEnter:Connect(function()
+                        ItemBtn.BackgroundTransparency = 0.9
+                        ItemBtn.BackgroundColor3 = Theme.ElementHover
+                        if not SelectedItems[item] then
+                            ItemBtn.TextColor3 = Theme.White
+                        end
+                    end)
+                    ItemBtn.MouseLeave:Connect(function()
+                        ItemBtn.BackgroundTransparency = 1
+                        if not SelectedItems[item] then
+                            ItemBtn.TextColor3 = Theme.TextDim
+                        end
+                    end)
+                    ItemBtn.MouseButton1Click:Connect(function()
+                        SelectedItems[item] = not SelectedItems[item]
+                        Indicator.Visible = SelectedItems[item]
+                        ItemBtn.TextColor3 = SelectedItems[item] and Theme.White or Theme.TextDim
+                        
+                        local selectedList = {}
+                        for itm, selected in pairs(SelectedItems) do
+                            if selected then
+                                table.insert(selectedList, itm)
+                            end
+                        end
+                        
+                        Window.Flags[flag] = selectedList
+                        UpdateButtonText()
+                        callback(selectedList)
+                    end)
+                    
+                    ItemButtons[item] = ItemBtn
+                end
+                DropList.Size = UDim2.new(1, 0, 0, #items * 22)
+
+                local MultiDropdown = {}
+                
+                function MultiDropdown:Set(items_list)
+                    -- Сброс
+                    for item, _ in pairs(SelectedItems) do
+                        SelectedItems[item] = false
+                        if ItemButtons[item] then
+                            ItemButtons[item].TextColor3 = Theme.TextDim
+                            if ItemButtons[item]:FindFirstChild("Frame") then
+                                ItemButtons[item]:FindFirstChild("Frame").Visible = false
+                            end
+                        end
+                    end
+                    
+                    -- Установка новых значений
+                    for _, item in ipairs(items_list) do
+                        if SelectedItems[item] ~= nil then
+                            SelectedItems[item] = true
+                            if ItemButtons[item] then
+                                ItemButtons[item].TextColor3 = Theme.White
+                                if ItemButtons[item]:FindFirstChild("Frame") then
+                                    ItemButtons[item]:FindFirstChild("Frame").Visible = true
+                                end
+                            end
+                        end
+                    end
+                    
+                    Window.Flags[flag] = items_list
+                    UpdateButtonText()
+                    callback(items_list)
+                end
+                
+                function MultiDropdown:Get()
+                    local selectedList = {}
+                    for item, selected in pairs(SelectedItems) do
+                        if selected then
+                            table.insert(selectedList, item)
+                        end
+                    end
+                    return selectedList
+                end
+                
+                DropBtn.MouseButton1Click:Connect(function()
+                    DropList.Visible = not DropList.Visible
+                end)
+                
+                UpdateButtonText()
+                Window.Flags[flag] = default
+                
+                return MultiDropdown
+            end
+
             -- ========== ТЕКСТБОКС ==========
             function GroupObj:AddTextbox(config)
                 local name = config.Name or "Textbox"
@@ -801,7 +927,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamMedium
                 Label.TextSize = 12
-                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextColor3 = Theme.White
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
 
@@ -811,7 +937,7 @@ function PyroHubLibrary:CreateWindow(config)
                 InputBox.BackgroundColor3 = Theme.ElementBg
                 InputBox.Text = default
                 InputBox.PlaceholderText = placeholder
-                InputBox.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+                InputBox.TextColor3 = Theme.Text
                 InputBox.PlaceholderColor3 = Theme.TextDim
                 InputBox.Font = Enum.Font.GothamMedium
                 InputBox.TextSize = 12
@@ -857,7 +983,7 @@ function PyroHubLibrary:CreateWindow(config)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamMedium
                 Label.TextSize = 12
-                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextColor3 = Theme.White
                 Label.TextXAlignment = Enum.TextXAlignment.Left
                 Label.Parent = Frame
 
@@ -878,7 +1004,7 @@ function PyroHubLibrary:CreateWindow(config)
                 KeyText.BackgroundTransparency = 1
                 KeyText.Font = Enum.Font.GothamMedium
                 KeyText.TextSize = 11
-                KeyText.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                KeyText.TextColor3 = Theme.White
                 KeyText.TextXAlignment = Enum.TextXAlignment.Center
                 KeyText.Parent = KeyBtn
 
