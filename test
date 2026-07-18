@@ -1,1026 +1,923 @@
--- ═══════════════════════════════════════════════════════════════════
--- PULSE UI - РАБОЧАЯ ВЕРСИЯ (БЕЗ FONTFACE)
--- ═══════════════════════════════════════════════════════════════════
+-- =========================================================
+-- PYRO HUB LIBRARY - UI Framework for Roblox
+-- Универсальная библиотека для создания GUI хабов
+-- Градиент только на иконках и названии
+-- =========================================================
 
-if getgenv().PulseUI and getgenv().PulseUI.Unload then
-    getgenv().PulseUI:Unload()
+local PyroHubLibrary = {}
+
+-- Сервисы Roblox
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- =========================================================
+-- ТЕМА ПО УМОЛЧАНИЮ
+-- =========================================================
+local DefaultTheme = {
+    Bg = Color3.fromRGB(12, 12, 14),
+    SidebarBg = Color3.fromRGB(16, 16, 20),
+    GroupBg = Color3.fromRGB(20, 20, 25),
+    ElementBg = Color3.fromRGB(24, 24, 30),
+    ElementHover = Color3.fromRGB(34, 34, 42),
+    Text = Color3.fromRGB(255, 255, 255), -- Белый текст везде
+    TextDim = Color3.fromRGB(150, 150, 165),
+    White = Color3.fromRGB(255, 255, 255),
+    ToggleOff = Color3.fromRGB(60, 60, 70),
+    ToggleOffGradStart = Color3.fromRGB(50, 50, 60),
+    ToggleOffGradEnd = Color3.fromRGB(70, 70, 80),
+    OrangeStart = Color3.fromRGB(255, 120, 0),
+    OrangeMid = Color3.fromRGB(255, 180, 0),
+    OrangeEnd = Color3.fromRGB(200, 80, 0),
+    OrangeDim = Color3.fromRGB(200, 100, 0),
+    Border = Color3.fromRGB(35, 35, 42),
+    
+    -- Цвета градиента (только для иконок и названия)
+    GradientStart = Color3.fromRGB(255, 200, 80),
+    GradientEnd = Color3.fromRGB(255, 120, 0)
+}
+
+-- =========================================================
+-- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-- =========================================================
+local function Round(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 6)
+    c.Parent = obj
+    return c
 end
 
--- ═══════════════════════════════════════════════════════════════════
--- СЕРВИСЫ
--- ═══════════════════════════════════════════════════════════════════
-local Services = {}
-local function GetService(Name)
-    if not Services[Name] then
-        Services[Name] = cloneref(game:GetService(Name))
-    end
-    return Services[Name]
+local function Tween(obj, props, time)
+    if not obj then return end
+    TweenService:Create(obj, TweenInfo.new(time or 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props):Play()
 end
 
-local Players = GetService("Players")
-local UserInputService = GetService("UserInputService")
-local RunService = GetService("RunService")
-local TweenService = GetService("TweenService")
-local HttpService = GetService("HttpService")
-local CoreGui = cloneref(GetService("CoreGui"))
-local GuiService = GetService("GuiService")
-local Workspace = GetService("Workspace")
-
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
-local GuiInset = GuiService:GetGuiInset().Y
-local IsMobile = UserInputService.TouchEnabled or false
-gethui = gethui or function() return CoreGui end
-
--- ═══════════════════════════════════════════════════════════════════
--- ИКОНКИ
--- ═══════════════════════════════════════════════════════════════════
-local Icons = {
-    home = "rbxassetid://98755624629571",
-    settings = "rbxassetid://80758916183665",
-    menu = "rbxassetid://77021539815611",
-    search = "rbxassetid://121018724060431",
-    close = "rbxassetid://76001605964586",
-    minimize = "rbxassetid://94817928404736",
-    ["chevron-down"] = "rbxassetid://109535175596957",
-    ["chevron-up"] = "rbxassetid://117264500851637",
-    ["chevron-left"] = "rbxassetid://129113930144228",
-    ["chevron-right"] = "rbxassetid://105723602996553",
-    check = "rbxassetid://129443092324752",
-    cross = "rbxassetid://128493668118280",
-    warning = "rbxassetid://109326270213910",
-    info = "rbxassetid://124560466474914",
-    folder = "rbxassetid://109080612832751",
-    save = "rbxassetid://126116963775616",
-    trash = "rbxassetid://106723740584310",
-    pulse = "rbxassetid://135014211526638",
-    palette = "rbxassetid://81372281623830",
-    key = "rbxassetid://96510194465420",
-    lock = "rbxassetid://80031239225283",
-    user = "rbxassetid://98376828270066",
-    star = "rbxassetid://136141469398409",
-    bolt = "rbxassetid://102881251417484",
-    refresh = "rbxassetid://6031097226",
-    globe = "rbxassetid://102861769355196",
-    cursor = "rbxassetid://132511743665753",
-    resize = "rbxassetid://7368471234",
-    copy = "rbxassetid://76996819137437",
-    paste = "rbxassetid://88846256867074",
-    pencil = "rbxassetid://76590960968733",
-    plus = "rbxassetid://133137619535544",
-    minus = "rbxassetid://118026365011536",
-    combat = "rbxassetid://124448418211665",
-    eye = "rbxassetid://100033680381365",
-    teleport = "rbxassetid://132511743665753",
-}
-
--- ═══════════════════════════════════════════════════════════════════
--- ТЕМА
--- ═══════════════════════════════════════════════════════════════════
-local Theme = {
-    Background = Color3.fromRGB(14, 11, 8),
-    Background2 = Color3.fromRGB(20, 16, 12),
-    Sidebar = Color3.fromRGB(18, 14, 10),
-    Element = Color3.fromRGB(30, 25, 20),
-    ElementHover = Color3.fromRGB(40, 33, 26),
-    Accent1 = Color3.fromRGB(255, 180, 50),
-    Accent2 = Color3.fromRGB(255, 145, 20),
-    Text = Color3.fromRGB(255, 248, 240),
-    TextDim = Color3.fromRGB(190, 175, 160),
-    TextDark = Color3.fromRGB(130, 120, 110),
-    Outline = Color3.fromRGB(45, 38, 32),
-    Danger = Color3.fromRGB(255, 80, 80),
-}
-
--- ═══════════════════════════════════════════════════════════════════
--- ШРИФТЫ (ТОЛЬКО ENUM, БЕЗ FONTFACE)
--- ═══════════════════════════════════════════════════════════════════
-local FONT = Enum.Font.SourceSans
-local FONT_BOLD = Enum.Font.SourceSansBold
-
--- ═══════════════════════════════════════════════════════════════════
--- БИБЛИОТЕКА
--- ═══════════════════════════════════════════════════════════════════
-local PulseUI = {
-    Flags = {},
-    ConfigFlags = {},
-    Connections = {},
-    Elements = {},
-    Directory = "PulseUI",
-    Folders = {Configs = "/Configs", Themes = "/Themes", Assets = "/Assets"},
-    MenuKeybind = Enum.KeyCode.RightControl,
-    TweenSpeed = 0.3,
-    IsOpen = false,
-    IsMobile = IsMobile,
-    Theme = Theme,
-    Icons = Icons,
-    ScreenGui = nil,
-    PulseObjects = {},
-    PulseConnections = {},
-}
-
-do
-    local Library = PulseUI
-    Library.__index = Library
-
-    -- Папки
-    for _, F in pairs(Library.Folders) do
-        if not isfolder(Library.Directory .. F) then
-            makefolder(Library.Directory .. F)
-        end
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- ФУНКЦИЯ СОЗДАНИЯ (БЕЗ FONTFACE!)
-    -- ═══════════════════════════════════════════════════════════════
-    function Library:Create(Class, Props)
-        local Inst = Instance.new(Class)
-
-        if Class:match("Text") then
-            Inst.Font = FONT
-            Inst.TextSize = 14
-            Inst.TextColor3 = Theme.Text
-        end
-
-        if Class == "TextButton" then
-            Inst.AutoButtonColor = false
-            Inst.Text = ""
-        end
-
-        if Class == "ImageButton" then
-            Inst.AutoButtonColor = false
-        end
-
-        Inst.Name = "\0"
-
-        for K, V in pairs(Props or {}) do
-            Inst[K] = V
-        end
-
-        return setmetatable({Instance = Inst}, Library)
-    end
-
-    function Library:Connect(Signal, Callback)
-        if not Signal then return nil end
-        local Connection
-        pcall(function()
-            if type(Signal) == "Instance" and Signal:IsA("RBXScriptSignal") then
-                Connection = Signal:Connect(Callback)
-            elseif type(Signal) == "table" and Signal.Instance then
-                Connection = Signal.Instance:Connect(Callback)
-            end
-        end)
-        if Connection and type(Connection) == "table" and Connection.Disconnect then
-            table.insert(Library.Connections, Connection)
-            return Connection
-        end
-        return nil
-    end
-
-    function Library:SafeCall(Func, ...)
-        if not Func then return end
-        local Args = {...}
-        local S, R = pcall(Func, table.unpack(Args))
-        if not S then warn("[PulseUI]", R) end
-        return S, R
-    end
-
-    function Library:Tween(Obj, Props, Info)
-        local Inst = Obj.Instance or Obj
-        Info = Info or TweenInfo.new(Library.TweenSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-        local T = TweenService:Create(Inst, Info, Props)
-        T:Play()
-        return T
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- ПУЛЬСАЦИЯ
-    -- ═══════════════════════════════════════════════════════════════
-    function Library:AddPulse(Obj, Intensity)
-        Intensity = Intensity or 0.12
-        local Inst = Obj.Instance or Obj
-        
-        if Inst:IsA("UIStroke") then return end
-        
-        if Inst:IsA("ImageLabel") or Inst:IsA("ImageButton") then
-            table.insert(Library.PulseObjects, {
-                Object = Inst,
-                Intensity = Intensity,
-                OriginalColor = Inst.ImageColor3,
-                IsImage = true,
-            })
-            return
-        end
-        
-        table.insert(Library.PulseObjects, {
-            Object = Inst,
-            Intensity = Intensity,
-            OriginalColor = Inst.BackgroundColor3,
-            IsImage = false,
-        })
-    end
-
-    local PulseConnection = Library:Connect(RunService.RenderStepped, function()
-        local Time = tick()
-        for _, Data in pairs(Library.PulseObjects) do
-            if Data.Object and Data.Object.Parent then
-                local P = math.sin(Time * 1.2) * Data.Intensity
-                if Data.IsImage then
-                    local C = Data.OriginalColor
-                    Data.Object.ImageColor3 = Color3.new(
-                        math.clamp(C.R + P, 0, 1),
-                        math.clamp(C.G + P * 0.7, 0, 1),
-                        math.clamp(C.B + P * 0.3, 0, 1)
-                    )
-                else
-                    local C = Data.OriginalColor
-                    Data.Object.BackgroundColor3 = Color3.new(
-                        math.clamp(C.R + P, 0, 1),
-                        math.clamp(C.G + P * 0.7, 0, 1),
-                        math.clamp(C.B + P * 0.3, 0, 1)
-                    )
-                end
-            end
+local function MakeDraggable(obj)
+    local dragging, startPos, dragStart
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            startPos = obj.Position
+            dragStart = input.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
         end
     end)
-    if PulseConnection then table.insert(Library.PulseConnections, PulseConnection) end
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
 
-    -- ═══════════════════════════════════════════════════════════════
-    -- ДРАГ
-    -- ═══════════════════════════════════════════════════════════════
-    function Library:MakeDraggable(Obj)
-        local Inst = Obj.Instance or Obj
-        local Dragging = false
-        local DragStart, StartPos
+-- =========================================================
+-- ФУНКЦИЯ ГРАДИЕНТА (ТОЛЬКО ДЛЯ ИКОНОК)
+-- =========================================================
+local function CreateGradient(obj, theme)
+    theme = theme or DefaultTheme
+    local grad = Instance.new("UIGradient")
+    grad.Rotation = 45
+    grad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, theme.GradientStart),
+        ColorSequenceKeypoint.new(1, theme.GradientEnd)
+    }
+    grad.Parent = obj
+    return grad
+end
 
-        Inst.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Dragging = true
-                DragStart = Input.Position
-                StartPos = Inst.Position
-                local Changed = Input.Changed:Connect(function()
-                    if Input.UserInputState == Enum.UserInputState.End then
-                        Dragging = false
-                        if Changed then Changed:Disconnect() end
-                    end
-                end)
-            end
+-- =========================================================
+-- ГЛАВНАЯ ФУНКЦИЯ СОЗДАНИЯ ОКНА
+-- =========================================================
+function PyroHubLibrary:CreateWindow(config)
+    config = config or {}
+    local Title = config.Title or "PYRO HUB"
+    local SubTitle = config.SubTitle or ""
+    local Icon = config.Icon or "rbxassetid://10709774640"
+    local Theme = config.Theme or DefaultTheme
+    local Size = config.Size or UDim2.new(0, 720, 0, 500)
+    local Keybind = config.Keybind or Enum.KeyCode.RightShift
+    local SaveConfig = config.SaveConfig or false
+
+    -- Создание ScreenGui
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = Title .. "Hub"
+    ScreenGui.Parent = CoreGui
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ScreenGui.DisplayOrder = 999
+
+    -- Главный фрейм
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = Size
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = Theme.Bg
+    MainFrame.Parent = ScreenGui
+    Round(MainFrame, 8)
+    MakeDraggable(MainFrame)
+
+    -- Обводка с градиентом
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Thickness = 2.5
+    MainStroke.Parent = MainFrame
+    CreateGradient(MainStroke, Theme)
+
+    -- Сайдбар
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Size = UDim2.new(0, 190, 1, 0)
+    Sidebar.BackgroundColor3 = Theme.SidebarBg
+    Sidebar.Parent = MainFrame
+    Round(Sidebar, 8)
+
+    -- Заголовок
+    local HeaderFrame = Instance.new("Frame")
+    HeaderFrame.Size = UDim2.new(1, 0, 0, 55)
+    HeaderFrame.Position = UDim2.new(0, 12, 0, 12)
+    HeaderFrame.BackgroundTransparency = 1
+    HeaderFrame.Parent = Sidebar
+
+    -- Иконка с градиентом
+    local HeaderIcon = Instance.new("ImageLabel")
+    HeaderIcon.Size = UDim2.new(0, 28, 0, 28)
+    HeaderIcon.Position = UDim2.new(0, 0, 0.5, 0)
+    HeaderIcon.AnchorPoint = Vector2.new(0, 0.5)
+    HeaderIcon.BackgroundTransparency = 1
+    HeaderIcon.Image = Icon
+    HeaderIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    CreateGradient(HeaderIcon, Theme) -- ГРАДИЕНТ ТОЛЬКО НА ИКОНКЕ
+    HeaderIcon.Parent = HeaderFrame
+
+    -- Заголовок текст с градиентом
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Text = Title .. "\n" .. SubTitle
+    TitleLabel.Size = UDim2.new(1, -38, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 38, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextSize = 14
+    TitleLabel.TextColor3 = Theme.White
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    TitleLabel.Parent = HeaderFrame
+    CreateGradient(TitleLabel, Theme) -- ГРАДИЕНТ ТОЛЬКО НА PYRO HUB
+
+    -- Контейнер для вкладок
+    local TabContainer = Instance.new("ScrollingFrame")
+    TabContainer.Size = UDim2.new(1, 0, 1, -80)
+    TabContainer.Position = UDim2.new(0, 0, 0, 80)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.ScrollBarThickness = 0
+    TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    TabContainer.Parent = Sidebar
+    Instance.new("UIListLayout", TabContainer).Padding = UDim.new(0, 4)
+
+    -- Поиск
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, -205, 0, 55)
+    TopBar.Position = UDim2.new(0, 205, 0, 0)
+    TopBar.BackgroundTransparency = 1
+    TopBar.Parent = MainFrame
+
+    local SearchBar = Instance.new("Frame")
+    SearchBar.Size = UDim2.new(1, -38, 0, 30)
+    SearchBar.Position = UDim2.new(0, 6, 0.5, 0)
+    SearchBar.AnchorPoint = Vector2.new(0, 0.5)
+    SearchBar.BackgroundColor3 = Theme.ElementBg
+    SearchBar.Parent = TopBar
+    Round(SearchBar, 6)
+
+    -- Иконка поиска с градиентом
+    local SearchIcon = Instance.new("ImageLabel")
+    SearchIcon.Size = UDim2.new(0, 14, 0, 14)
+    SearchIcon.Position = UDim2.new(0, 10, 0.5, 0)
+    SearchIcon.AnchorPoint = Vector2.new(0, 0.5)
+    SearchIcon.BackgroundTransparency = 1
+    SearchIcon.Image = "rbxassetid://121018724060431"
+    SearchIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    CreateGradient(SearchIcon, Theme) -- ГРАДИЕНТ НА ИКОНКЕ ПОИСКА
+    SearchIcon.Parent = SearchBar
+
+    local SearchInput = Instance.new("TextBox")
+    SearchInput.Size = UDim2.new(1, -32, 1, 0)
+    SearchInput.Position = UDim2.new(0, 32, 0, 0)
+    SearchInput.BackgroundTransparency = 1
+    SearchInput.Text = ""
+    SearchInput.PlaceholderText = "Search"
+    SearchInput.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+    SearchInput.PlaceholderColor3 = Theme.TextDim
+    SearchInput.Font = Enum.Font.GothamMedium
+    SearchInput.TextSize = 13
+    SearchInput.Parent = SearchBar
+
+    -- Кнопка закрытия с градиентом
+    local CloseBtn = Instance.new("ImageButton")
+    CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+    CloseBtn.Position = UDim2.new(1, -12, 0.5, 0)
+    CloseBtn.AnchorPoint = Vector2.new(1, 0.5)
+    CloseBtn.BackgroundTransparency = 1
+    CloseBtn.Image = "rbxassetid://110786993356448"
+    CloseBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    CreateGradient(CloseBtn, Theme) -- ГРАДИЕНТ НА КНОПКЕ ЗАКРЫТИЯ
+    CloseBtn.Parent = TopBar
+    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+    -- Объект окна
+    local Window = {
+        Tabs = {},
+        ActiveTab = nil,
+        Flags = {},
+        Theme = Theme,
+        MainFrame = MainFrame,
+        ScreenGui = ScreenGui,
+        Visible = true,
+        
+        -- Метод для выгрузки
+        Unload = function()
+            ScreenGui:Destroy()
+        end,
+        
+        -- Метод для скрытия/показа
+        SetVisible = function(self, visible)
+            MainFrame.Visible = visible
+            self.Visible = visible
+        end,
+        
+        -- Метод для получения флага
+        GetFlag = function(self, flag)
+            return self.Flags[flag]
+        end,
+        
+        -- Метод для установки флага
+        SetFlag = function(self, flag, value)
+            self.Flags[flag] = value
+        end
+    }
+    
+    -- Бинд на открытие/закрытие
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Keybind then
+            Window:SetVisible(not Window.Visible)
+        end
+    end)
+
+    -- Функция добавления вкладки
+    function Window:AddTab(name, iconAsset)
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Size = UDim2.new(1, 0, 0, 30)
+        TabBtn.BackgroundTransparency = 1
+        TabBtn.Text = ""
+        TabBtn.Parent = TabContainer
+        Round(TabBtn, 6)
+
+        local TabIcon = Instance.new("ImageLabel")
+        TabIcon.Size = UDim2.new(0, 14, 0, 14)
+        TabIcon.Position = UDim2.new(0, 10, 0.5, 0)
+        TabIcon.AnchorPoint = Vector2.new(0, 0.5)
+        TabIcon.BackgroundTransparency = 1
+        TabIcon.Image = iconAsset or ""
+        TabIcon.ImageColor3 = Theme.TextDim -- СЕРЫЙ ПО УМОЛЧАНИЮ
+        TabIcon.Parent = TabBtn
+
+        local TabLabel = Instance.new("TextLabel")
+        TabLabel.Text = "  " .. name
+        TabLabel.Size = UDim2.new(1, -30, 1, 0)
+        TabLabel.Position = UDim2.new(0, 30, 0, 0)
+        TabLabel.BackgroundTransparency = 1
+        TabLabel.Font = Enum.Font.GothamMedium
+        TabLabel.TextSize = 12
+        TabLabel.TextColor3 = Theme.TextDim -- СЕРЫЙ ПО УМОЛЧАНИЮ
+        TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TabLabel.Parent = TabBtn
+
+        -- Контент вкладки
+        local TabContent = Instance.new("Frame")
+        TabContent.Size = UDim2.new(1, -210, 1, -60)
+        TabContent.Position = UDim2.new(0, 210, 0, 60)
+        TabContent.BackgroundTransparency = 1
+        TabContent.Visible = false
+        TabContent.Parent = MainFrame
+
+        local MainScroll = Instance.new("ScrollingFrame")
+        MainScroll.Size = UDim2.new(1, 0, 1, 0)
+        MainScroll.BackgroundTransparency = 1
+        MainScroll.ScrollBarThickness = 4
+        MainScroll.ScrollBarImageColor3 = Theme.OrangeStart
+        MainScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        MainScroll.Parent = TabContent
+
+        local ContentLayout = Instance.new("Frame")
+        ContentLayout.Size = UDim2.new(1, -15, 0, 0)
+        ContentLayout.BackgroundTransparency = 1
+        ContentLayout.AutomaticSize = Enum.AutomaticSize.Y
+        ContentLayout.Parent = MainScroll
+
+        -- Колонки
+        local Columns = Instance.new("Frame")
+        Columns.Size = UDim2.new(1, 0, 0, 0)
+        Columns.BackgroundTransparency = 1
+        Columns.AutomaticSize = Enum.AutomaticSize.Y
+        Columns.Parent = ContentLayout
+
+        local LeftCol = Instance.new("Frame")
+        LeftCol.Size = UDim2.new(0.5, -6, 0, 0)
+        LeftCol.Position = UDim2.new(0, 0, 0, 0)
+        LeftCol.BackgroundTransparency = 1
+        LeftCol.AutomaticSize = Enum.AutomaticSize.Y
+        LeftCol.Parent = Columns
+
+        local RightCol = Instance.new("Frame")
+        RightCol.Size = UDim2.new(0.5, -6, 0, 0)
+        RightCol.Position = UDim2.new(0.5, 6, 0, 0)
+        RightCol.BackgroundTransparency = 1
+        RightCol.AutomaticSize = Enum.AutomaticSize.Y
+        RightCol.Parent = Columns
+
+        Instance.new("UIListLayout", LeftCol).Padding = UDim.new(0, 10)
+        Instance.new("UIListLayout", RightCol).Padding = UDim.new(0, 10)
+
+        ContentLayout:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            MainScroll.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteSize.Y + 15)
         end)
 
-        Library:Connect(UserInputService.InputChanged, function(Input)
-            if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                local Delta = Input.Position - DragStart
-                Inst.Position = UDim2.new(
-                    StartPos.X.Scale, StartPos.X.Offset + Delta.X,
-                    StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y
-                )
+        local function Select()
+            if Window.ActiveTab then
+                local prev = Window.ActiveTab
+                prev.TabBtn.BackgroundTransparency = 1
+                -- Убираем градиент с иконки предыдущей вкладки
+                if prev.TabIcon:FindFirstChild("UIGradient") then
+                    prev.TabIcon:FindFirstChild("UIGradient").Enabled = false
+                end
+                prev.TabIcon.ImageColor3 = Theme.TextDim
+                prev.TabLabel.TextColor3 = Theme.TextDim -- БЕЛЫЙ ТЕКСТ
+                prev.TabContent.Visible = false
             end
-        end)
-    end
-
-    function Library:Notify(Params)
-        Params = Params or {}
-        local Container = Library:Create("Frame", {
-            Parent = Library.ScreenGui.Instance,
-            AnchorPoint = Vector2.new(1, 0),
-            Position = UDim2.new(1, -16, 0, 16),
-            Size = UDim2.new(0, 320, 0, 0),
-            BackgroundColor3 = Theme.Background2,
-            BorderSizePixel = 0,
-            AutomaticSize = Enum.AutomaticSize.Y,
-            ClipsDescendants = true,
-        })
-        Library:Create("UICorner", {Parent = Container.Instance, CornerRadius = UDim.new(0, 10)})
-        Library:Create("UIStroke", {Parent = Container.Instance, Color = Theme.Outline, Thickness = 1})
-        Library:Create("UIPadding", {Parent = Container.Instance, PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14), PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16)})
-
-        local Title = Library:Create("TextLabel", {
-            Parent = Container.Instance,
-            Text = Params.Title or "Notification",
-            Font = FONT_BOLD,
-            TextSize = 15,
-            TextColor3 = Theme.Text,
-            BackgroundTransparency = 1,
-        })
-        local Desc = Library:Create("TextLabel", {
-            Parent = Container.Instance,
-            Text = Params.Description or "",
-            Font = FONT,
-            TextSize = 13,
-            TextColor3 = Theme.TextDim,
-            BackgroundTransparency = 1,
-            TextWrapped = true,
-        })
-        local Progress = Library:Create("Frame", {
-            Parent = Container.Instance,
-            Size = UDim2.new(1, 0, 0, 2),
-            Position = UDim2.new(0, 0, 1, -2),
-            BackgroundColor3 = Theme.Accent1,
-            BorderSizePixel = 0,
-        })
-        Library:AddPulse(Progress, 0.15)
-
-        local Duration = Params.Duration or 3
-        TweenService:Create(Progress.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
-            Size = UDim2.new(0, 0, 0, 2),
-        }):Play()
-        task.delay(Duration, function() Container.Instance:Destroy() end)
-        return Container
-    end
-
-    function Library:Toggle(State)
-        if State ~= nil then Library.IsOpen = State else Library.IsOpen = not Library.IsOpen end
-        if Library.ScreenGui then Library.ScreenGui.Instance.Enabled = Library.IsOpen end
-    end
-
-    function Library:Unload()
-        for i = #Library.Connections, 1, -1 do
-            local C = Library.Connections[i]
-            if type(C) == "table" and C.Disconnect then pcall(C.Disconnect, C) end
-            Library.Connections[i] = nil
-        end
-        Library.Connections = {}
-        for i = #Library.PulseConnections, 1, -1 do
-            local C = Library.PulseConnections[i]
-            if type(C) == "table" and C.Disconnect then pcall(C.Disconnect, C) end
-            Library.PulseConnections[i] = nil
-        end
-        Library.PulseConnections = {}
-        if Library.ScreenGui and Library.ScreenGui.Instance then
-            pcall(Library.ScreenGui.Instance.Destroy, Library.ScreenGui.Instance)
-            Library.ScreenGui = nil
-        end
-        getgenv().PulseUI = nil
-    end
-
-    -- ═══════════════════════════════════════════════════════════════
-    -- ОКНО
-    -- ═══════════════════════════════════════════════════════════════
-    function Library:Window(Params)
-        Params = Params or {}
-
-        local ScreenGui = Library:Create("ScreenGui", {
-            Parent = gethui(),
-            ResetOnSpawn = false,
-            ZIndexBehavior = Enum.ZIndexBehavior.Global,
-            DisplayOrder = 999,
-        })
-        Library.ScreenGui = ScreenGui
-
-        local MainFrame = Library:Create("Frame", {
-            Parent = ScreenGui.Instance,
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-            Size = UDim2.new(0, 820, 0, 560),
-            BackgroundColor3 = Theme.Background,
-            BorderSizePixel = 0,
-            ClipsDescendants = true,
-        })
-        Library:Create("UICorner", {Parent = MainFrame.Instance, CornerRadius = UDim.new(0, 14)})
-        Library:Create("UIStroke", {Parent = MainFrame.Instance, Color = Theme.Accent1, Thickness = 2, Transparency = 0.25})
-        Library:AddPulse(MainFrame, 0.03)
-
-        -- Сайдбар
-        local Sidebar = Library:Create("Frame", {
-            Parent = MainFrame.Instance,
-            Size = UDim2.new(0, 200, 1, 0),
-            BackgroundColor3 = Theme.Sidebar,
-            BorderSizePixel = 0,
-        })
-        Library:Create("UICorner", {Parent = Sidebar.Instance, CornerRadius = UDim.new(0, 14)})
-        Library:Create("Frame", {
-            Parent = Sidebar.Instance,
-            AnchorPoint = Vector2.new(1, 0),
-            Position = UDim2.new(1, 0, 0, 0),
-            Size = UDim2.new(0, 1, 1, 0),
-            BackgroundColor3 = Theme.Outline,
-            BorderSizePixel = 0,
-        })
-
-        -- Логотип
-        local Logo = Library:Create("Frame", {
-            Parent = Sidebar.Instance,
-            Size = UDim2.new(1, 0, 0, 75),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-        })
-        local LogoIcon = Library:Create("ImageLabel", {
-            Parent = Logo.Instance,
-            Image = Icons.pulse,
-            Size = UDim2.new(0, 32, 0, 32),
-            Position = UDim2.new(0, 16, 0.5, -2),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundTransparency = 1,
-            ImageColor3 = Theme.Accent1,
-        })
-        Library:AddPulse(LogoIcon, 0.2)
-
-        local LogoText = Library:Create("TextLabel", {
-            Parent = Logo.Instance,
-            Text = "PULSE",
-            Font = FONT_BOLD,
-            TextSize = 20,
-            TextColor3 = Theme.Accent1,
-            Position = UDim2.new(0, 56, 0.5, -4),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundTransparency = 1,
-        })
-        local LogoSub = Library:Create("TextLabel", {
-            Parent = Logo.Instance,
-            Text = "UI",
-            Font = FONT,
-            TextSize = 11,
-            TextColor3 = Theme.TextDim,
-            Position = UDim2.new(0, 56, 0.5, 10),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundTransparency = 1,
-        })
-
-        -- Верхняя панель
-        local TopBar = Library:Create("Frame", {
-            Parent = MainFrame.Instance,
-            Position = UDim2.new(0, 200, 0, 0),
-            Size = UDim2.new(1, -200, 0, 50),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-        })
-        local PageTitle = Library:Create("TextLabel", {
-            Parent = TopBar.Instance,
-            Text = "Главная",
-            Font = FONT_BOLD,
-            TextSize = 18,
-            TextColor3 = Theme.Text,
-            Position = UDim2.new(0, 20, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundTransparency = 1,
-        })
-        local CloseBtn = Library:Create("ImageButton", {
-            Parent = TopBar.Instance,
-            AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -14, 0.5, 0),
-            Size = UDim2.new(0, 18, 0, 18),
-            BackgroundTransparency = 1,
-            Image = Icons.close,
-            ImageColor3 = Theme.TextDim,
-        })
-        CloseBtn.Instance.MouseButton1Click:Connect(function() Library:Toggle(false) end)
-
-        -- Список вкладок
-        local TabList = Library:Create("ScrollingFrame", {
-            Parent = Sidebar.Instance,
-            Position = UDim2.new(0, 0, 0, 75),
-            Size = UDim2.new(1, 0, 1, -75),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ScrollBarThickness = 0,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ClipsDescendants = true,
-        })
-        Library:Create("UIListLayout", {Parent = TabList.Instance, Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder})
-        Library:Create("UIPadding", {Parent = TabList.Instance, PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)})
-
-        -- Контент
-        local Content = Library:Create("Frame", {
-            Parent = MainFrame.Instance,
-            Position = UDim2.new(0, 200, 0, 50),
-            Size = UDim2.new(1, -200, 1, -50),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-        })
-        local Pages = Library:Create("Frame", {
-            Parent = Content.Instance,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-        })
-        Library:Create("UIPadding", {Parent = Pages.Instance, PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14), PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18)})
-
-        Library:MakeDraggable(MainFrame)
-
-        Library:Connect(UserInputService.InputBegan, function(Input)
-            if Input.KeyCode == Library.MenuKeybind and not UserInputService:GetFocusedTextBox() then
-                Library:Toggle()
+            
+            TabBtn.BackgroundTransparency = 0.15
+            TabBtn.BackgroundColor3 = Theme.ElementBg
+            
+            -- Включаем градиент на иконке активной вкладки
+            TabIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            if not TabIcon:FindFirstChild("UIGradient") then
+                CreateGradient(TabIcon, Theme)
+            else
+                TabIcon:FindFirstChild("UIGradient").Enabled = true
             end
-        end)
+            
+            TabLabel.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+            
+            TabContent.Visible = true
+            
+            Window.ActiveTab = {
+                TabBtn = TabBtn,
+                TabIcon = TabIcon,
+                TabLabel = TabLabel,
+                TabContent = TabContent
+            }
+        end
+        TabBtn.MouseButton1Click:Connect(Select)
 
-        local Window = {
-            Tabs = {},
-            ActiveTab = nil,
-            PageTitle = PageTitle,
-            TabList = TabList,
-            Pages = Pages,
+        local Tab = {
+            Left = LeftCol,
+            Right = RightCol,
+            Select = Select
         }
 
-        -- ═══════════════════════════════════════════════════════════
-        -- ВКЛАДКА
-        -- ═══════════════════════════════════════════════════════════
-        function Window:AddTab(Params)
-            Params = Params or {}
+        -- Функция добавления группы
+        function Tab:AddGroupbox(name, side, iconId)
+            local parent = side == 1 and LeftCol or RightCol
+            
+            local Group = Instance.new("Frame")
+            Group.Size = UDim2.new(1, 0, 0, 0)
+            Group.BackgroundColor3 = Theme.GroupBg
+            Group.AutomaticSize = Enum.AutomaticSize.Y
+            Group.Parent = parent
+            Round(Group, 6)
 
-            local Tab = {
-                Name = Params.Name or "Tab",
-                Icon = Params.Icon or Icons.menu,
-                Active = false,
-                SubTabs = {},
-            }
+            local Stroke = Instance.new("UIStroke")
+            Stroke.Color = Theme.Border
+            Stroke.Thickness = 1
+            Stroke.Parent = Group
 
-            local Button = Library:Create("TextButton", {
-                Parent = TabList.Instance,
-                Size = UDim2.new(1, 0, 0, 38),
-                BackgroundColor3 = Theme.Sidebar,
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-            })
-            Library:Create("UICorner", {Parent = Button.Instance, CornerRadius = UDim.new(0, 8)})
+            local TitleFrame = Instance.new("Frame")
+            TitleFrame.Size = UDim2.new(1, 0, 0, 30)
+            TitleFrame.BackgroundTransparency = 1
+            TitleFrame.Parent = Group
 
-            local Icon = Library:Create("ImageLabel", {
-                Parent = Button.Instance,
-                Image = Tab.Icon,
-                Size = UDim2.new(0, 18, 0, 18),
-                Position = UDim2.new(0, 12, 0.5, 0),
-                AnchorPoint = Vector2.new(0, 0.5),
-                BackgroundTransparency = 1,
-                ImageColor3 = Theme.TextDim,
-            })
-            local Text = Library:Create("TextLabel", {
-                Parent = Button.Instance,
-                Text = Tab.Name,
-                Font = FONT,
-                TextSize = 14,
-                TextColor3 = Theme.TextDim,
-                Position = UDim2.new(0, 38, 0.5, 0),
-                AnchorPoint = Vector2.new(0, 0.5),
-                BackgroundTransparency = 1,
-            })
-            local AccentLine = Library:Create("Frame", {
-                Parent = Button.Instance,
-                Position = UDim2.new(0, 0, 0.5, -14),
-                Size = UDim2.new(0, 3, 0, 0),
-                BackgroundColor3 = Theme.Accent1,
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-            })
-            Library:Create("UICorner", {Parent = AccentLine.Instance, CornerRadius = UDim.new(1, 0)})
-
-            local Page = Library:Create("Frame", {
-                Parent = Pages.Instance,
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Visible = false,
-                BorderSizePixel = 0,
-            })
-
-            local function Activate()
-                if Window.ActiveTab then Window.ActiveTab:Deactivate() end
-                Tab.Active = true
-                Window.ActiveTab = Tab
-                Button.Instance.BackgroundTransparency = 0
-                Icon.ImageColor3 = Theme.Accent1
-                Text.TextColor3 = Theme.Text
-                AccentLine.Instance.BackgroundTransparency = 0
-                AccentLine.Instance.Size = UDim2.new(0, 3, 0, 28)
-                Page.Instance.Visible = true
-                Window.PageTitle.Text = Tab.Name
+            -- Иконка группы с градиентом
+            if iconId then
+                local Icon = Instance.new("ImageLabel")
+                Icon.Size = UDim2.new(0, 16, 0, 16)
+                Icon.Position = UDim2.new(0, 10, 0.5, 0)
+                Icon.AnchorPoint = Vector2.new(0, 0.5)
+                Icon.BackgroundTransparency = 1
+                Icon.Image = iconId
+                Icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                CreateGradient(Icon, Theme) -- ГРАДИЕНТ НА ИКОНКЕ ГРУППЫ
+                Icon.Parent = TitleFrame
             end
 
-            local function Deactivate()
-                Tab.Active = false
-                Button.Instance.BackgroundTransparency = 1
-                Icon.ImageColor3 = Theme.TextDim
-                Text.TextColor3 = Theme.TextDim
-                AccentLine.Instance.BackgroundTransparency = 1
-                AccentLine.Instance.Size = UDim2.new(0, 3, 0, 0)
-                Page.Instance.Visible = false
+            local Title = Instance.new("TextLabel")
+            Title.Text = name
+            Title.Size = UDim2.new(1, -45, 1, 0)
+            Title.Position = UDim2.new(0, 35, 0, 0)
+            Title.BackgroundTransparency = 1
+            Title.Font = Enum.Font.GothamBold
+            Title.TextSize = 13
+            Title.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ (БЕЗ ГРАДИЕНТА)
+            Title.TextXAlignment = Enum.TextXAlignment.Left
+            Title.Parent = TitleFrame
+
+            local Arrow = Instance.new("ImageLabel")
+            Arrow.Size = UDim2.new(0, 12, 0, 12)
+            Arrow.Position = UDim2.new(1, -10, 0.5, 0)
+            Arrow.AnchorPoint = Vector2.new(1, 0.5)
+            Arrow.BackgroundTransparency = 1
+            Arrow.Image = "rbxassetid://134243273101015"
+            Arrow.ImageColor3 = Theme.TextDim
+            Arrow.Parent = TitleFrame
+
+            local Container = Instance.new("Frame")
+            Container.Size = UDim2.new(1, -15, 0, 0)
+            Container.Position = UDim2.new(0, 8, 0, 35)
+            Container.BackgroundTransparency = 1
+            Container.AutomaticSize = Enum.AutomaticSize.Y
+            Container.Parent = Group
+            Instance.new("UIListLayout", Container).Padding = UDim.new(0, 8)
+
+            local isCollapsed = false
+            local ArrowBtn = Instance.new("TextButton")
+            ArrowBtn.Size = UDim2.new(1, 0, 1, 0)
+            ArrowBtn.BackgroundTransparency = 1
+            ArrowBtn.Text = ""
+            ArrowBtn.Parent = TitleFrame
+            ArrowBtn.ZIndex = 0
+
+            local function ToggleCollapse()
+                isCollapsed = not isCollapsed
+                if isCollapsed then
+                    Tween(Arrow, {Rotation = 180})
+                    Container.Visible = false
+                    Group.AutomaticSize = Enum.AutomaticSize.None
+                    Group.Size = UDim2.new(1, 0, 0, 35)
+                else
+                    Tween(Arrow, {Rotation = 0})
+                    Container.Visible = true
+                    Group.AutomaticSize = Enum.AutomaticSize.Y
+                    task.wait(0.1)
+                    Group.Size = UDim2.new(1, 0, 0, Group.AbsoluteSize.Y)
+                end
             end
 
-            Tab.Activate = Activate
-            Tab.Deactivate = Deactivate
+            ArrowBtn.MouseButton1Click:Connect(ToggleCollapse)
 
-            Button.Instance.MouseButton1Click:Connect(Activate)
+            local GroupObj = {}
 
-            -- ═══════════════════════════════════════════════════════
-            -- СУБВКЛАДКА
-            -- ═══════════════════════════════════════════════════════
-            function Tab:AddSubTab(SubParams)
-                SubParams = SubParams or {}
+            -- ========== ТОГЛ ==========
+            function GroupObj:AddToggle(config)
+                local name = config.Name or "Toggle"
+                local flag = config.Flag or name
+                local default = config.Default or false
+                local callback = config.Callback or function() end
 
-                local SubTab = {
-                    Name = SubParams.Name or "SubTab",
-                    Icon = SubParams.Icon or Icons.menu,
-                    Active = false,
-                }
+                local Frame = Instance.new("TextButton")
+                Frame.Size = UDim2.new(1, 0, 0, 24)
+                Frame.BackgroundTransparency = 1
+                Frame.Text = ""
+                Frame.Parent = Container
 
-                local SubButton = Library:Create("TextButton", {
-                    Parent = Page.Instance,
-                    Size = UDim2.new(1, 0, 0, 32),
-                    BackgroundColor3 = Theme.Background2,
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                })
-                Library:Create("UICorner", {Parent = SubButton.Instance, CornerRadius = UDim.new(0, 6)})
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.7, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
 
-                local SubIcon = Library:Create("ImageLabel", {
-                    Parent = SubButton.Instance,
-                    Image = SubTab.Icon,
-                    Size = UDim2.new(0, 16, 0, 16),
-                    Position = UDim2.new(0, 12, 0.5, 0),
-                    AnchorPoint = Vector2.new(0, 0.5),
-                    BackgroundTransparency = 1,
-                    ImageColor3 = Theme.TextDim,
-                })
-                local SubText = Library:Create("TextLabel", {
-                    Parent = SubButton.Instance,
-                    Text = SubTab.Name,
-                    Font = FONT,
-                    TextSize = 13,
-                    TextColor3 = Theme.TextDim,
-                    Position = UDim2.new(0, 36, 0.5, 0),
-                    AnchorPoint = Vector2.new(0, 0.5),
-                    BackgroundTransparency = 1,
-                })
+                local SwitchBg = Instance.new("Frame")
+                SwitchBg.Size = UDim2.new(0, 30, 0, 16)
+                SwitchBg.Position = UDim2.new(1, 0, 0.5, 0)
+                SwitchBg.AnchorPoint = Vector2.new(1, 0.5)
+                SwitchBg.BackgroundColor3 = Theme.ToggleOff
+                SwitchBg.Parent = Frame
+                Round(SwitchBg, 8)
 
-                local SubContainer = Library:Create("ScrollingFrame", {
-                    Parent = Page.Instance,
-                    Position = UDim2.new(0, 0, 0, 36),
-                    Size = UDim2.new(1, 0, 1, -36),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                    ScrollBarThickness = 2,
-                    ScrollBarImageColor3 = Theme.Outline,
-                    CanvasSize = UDim2.new(0, 0, 0, 0),
-                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                    Visible = false,
-                })
-                Library:Create("UIListLayout", {Parent = SubContainer.Instance, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder})
-                Library:Create("UIPadding", {Parent = SubContainer.Instance, PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8)})
+                local Circle = Instance.new("Frame")
+                Circle.Size = UDim2.new(0, 12, 0, 12)
+                Circle.Position = UDim2.new(0, 2, 0.5, 0)
+                Circle.AnchorPoint = Vector2.new(0, 0.5)
+                Circle.BackgroundColor3 = Theme.TextDim
+                Circle.Parent = SwitchBg
+                Round(Circle, 6)
 
-                local function ActivateSub()
-                    if Tab.ActiveSubTab then Tab.ActiveSubTab:DeactivateSub() end
-                    SubTab.Active = true
-                    Tab.ActiveSubTab = SubTab
-                    SubButton.Instance.BackgroundTransparency = 0
-                    SubButton.Instance.BackgroundColor3 = Theme.ElementHover
-                    SubIcon.ImageColor3 = Theme.Accent1
-                    SubText.TextColor3 = Theme.Text
-                    SubContainer.Instance.Visible = true
-                end
+                -- Градиент на фоне тогла когда включен
+                local OnGrad = CreateGradient(SwitchBg, Theme)
+                OnGrad.Enabled = false
 
-                local function DeactivateSub()
-                    SubTab.Active = false
-                    SubButton.Instance.BackgroundTransparency = 1
-                    SubIcon.ImageColor3 = Theme.TextDim
-                    SubText.TextColor3 = Theme.TextDim
-                    SubContainer.Instance.Visible = false
-                end
-
-                SubTab.ActivateSub = ActivateSub
-                SubTab.DeactivateSub = DeactivateSub
-
-                SubButton.Instance.MouseButton1Click:Connect(ActivateSub)
-
-                table.insert(Tab.SubTabs, SubTab)
-
-                -- ═══════════════════════════════════════════════════
-                -- СЕКЦИЯ
-                -- ═══════════════════════════════════════════════════
-                function SubTab:Section(Params)
-                    Params = Params or {}
-
-                    local Section = Library:Create("Frame", {
-                        Parent = SubContainer.Instance,
-                        Size = UDim2.new(1, 0, 0, 0),
-                        BackgroundColor3 = Theme.Background2,
-                        BorderSizePixel = 0,
-                        AutomaticSize = Enum.AutomaticSize.Y,
-                        ClipsDescendants = true,
-                    })
-                    Library:Create("UICorner", {Parent = Section.Instance, CornerRadius = UDim.new(0, 8)})
-                    Library:Create("UIStroke", {Parent = Section.Instance, Color = Theme.Outline, Thickness = 1})
-
-                    local Header = Library:Create("Frame", {
-                        Parent = Section.Instance,
-                        Size = UDim2.new(1, 0, 0, 36),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                    })
-                    local HeaderText = Library:Create("TextLabel", {
-                        Parent = Header.Instance,
-                        Text = Params.Name or "Section",
-                        Font = FONT_BOLD,
-                        TextSize = 14,
-                        TextColor3 = Theme.Text,
-                        Position = UDim2.new(0, 14, 0.5, 0),
-                        AnchorPoint = Vector2.new(0, 0.5),
-                        BackgroundTransparency = 1,
-                    })
-                    local PulseDot = Library:Create("Frame", {
-                        Parent = Header.Instance,
-                        Size = UDim2.new(0, 8, 0, 8),
-                        Position = UDim2.new(1, -16, 0.5, 0),
-                        AnchorPoint = Vector2.new(0.5, 0.5),
-                        BackgroundColor3 = Theme.Accent1,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = PulseDot.Instance, CornerRadius = UDim.new(1, 0)})
-                    Library:AddPulse(PulseDot, 0.3)
-
-                    local Content = Library:Create("Frame", {
-                        Parent = Section.Instance,
-                        Position = UDim2.new(0, 0, 0, 36),
-                        Size = UDim2.new(1, 0, 0, 0),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                        AutomaticSize = Enum.AutomaticSize.Y,
-                    })
-                    Library:Create("UIListLayout", {Parent = Content.Instance, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder})
-                    Library:Create("UIPadding", {Parent = Content.Instance, PaddingBottom = UDim.new(0, 10), PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)})
-
-                    return {
-                        Instance = Section,
-                        Content = Content,
-                        Add = function(self, Element)
-                            if Element and Element.Instance then
-                                Element.Instance.Parent = Content.Instance
-                            end
-                            return Element
-                        end
-                    }
-                end
-
-                -- ═══════════════════════════════════════════════════
-                -- TOGGLE
-                -- ═══════════════════════════════════════════════════
-                function SubTab:Toggle(Params)
-                    Params = Params or {}
-
-                    local Element = {
-                        Name = Params.Name or "Toggle",
-                        Flag = Params.Flag or "Toggle_" .. tostring(#Library.Elements + 1),
-                        Default = Params.Default or false,
-                        Callback = Params.Callback or function() end,
-                        Value = false,
-                    }
-
-                    local Container = Library:Create("Frame", {
-                        Size = UDim2.new(1, 0, 0, 28),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                    })
-                    local Label = Library:Create("TextLabel", {
-                        Parent = Container.Instance,
-                        Text = Element.Name,
-                        Font = FONT,
-                        TextSize = 14,
-                        TextColor3 = Theme.Text,
-                        Position = UDim2.new(0, 0, 0.5, 0),
-                        AnchorPoint = Vector2.new(0, 0.5),
-                        BackgroundTransparency = 1,
-                    })
-                    local Track = Library:Create("TextButton", {
-                        Parent = Container.Instance,
-                        AnchorPoint = Vector2.new(1, 0.5),
-                        Position = UDim2.new(1, 0, 0.5, 0),
-                        Size = UDim2.new(0, 40, 0, 22),
-                        BackgroundColor3 = Theme.Element,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = Track.Instance, CornerRadius = UDim.new(1, 0)})
-                    local Knob = Library:Create("Frame", {
-                        Parent = Track.Instance,
-                        Size = UDim2.new(0, 16, 0, 16),
-                        Position = UDim2.new(0, 3, 0.5, -8),
-                        BackgroundColor3 = Theme.TextDim,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = Knob.Instance, CornerRadius = UDim.new(1, 0)})
-
-                    function Element:Set(Value)
-                        Element.Value = Value
-                        if Value then
-                            Track.Instance.BackgroundColor3 = Theme.Accent1
-                            Knob.Instance.Position = UDim2.new(1, -19, 0.5, -8)
-                            Knob.Instance.BackgroundColor3 = Theme.Text
-                        else
-                            Track.Instance.BackgroundColor3 = Theme.Element
-                            Knob.Instance.Position = UDim2.new(0, 3, 0.5, -8)
-                            Knob.Instance.BackgroundColor3 = Theme.TextDim
-                        end
-                        Library.Flags[Element.Flag] = Value
-                        Library.SafeCall(Element.Callback, Value)
+                local State = default
+                
+                local Toggle = {}
+                
+                function Toggle:Set(val)
+                    State = val
+                    if val then
+                        Tween(Circle, {Position = UDim2.new(1, -14, 0.5, 0), BackgroundColor3 = Theme.White})
+                        Tween(SwitchBg, {BackgroundColor3 = Color3.new(1, 1, 1)})
+                        OnGrad.Enabled = true
+                    else
+                        Tween(Circle, {Position = UDim2.new(0, 2, 0.5, 0), BackgroundColor3 = Theme.TextDim})
+                        Tween(SwitchBg, {BackgroundColor3 = Theme.ToggleOff})
+                        OnGrad.Enabled = false
                     end
-
-                    Track.Instance.MouseButton1Click:Connect(function()
-                        Element:Set(not Element.Value)
-                    end)
-
-                    Element.Instance = Container.Instance
-                    Library.Elements[Element.Flag] = Element
-                    Library.ConfigFlags[Element.Flag] = function(Value) Element:Set(Value) end
-                    Element:Set(Element.Default)
-                    return Element
+                    Window.Flags[flag] = val
+                    callback(val)
                 end
-
-                -- ═══════════════════════════════════════════════════
-                -- BUTTON
-                -- ═══════════════════════════════════════════════════
-                function SubTab:Button(Params)
-                    Params = Params or {}
-
-                    local Element = {
-                        Name = Params.Name or "Button",
-                        Callback = Params.Callback or function() end,
-                    }
-
-                    local Container = Library:Create("Frame", {
-                        Size = UDim2.new(1, 0, 0, 32),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                    })
-                    local Button = Library:Create("TextButton", {
-                        Parent = Container.Instance,
-                        Size = UDim2.new(1, 0, 1, 0),
-                        BackgroundColor3 = Theme.Element,
-                        BorderSizePixel = 0,
-                        Text = Element.Name,
-                        TextColor3 = Theme.Text,
-                        Font = FONT_BOLD,
-                        TextSize = 14,
-                    })
-                    Library:Create("UICorner", {Parent = Button.Instance, CornerRadius = UDim.new(0, 6)})
-
-                    Button.Instance.MouseEnter:Connect(function()
-                        Button.Instance.BackgroundColor3 = Theme.ElementHover
-                    end)
-                    Button.Instance.MouseLeave:Connect(function()
-                        Button.Instance.BackgroundColor3 = Theme.Element
-                    end)
-                    Button.Instance.MouseButton1Click:Connect(function()
-                        Button.Instance.BackgroundColor3 = Theme.Accent2
-                        task.wait(0.08)
-                        Button.Instance.BackgroundColor3 = Theme.Element
-                        Library.SafeCall(Element.Callback)
-                    end)
-
-                    Element.Instance = Container.Instance
-                    return Element
+                
+                function Toggle:Get()
+                    return State
                 end
-
-                -- ═══════════════════════════════════════════════════
-                -- SLIDER
-                -- ═══════════════════════════════════════════════════
-                function SubTab:Slider(Params)
-                    Params = Params or {}
-
-                    local Element = {
-                        Name = Params.Name or "Slider",
-                        Flag = Params.Flag or "Slider_" .. tostring(#Library.Elements + 1),
-                        Min = Params.Min or 0,
-                        Max = Params.Max or 100,
-                        Default = Params.Default or 50,
-                        Suffix = Params.Suffix or "",
-                        Callback = Params.Callback or function() end,
-                        Value = 0,
-                        Sliding = false,
-                    }
-
-                    local Container = Library:Create("Frame", {
-                        Size = UDim2.new(1, 0, 0, 44),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                    })
-                    local Label = Library:Create("TextLabel", {
-                        Parent = Container.Instance,
-                        Text = Element.Name,
-                        Font = FONT,
-                        TextSize = 14,
-                        TextColor3 = Theme.Text,
-                        Position = UDim2.new(0, 0, 0, 0),
-                        BackgroundTransparency = 1,
-                    })
-                    local ValueLabel = Library:Create("TextLabel", {
-                        Parent = Container.Instance,
-                        Text = tostring(Element.Default) .. Element.Suffix,
-                        Font = FONT_BOLD,
-                        TextSize = 14,
-                        TextColor3 = Theme.Accent1,
-                        AnchorPoint = Vector2.new(1, 0),
-                        Position = UDim2.new(1, 0, 0, 0),
-                        BackgroundTransparency = 1,
-                    })
-                    local Track = Library:Create("TextButton", {
-                        Parent = Container.Instance,
-                        AnchorPoint = Vector2.new(0, 1),
-                        Position = UDim2.new(0, 0, 1, -4),
-                        Size = UDim2.new(1, 0, 0, 4),
-                        BackgroundColor3 = Theme.Element,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = Track.Instance, CornerRadius = UDim.new(1, 0)})
-                    local Fill = Library:Create("Frame", {
-                        Parent = Track.Instance,
-                        Size = UDim2.new(0.5, 0, 1, 0),
-                        BackgroundColor3 = Theme.Accent1,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = Fill.Instance, CornerRadius = UDim.new(1, 0)})
-                    Library:AddPulse(Fill, 0.06)
-                    local Knob = Library:Create("Frame", {
-                        Parent = Track.Instance,
-                        Size = UDim2.new(0, 12, 0, 12),
-                        Position = UDim2.new(0.5, -6, 0.5, -6),
-                        BackgroundColor3 = Theme.Accent1,
-                        BorderSizePixel = 0,
-                    })
-                    Library:Create("UICorner", {Parent = Knob.Instance, CornerRadius = UDim.new(1, 0)})
-
-                    function Element:Set(Value)
-                        Element.Value = math.clamp(Value, Element.Min, Element.Max)
-                        local Percent = (Element.Value - Element.Min) / (Element.Max - Element.Min)
-                        Fill.Instance.Size = UDim2.new(Percent, 0, 1, 0)
-                        Knob.Instance.Position = UDim2.new(Percent, -6, 0.5, -6)
-                        ValueLabel.Text = tostring(Element.Value) .. Element.Suffix
-                        Library.Flags[Element.Flag] = Element.Value
-                        Library.SafeCall(Element.Callback, Element.Value)
-                    end
-
-                    Track.Instance.InputBegan:Connect(function(Input)
-                        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                            Element.Sliding = true
-                            local X = (Input.Position.X - Track.Instance.AbsolutePosition.X) / Track.Instance.AbsoluteSize.X
-                            local Value = Element.Min + (Element.Max - Element.Min) * math.clamp(X, 0, 1)
-                            Element:Set(Value)
-                        end
-                    end)
-                    Library:Connect(UserInputService.InputEnded, function(Input)
-                        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                            Element.Sliding = false
-                        end
-                    end)
-                    Library:Connect(UserInputService.InputChanged, function(Input)
-                        if Element.Sliding and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                            local X = (Input.Position.X - Track.Instance.AbsolutePosition.X) / Track.Instance.AbsoluteSize.X
-                            local Value = Element.Min + (Element.Max - Element.Min) * math.clamp(X, 0, 1)
-                            Element:Set(Value)
-                        end
-                    end)
-
-                    Element.Instance = Container.Instance
-                    Library.Elements[Element.Flag] = Element
-                    Library.ConfigFlags[Element.Flag] = function(Value) Element:Set(Value) end
-                    Element:Set(Element.Default)
-                    return Element
-                end
-
-                -- ═══════════════════════════════════════════════════
-                -- LABEL
-                -- ═══════════════════════════════════════════════════
-                function SubTab:Label(Params)
-                    Params = Params or {}
-
-                    local Element = {
-                        Name = Params.Name or "",
-                    }
-
-                    local Container = Library:Create("Frame", {
-                        Size = UDim2.new(1, 0, 0, 22),
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                    })
-                    local Label = Library:Create("TextLabel", {
-                        Parent = Container.Instance,
-                        Text = Element.Name,
-                        Font = Params.Bold and FONT_BOLD or FONT,
-                        TextSize = Params.Size or 14,
-                        TextColor3 = Params.Dim and Theme.TextDim or Theme.Text,
-                        Position = UDim2.new(0, 0, 0.5, 0),
-                        AnchorPoint = Vector2.new(0, 0.5),
-                        BackgroundTransparency = 1,
-                    })
-
-                    Element.Instance = Container.Instance
-                    Element.SetText = function(Text) Label.Text = Text end
-                    return Element
-                end
-
-                if not Tab.ActiveSubTab then
-                    ActivateSub()
-                end
-
-                return SubTab
+                
+                Frame.MouseButton1Click:Connect(function() Toggle:Set(not State) end)
+                Toggle:Set(State)
+                
+                return Toggle
             end
 
-            table.insert(Window.Tabs, Tab)
-            if #Window.Tabs == 1 then Activate() end
+            -- ========== СЛАЙДЕР ==========
+            function GroupObj:AddSlider(config)
+                local name = config.Name or "Slider"
+                local flag = config.Flag or name
+                local min = config.Min or 0
+                local max = config.Max or 100
+                local default = config.Default or 0
+                local suffix = config.Suffix or ""
+                local callback = config.Callback or function() end
 
-            return Tab
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 32)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = Container
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.6, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+
+                local ValueLabel = Instance.new("TextLabel")
+                ValueLabel.Text = tostring(default) .. suffix
+                ValueLabel.Size = UDim2.new(0.35, 0, 1, 0)
+                ValueLabel.Position = UDim2.new(0.65, 0, 0, 0)
+                ValueLabel.BackgroundTransparency = 1
+                ValueLabel.Font = Enum.Font.GothamBold
+                ValueLabel.TextSize = 12
+                ValueLabel.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                ValueLabel.Parent = Frame
+
+                local BarBg = Instance.new("Frame")
+                BarBg.Size = UDim2.new(1, 0, 0, 5)
+                BarBg.Position = UDim2.new(0, 0, 1, -8)
+                BarBg.BackgroundColor3 = Theme.ElementBg
+                BarBg.Parent = Frame
+                Round(BarBg, 3)
+
+                local Fill = Instance.new("Frame")
+                Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+                Fill.BackgroundColor3 = Theme.White
+                Fill.Parent = BarBg
+                Round(Fill, 3)
+                
+                -- Градиент на ползунке
+                CreateGradient(Fill, Theme)
+
+                local Value = default
+                local dragging = false
+                
+                local Slider = {}
+                
+                function Slider:Set(val)
+                    val = math.floor(math.clamp(val, min, max))
+                    if val == Value then return end
+                    Value = val
+                    Window.Flags[flag] = Value
+                    local perc = (Value - min) / (max - min)
+                    Tween(Fill, {Size = UDim2.new(perc, 0, 1, 0)})
+                    ValueLabel.Text = tostring(Value) .. suffix
+                    callback(Value)
+                end
+                
+                function Slider:Get()
+                    return Value
+                end
+
+                BarBg.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = true
+                        local x = math.clamp((input.Position.X - BarBg.AbsolutePosition.X) / BarBg.AbsoluteSize.X, 0, 1)
+                        Slider:Set(min + (max - min) * x)
+                    end
+                end)
+                
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = false
+                    end
+                end)
+                
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        local x = math.clamp((input.Position.X - BarBg.AbsolutePosition.X) / BarBg.AbsoluteSize.X, 0, 1)
+                        Slider:Set(min + (max - min) * x)
+                    end
+                end)
+                
+                Slider:Set(Value)
+                return Slider
+            end
+
+            -- ========== КНОПКА ==========
+            function GroupObj:AddButton(config)
+                local name = config.Name or "Button"
+                local callback = config.Callback or function() end
+
+                local Btn = Instance.new("TextButton")
+                Btn.Size = UDim2.new(1, 0, 0, 26)
+                Btn.BackgroundColor3 = Theme.ElementBg
+                Btn.Text = name
+                Btn.Font = Enum.Font.GothamMedium
+                Btn.TextSize = 12
+                Btn.TextColor3 = Theme.TextDim -- СЕРЫЙ ТЕКСТ
+                Btn.TextXAlignment = Enum.TextXAlignment.Center
+                Btn.Parent = Container
+                Round(Btn, 4)
+
+                Btn.MouseEnter:Connect(function()
+                    Tween(Btn, {BackgroundColor3 = Theme.ElementHover})
+                    Btn.TextColor3 = Theme.White -- БЕЛЫЙ ПРИ НАВЕДЕНИИ
+                end)
+                Btn.MouseLeave:Connect(function()
+                    Tween(Btn, {BackgroundColor3 = Theme.ElementBg})
+                    Btn.TextColor3 = Theme.TextDim
+                end)
+                
+                Btn.MouseButton1Click:Connect(function()
+                    callback()
+                    Tween(Btn, {Size = UDim2.new(0.98, 0, 0, 24)}, TweenInfo.new(0.1))
+                    task.wait(0.1)
+                    Tween(Btn, {Size = UDim2.new(1, 0, 0, 26)})
+                end)
+            end
+
+            -- ========== ДРОПДАУН ==========
+            function GroupObj:AddDropdown(config)
+                local name = config.Name or "Dropdown"
+                local flag = config.Flag or name
+                local items = config.Items or {}
+                local default = config.Default or items[1]
+                local callback = config.Callback or function() end
+
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 28)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = Container
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.5, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+
+                local DropBtn = Instance.new("TextButton")
+                DropBtn.Size = UDim2.new(0.45, 0, 1, 0)
+                DropBtn.Position = UDim2.new(0.55, 0, 0, 0)
+                DropBtn.BackgroundColor3 = Theme.ElementBg
+                DropBtn.Text = "  " .. (default or "---")
+                DropBtn.Font = Enum.Font.GothamMedium
+                DropBtn.TextSize = 12
+                DropBtn.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+                DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+                DropBtn.Parent = Frame
+                Round(DropBtn, 4)
+
+                local Arrow = Instance.new("ImageLabel")
+                Arrow.Size = UDim2.new(0, 10, 0, 10)
+                Arrow.Position = UDim2.new(1, -6, 0.5, 0)
+                Arrow.AnchorPoint = Vector2.new(1, 0.5)
+                Arrow.BackgroundTransparency = 1
+                Arrow.Image = "rbxassetid://134243273101015"
+                Arrow.ImageColor3 = Theme.TextDim
+                Arrow.Parent = DropBtn
+
+                local DropList = Instance.new("Frame")
+                DropList.Size = UDim2.new(1, 0, 0, 0)
+                DropList.Position = UDim2.new(0, 0, 1, 2)
+                DropList.BackgroundColor3 = Theme.ElementBg
+                DropList.Visible = false
+                DropList.ZIndex = 10
+                DropList.Parent = DropBtn
+                Round(DropList, 4)
+                
+                Instance.new("UIStroke", DropList).Color = Theme.Border
+                Instance.new("UIStroke", DropList).Thickness = 1
+                Instance.new("UIListLayout", DropList)
+
+                for _, item in ipairs(items) do
+                    local ItemBtn = Instance.new("TextButton")
+                    ItemBtn.Size = UDim2.new(1, 0, 0, 22)
+                    ItemBtn.BackgroundTransparency = 1
+                    ItemBtn.Text = "  " .. item
+                    ItemBtn.Font = Enum.Font.GothamMedium
+                    ItemBtn.TextSize = 11
+                    ItemBtn.TextColor3 = Theme.TextDim
+                    ItemBtn.TextXAlignment = Enum.TextXAlignment.Left
+                    ItemBtn.ZIndex = 10
+                    ItemBtn.Parent = DropList
+                    
+                    ItemBtn.MouseEnter:Connect(function()
+                        ItemBtn.BackgroundTransparency = 0.9
+                        ItemBtn.BackgroundColor3 = Theme.ElementHover
+                        ItemBtn.TextColor3 = Theme.White -- БЕЛЫЙ ПРИ НАВЕДЕНИИ
+                    end)
+                    ItemBtn.MouseLeave:Connect(function()
+                        ItemBtn.BackgroundTransparency = 1
+                        ItemBtn.TextColor3 = Theme.TextDim
+                    end)
+                    ItemBtn.MouseButton1Click:Connect(function()
+                        Dropdown:Set(item)
+                        DropList.Visible = false
+                    end)
+                end
+                DropList.Size = UDim2.new(1, 0, 0, #items * 22)
+
+                local Dropdown = {}
+                
+                function Dropdown:Set(val)
+                    Window.Flags[flag] = val
+                    DropBtn.Text = "  " .. tostring(val)
+                    callback(val)
+                end
+                
+                function Dropdown:Get()
+                    return Window.Flags[flag]
+                end
+                
+                DropBtn.MouseButton1Click:Connect(function()
+                    DropList.Visible = not DropList.Visible
+                end)
+                
+                Dropdown:Set(default)
+                return Dropdown
+            end
+
+            -- ========== ТЕКСТБОКС ==========
+            function GroupObj:AddTextbox(config)
+                local name = config.Name or "Textbox"
+                local flag = config.Flag or name
+                local default = config.Default or ""
+                local placeholder = config.Placeholder or "Enter text..."
+                local callback = config.Callback or function() end
+
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 28)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = Container
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.5, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+
+                local InputBox = Instance.new("TextBox")
+                InputBox.Size = UDim2.new(0.45, 0, 1, 0)
+                InputBox.Position = UDim2.new(0.55, 0, 0, 0)
+                InputBox.BackgroundColor3 = Theme.ElementBg
+                InputBox.Text = default
+                InputBox.PlaceholderText = placeholder
+                InputBox.TextColor3 = Theme.Text -- БЕЛЫЙ ТЕКСТ
+                InputBox.PlaceholderColor3 = Theme.TextDim
+                InputBox.Font = Enum.Font.GothamMedium
+                InputBox.TextSize = 12
+                InputBox.TextXAlignment = Enum.TextXAlignment.Left
+                InputBox.Parent = Frame
+                Round(InputBox, 4)
+
+                local Textbox = {}
+                
+                function Textbox:Set(val)
+                    Window.Flags[flag] = val
+                    InputBox.Text = val
+                    callback(val)
+                end
+                
+                function Textbox:Get()
+                    return Window.Flags[flag]
+                end
+                
+                InputBox.FocusLost:Connect(function()
+                    Textbox:Set(InputBox.Text)
+                end)
+                
+                Textbox:Set(default)
+                return Textbox
+            end
+
+            -- ========== КЕЙБИНД ==========
+            function GroupObj:AddKeybind(config)
+                local name = config.Name or "Keybind"
+                local flag = config.Flag or name
+                local default = config.Default or "None"
+                local callback = config.Callback or function() end
+
+                local Frame = Instance.new("Frame")
+                Frame.Size = UDim2.new(1, 0, 0, 24)
+                Frame.BackgroundTransparency = 1
+                Frame.Parent = Container
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = name
+                Label.Size = UDim2.new(0.6, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.Parent = Frame
+
+                local KeyBtn = Instance.new("TextButton")
+                KeyBtn.Size = UDim2.new(0, 0, 0, 20)
+                KeyBtn.Position = UDim2.new(1, 0, 0.5, 0)
+                KeyBtn.AnchorPoint = Vector2.new(1, 0.5)
+                KeyBtn.BackgroundColor3 = Theme.ElementBg
+                KeyBtn.Text = ""
+                KeyBtn.Parent = Frame
+                Round(KeyBtn, 4)
+                KeyBtn.AutomaticSize = Enum.AutomaticSize.X
+
+                local KeyText = Instance.new("TextLabel")
+                KeyText.Text = default
+                KeyText.Size = UDim2.new(1, -8, 1, 0)
+                KeyText.Position = UDim2.new(0, 4, 0, 0)
+                KeyText.BackgroundTransparency = 1
+                KeyText.Font = Enum.Font.GothamMedium
+                KeyText.TextSize = 11
+                KeyText.TextColor3 = Theme.White -- БЕЛЫЙ ТЕКСТ
+                KeyText.TextXAlignment = Enum.TextXAlignment.Center
+                KeyText.Parent = KeyBtn
+
+                local Keybind = {}
+                
+                function Keybind:Set(val)
+                    Window.Flags[flag] = val
+                    KeyText.Text = val
+                    callback(val)
+                end
+                
+                function Keybind:Get()
+                    return Window.Flags[flag]
+                end
+
+                KeyBtn.MouseButton1Click:Connect(function()
+                    KeyText.Text = "..."
+                    local con = UserInputService.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Keyboard then
+                            local key = input.KeyCode.Name
+                            Keybind:Set(key == "Escape" and "None" or key)
+                            con:Disconnect()
+                        end
+                    end)
+                end)
+                
+                Keybind:Set(default)
+                return Keybind
+            end
+
+            return GroupObj
         end
 
-        Library.Window = Window
-        return Window
+        if not Window.ActiveTab then Select() end
+        table.insert(Window.Tabs, Tab)
+        return Tab
     end
 
-    getgenv().PulseUI = Library
-    return Library
+    return Window
 end
+
+return PyroHubLibrary
